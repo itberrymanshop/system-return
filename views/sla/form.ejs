@@ -1,0 +1,141 @@
+<%- include('../partials/flash') %>
+
+<div class="mb-4">
+  <h3><%= title %></h3>
+  <p class="text-muted"><%= isEdit ? 'Edit SLA Configuration' : 'Buat SLA Configuration Baru' %></p>
+</div>
+
+<div class="row">
+  <div class="col-lg-8">
+    <form action="<%= action %>" method="post" class="needs-validation">
+      
+      <!-- SLA Name -->
+      <div class="mb-3">
+        <label class="form-label" for="sla_name">Nama SLA <span class="text-danger">*</span></label>
+        <input class="form-control" type="text" id="sla_name" name="sla_name" 
+               value="<%= item.sla_name || '' %>" 
+               placeholder="Contoh: SLA Process - Rekondisi Non Elektronik" required>
+        <small class="text-muted">Nama deskriptif untuk SLA ini</small>
+      </div>
+
+      <!-- Code Name -->
+      <div class="mb-3">
+        <label class="form-label" for="code_name">Code Name <span class="text-danger">*</span></label>
+        <select class="form-select" id="code_name" name="code_name" required>
+          <option value="">-- Pilih Code Name --</option>
+          <option value="SLA Sorting" <%= item.code_name === 'SLA Sorting' ? 'selected' : '' %>>SLA Sorting</option>
+          <option value="SLA Proses" <%= item.code_name === 'SLA Proses' ? 'selected' : '' %>>SLA Proses</option>
+          <option value="SLA Recover" <%= item.code_name === 'SLA Recover' ? 'selected' : '' %>>SLA Recover</option>
+          <option value="[No Code]" <%= item.code_name === '[No Code]' ? 'selected' : '' %>>Tanpa Code</option>
+        </select>
+        <small class="text-muted">Kategori utama SLA</small>
+      </div>
+
+      <!-- Code Trigger (Filter 1) -->
+      <div class="mb-3">
+        <label class="form-label" for="code_trigger">Code Trigger / Filter 1</label>
+        <input class="form-control" type="text" id="code_trigger" name="code_trigger" 
+               value="<%= item.code_trigger || '' %>" 
+               placeholder="Contoh: Non Elektronik, Elektronik, [No Code]">
+        <small class="text-muted">Filter pertama untuk menentukan SLA spesifik</small>
+      </div>
+
+      <!-- Code Trigger 2 (Filter 2) -->
+      <div class="mb-3">
+        <label class="form-label" for="code_trigger_2">Code Trigger 2 / Filter 2</label>
+        <input class="form-control" type="text" id="code_trigger_2" name="code_trigger_2" 
+               value="<%= item.code_trigger_2 || '' %>" 
+               placeholder="Contoh: Rekondisi, Refurbish, Write off">
+        <small class="text-muted">Filter kedua untuk mempersempit SLA</small>
+      </div>
+
+      <!-- SLA Type -->
+      <div class="mb-3">
+        <label class="form-label" for="sla_type">Tipe SLA <span class="text-danger">*</span></label>
+        <select class="form-select" id="sla_type" name="sla_type" required>
+          <option value="">-- Pilih Tipe --</option>
+          <option value="STANDARD" <%= item.sla_type === 'STANDARD' ? 'selected' : '' %>>SLA STANDARD</option>
+          <option value="MASA_TENGGANG" <%= item.sla_type === 'MASA_TENGGANG' ? 'selected' : '' %>>SLA MASA TENGGANG</option>
+        </select>
+        <small class="text-muted">Kategori tipe SLA</small>
+      </div>
+
+      <!-- SLA Hours -->
+      <div class="mb-3">
+        <label class="form-label" for="sla_hours">Batas Waktu (Jam) <span class="text-danger">*</span></label>
+        <input class="form-control" type="number" id="sla_hours" name="sla_hours" 
+               value="<%= item.sla_hours || 24 %>" min="1" required 
+               onchange="calculateDays()">
+        <small class="text-muted">Jumlah jam untuk menyelesaikan tahap ini</small>
+      </div>
+
+      <!-- SLA Days (calculated) -->
+      <div class="mb-3">
+        <label class="form-label" for="sla_days_display">Batas Waktu (Hari)</label>
+        <input class="form-control" type="text" id="sla_days_display" 
+               value="<%= Math.ceil((item.sla_hours || 24) / 24) %> hari" disabled>
+        <small class="text-muted">Dikonversi otomatis dari jam</small>
+      </div>
+
+      <!-- Description -->
+      <div class="mb-3">
+        <label class="form-label" for="description">Deskripsi</label>
+        <textarea class="form-control" id="description" name="description" rows="3" 
+                  placeholder="Penjelasan tambahan untuk SLA ini..."><%= item.description || '' %></textarea>
+      </div>
+
+      <!-- Active Status -->
+      <div class="mb-4 form-check">
+        <input class="form-check-input" type="checkbox" id="is_active" name="is_active" 
+               value="on" <%= item.is_active ? 'checked' : '' %>>
+        <label class="form-check-label" for="is_active">Aktifkan SLA Ini</label>
+      </div>
+
+      <!-- Actions -->
+      <div>
+        <button type="submit" class="btn btn-primary">
+          <i class="bi bi-check-circle"></i> <%= isEdit ? 'Perbarui' : 'Buat' %>
+        </button>
+        <a class="btn btn-secondary" href="/sla">
+          <i class="bi bi-x-circle"></i> Batal
+        </a>
+      </div>
+    </form>
+  </div>
+
+  <!-- Info Panel -->
+  <div class="col-lg-4">
+    <div class="card">
+      <div class="card-header bg-light">
+        <h6 class="mb-0">Informasi Tambahan</h6>
+      </div>
+      <div class="card-body">
+        <h6 class="text-muted mb-2">SLA STANDARD</h6>
+        <p class="small mb-3">Digunakan untuk tahap-tahap proses pengembalian barang standar.</p>
+        
+        <h6 class="text-muted mb-2">SLA MASA TENGGANG</h6>
+        <p class="small mb-3">Digunakan untuk periode grace period setelah tahap-tahap selesai.</p>
+
+        <hr>
+
+        <h6 class="text-muted mb-2">Format Filter</h6>
+        <ul class="small">
+          <li><strong>Non Elektronik</strong> - Barang non elektronik</li>
+          <li><strong>Elektronik</strong> - Barang elektronik</li>
+          <li><strong>Rekondisi</strong> - Proses rekondisi</li>
+          <li><strong>Refurbish</strong> - Proses refurbish</li>
+          <li><strong>Write off</strong> - Penghapusan barang</li>
+          <li><strong>[No Code]</strong> - Tidak ada filter</li>
+        </ul>
+      </div>
+    </div>
+  </div>
+</div>
+
+<script>
+function calculateDays() {
+  const hours = parseInt(document.getElementById('sla_hours').value) || 24;
+  const days = Math.ceil(hours / 24);
+  document.getElementById('sla_days_display').value = days + ' hari';
+}
+</script>

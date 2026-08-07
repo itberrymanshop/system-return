@@ -1,0 +1,98 @@
+<div class="container-fluid mt-5 pt-4">
+  <div class="row mb-3">
+    <div class="col">
+      <h2><i class="bi bi-boxes"></i> Dashboard Inventory</h2>
+      <p class="text-muted">Ringkasan stok retur berdasarkan kategori pemilahan.</p>
+    </div>
+    <div class="col-auto">
+      <a href="/inventory/sales-report" class="btn btn-sm btn-outline-success">
+        <i class="bi bi-receipt"></i> Laporan Penjualan
+      </a>
+    </div>
+  </div>
+
+  <!-- Summary Cards -->
+  <div class="row g-3 mb-4">
+    <%
+      const catConf = [
+        { key:'rekondisi',  label:'Rekondisi', color:'primary',  icon:'bi-tools' },
+        { key:'refurbish',  label:'Refurbish',  color:'warning',  icon:'bi-stars' },
+        { key:'write_off',  label:'Write-Off',  color:'danger',   icon:'bi-trash3' },
+        { key:'stok_utama', label:'Stok Utama', color:'success',  icon:'bi-archive' },
+        { key:'return_to_supplier', label:'Stok Supplier Lokal', color:'secondary', icon:'bi-truck' }
+      ];
+    %>
+    <% catConf.forEach(c => { %>
+    <div class="col-sm-6 col-xl-3">
+      <div class="card border-<%= c.color %>">
+        <div class="card-body">
+          <div class="d-flex justify-content-between align-items-start mb-2">
+            <h6 class="card-title text-muted mb-0"><%= c.label %></h6>
+            <i class="bi <%= c.icon %> text-<%= c.color %> fs-4"></i>
+          </div>
+          <% const d = pivot[c.key] || {}; %>
+          <div class="row g-1 mb-2">
+            <div class="col-4 text-center">
+              <div class="fw-bold text-success"><%= d.tersedia || 0 %></div>
+              <small class="text-muted">Tersedia</small>
+            </div>
+            <div class="col-4 text-center">
+              <div class="fw-bold text-primary"><%= d.terjual || 0 %></div>
+              <small class="text-muted">Terjual</small>
+            </div>
+            <div class="col-4 text-center">
+              <div class="fw-bold text-secondary"><%= d.diproses || 0 %></div>
+              <small class="text-muted">Proses</small>
+            </div>
+          </div>
+          <a href="/inventory/category/<%= c.key %>" class="btn btn-sm btn-outline-<%= c.color %> w-100">
+            Lihat Stok <i class="bi bi-arrow-right"></i>
+          </a>
+        </div>
+      </div>
+    </div>
+    <% }) %>
+  </div>
+
+  <!-- Recent Sales -->
+  <div class="card">
+    <div class="card-header d-flex justify-content-between align-items-center">
+      <h6 class="mb-0"><i class="bi bi-receipt"></i> Penjualan Terbaru</h6>
+      <a href="/inventory/sales-report" class="btn btn-sm btn-outline-success">Lihat Semua</a>
+    </div>
+    <div class="table-responsive">
+      <table class="table table-hover mb-0">
+        <thead class="table-light">
+          <tr><th>No Resi</th><th>Item</th><th>Kategori</th><th>Vendor</th><th>Harga Jual</th><th>Tgl Jual</th></tr>
+        </thead>
+        <tbody>
+          <% if (recentSales.length === 0) { %>
+            <tr><td colspan="6" class="text-center text-muted py-4">Belum ada data penjualan.</td></tr>
+          <% } %>
+          <% recentSales.forEach(s => { %>
+          <tr>
+            <td>
+              <% if (s.resi_number) { %>
+                <small class="text-muted"><i class="bi bi-truck"></i> <%= s.resi_number %></small>
+              <% } else { %>
+                <span class="text-muted">-</span>
+              <% } %>
+            </td>
+            <td>
+              <strong><%= s.item_name %></strong>
+              <% if (s.sku || s.item_code) { %><br><small class="text-muted"><%= s.sku || s.item_code %></small><% } %>
+            </td>
+            <td>
+              <% const catColors = {rekondisi:'primary',refurbish:'warning',write_off:'danger',stok_utama:'success',return_to_supplier:'secondary'}; %>
+              <span class="badge bg-<%= catColors[s.category]||'secondary' %>"><%= s.category === 'return_to_supplier' ? 'Supplier Lokal' : s.category.replace('_','-').toUpperCase() %></span>
+            </td>
+            <td><%= s.vendor_name || '-' %></td>
+            <td><%- formatCurrency(s.sale_price) %></td>
+            <td><small><%= formatDate(s.sale_date) %></small></td>
+          </tr>
+          <% }) %>
+        </tbody>
+      </table>
+    </div>
+  </div>
+</div>

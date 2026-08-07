@@ -1,0 +1,955 @@
+<style>
+  .manifest-card {
+    background: rgba(255, 255, 255, 0.9);
+    backdrop-filter: blur(10px);
+    border-radius: 1rem;
+    box-shadow: 0 8px 32px 0 rgba(31, 38, 135, 0.06);
+    border: 1px solid rgba(255, 255, 255, 0.18);
+  }
+
+  .drag-drop-area {
+    border: 2px dashed #0d6efd;
+    border-radius: 0.5rem;
+    padding: 1.5rem 1rem;
+    text-align: center;
+    background: #f8faff;
+    cursor: pointer;
+    transition: all 0.2s ease-in-out;
+  }
+
+  .drag-drop-area:hover,
+  .drag-drop-area.dragover {
+    background: #eef4ff;
+    border-color: #0a58ca;
+  }
+
+  .stats-value {
+    font-size: 2.2rem;
+    font-weight: 700;
+    line-height: 1;
+  }
+
+  .toggle-items {
+    padding: 0.15rem 0.35rem;
+    font-size: 0.75rem;
+  }
+
+  /* Premium Responsive Pagination styling */
+  .responsive-pagination .page-item .page-link {
+    border: 1px solid #e2e8f0;
+    color: #4a5568;
+    background-color: #fff;
+    margin: 0 3px;
+    border-radius: 0.375rem;
+    transition: all 0.2s ease;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    min-width: 32px;
+    height: 32px;
+  }
+
+  .responsive-pagination .page-item.active .page-link {
+    background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+    border-color: transparent;
+    color: #fff;
+    box-shadow: 0 4px 6px -1px rgba(102, 126, 234, 0.25), 0 2px 4px -1px rgba(102, 126, 234, 0.1);
+  }
+
+  .responsive-pagination .page-item:not(.active):not(.disabled) .page-link:hover {
+    background-color: #f7fafc;
+    border-color: #cbd5e0;
+    color: #1a202c;
+  }
+
+  .responsive-pagination .page-item.disabled .page-link {
+    color: #a0aec0;
+    background-color: #edf2f7;
+    border-color: #e2e8f0;
+  }
+
+  /* Table styling */
+  #manifestsTable {
+    border-collapse: separate;
+    border-spacing: 0;
+  }
+
+  #manifestsTable thead th {
+    background-color: #f8fafc;
+    color: #475569;
+    font-weight: 600;
+    border-bottom: 2px solid #e2e8f0;
+    padding: 12px 16px;
+  }
+
+  #manifestsTable tbody tr {
+    transition: background-color 0.2s ease;
+  }
+
+  #manifestsTable tbody tr:hover {
+    background-color: #f8fafc;
+  }
+
+  #manifestsTable td {
+    padding: 14px 16px;
+    border-bottom: 1px solid #f1f5f9;
+  }
+
+  /* Details row styling */
+  .items-detail-row {
+    animation: fadeIn 0.3s ease-out;
+  }
+
+  @keyframes fadeIn {
+    from {
+      opacity: 0;
+      transform: translateY(-4px);
+    }
+
+    to {
+      opacity: 1;
+      transform: translateY(0);
+    }
+  }
+
+  /* Responsive tweaks for tables & search bar */
+  @media (max-width: 768px) {
+    #searchFilterForm {
+      width: 100%;
+      flex-direction: column;
+      align-items: stretch !important;
+    }
+
+    #searchFilterForm>* {
+      width: 100%;
+      max-width: none !important;
+    }
+
+    .responsive-pagination .page-item .page-link {
+      margin: 0 1px;
+      padding: 0.25rem 0.5rem;
+      font-size: 0.8rem;
+    }
+  }
+
+  .table-success-tint {
+    background-color: rgba(25, 135, 84, 0.08) !important;
+  }
+</style>
+
+<div class="container-fluid mt-5 pt-4">
+  <!-- Header -->
+  <div class="row mb-4">
+    <div class="col-12 col-md-6">
+      <h2><i class="bi bi-file-earmark-excel text-primary"></i> Return Manifests Dashboard</h2>
+      <nav aria-label="breadcrumb">
+        <ol class="breadcrumb mb-0">
+          <li class="breadcrumb-item"><a href="/dashboard">Dashboard</a></li>
+          <li class="breadcrumb-item"><a href="/returns">Returns</a></li>
+          <li class="breadcrumb-item active">Manifests</li>
+        </ol>
+      </nav>
+    </div>
+    <div
+      class="col-12 col-md-6 text-md-end mt-2 mt-md-0 d-flex flex-wrap gap-2 justify-content-md-end align-items-center">
+      <% if (stats.pendingManifests> 0) { %>
+        <button type="button" class="btn btn-outline-danger" id="deleteAllPendingBtn">
+          <i class="bi bi-trash-fill"></i> Hapus Semua Pending
+        </button>
+        <% } %>
+          <a href="/returns/manifests/export" class="btn btn-outline-success">
+            <i class="bi bi-file-earmark-excel"></i> Export Excel Manifest
+          </a>
+    </div>
+  </div>
+
+  <!-- Stats Cards -->
+  <% const totalOverall=stats.pendingManifests + stats.processedManifests; const scanPercentage=totalOverall> 0 ?
+    ((stats.processedManifests / totalOverall) * 100).toFixed(1) : "0.0";
+    %>
+    <div class="row g-3 mb-4">
+      <div class="col-md-3">
+        <div
+          class="card manifest-card border-start border-primary border-4 p-3 d-flex flex-row align-items-center justify-content-between">
+          <div>
+            <div class="text-muted small uppercase fw-semibold">Total Manifests</div>
+            <div class="stats-value text-primary mt-1">
+              <%= totalOverall %>
+            </div>
+          </div>
+          <div class="fs-1 text-primary-emphasis opacity-50"><i class="bi bi-folder-fill"></i></div>
+        </div>
+      </div>
+      <div class="col-md-3">
+        <div
+          class="card manifest-card border-start border-warning border-4 p-3 d-flex flex-row align-items-center justify-content-between">
+          <div>
+            <div class="text-muted small uppercase fw-semibold">Pending (Belum Di-scan)</div>
+            <div class="stats-value text-warning mt-1">
+              <%= stats.pendingManifests %>
+            </div>
+          </div>
+          <div class="fs-1 text-warning-emphasis opacity-50"><i class="bi bi-hourglass-split"></i></div>
+        </div>
+      </div>
+      <div class="col-md-3">
+        <div
+          class="card manifest-card border-start border-success border-4 p-3 d-flex flex-row align-items-center justify-content-between">
+          <div>
+            <div class="text-muted small uppercase fw-semibold">Processed (Sudah Di-scan)</div>
+            <div class="stats-value text-success mt-1">
+              <%= stats.processedManifests %>
+            </div>
+          </div>
+          <div class="fs-1 text-success-emphasis opacity-50"><i class="bi bi-patch-check-fill"></i></div>
+        </div>
+      </div>
+      <div class="col-md-3">
+        <div
+          class="card manifest-card border-start border-info border-4 p-3 d-flex flex-row align-items-center justify-content-between">
+          <div>
+            <div class="text-muted small uppercase fw-semibold">Persentase Scan</div>
+            <div class="stats-value text-info mt-1">
+              <%= scanPercentage %>%
+            </div>
+          </div>
+          <!-- <div class="fs-1 text-info-emphasis opacity-50"><i class="bi bi-percent"></i></div> -->
+        </div>
+      </div>
+    </div>
+
+    <!-- Main Grid -->
+    <div class="row g-4">
+      <!-- Left Column: Manifests List Table -->
+      <div class="col-lg-8 mb-4">
+        <div class="card manifest-card p-4">
+          <h5 class="card-title mb-3">Daftar Data Return Manifest</h5>
+
+          <!-- Search & Pagination Header -->
+          <div class="d-flex flex-wrap justify-content-between align-items-center gap-3 mb-3">
+            <form method="GET" action="/returns/manifests" class="d-flex align-items-center flex-wrap gap-2"
+              id="searchFilterForm">
+              <div class="input-group input-group-sm" style="max-width: 250px;">
+                <input type="text" name="search" class="form-control" placeholder="Cari Resi / No Pesanan..."
+                  value="<%= pagination.search %>">
+                <button type="submit" class="btn btn-primary px-3"><i class="bi bi-search"></i> Cari</button>
+              </div>
+              <% if (pagination.search) { %>
+                <a href="/returns/manifests?limit=<%= pagination.limit %>&month=<%= month %>&year=<%= year %>"
+                  class="btn btn-outline-secondary btn-sm px-3 d-flex align-items-center text-decoration-none"
+                  style="height: 31px;">Reset</a>
+                <% } %>
+
+                  <div class="d-flex align-items-center gap-1 ms-md-2">
+                    <span class="text-muted small text-nowrap">Bulan:</span>
+                    <select name="month" class="form-select form-select-sm" style="width: 120px;"
+                      onchange="this.form.submit()">
+                      <option value="">Semua Bulan</option>
+                      <% const monthNames=[ "Januari" , "Februari" , "Maret" , "April" , "Mei" , "Juni" , "Juli"
+                        , "Agustus" , "September" , "Oktober" , "November" , "Desember" ]; monthNames.forEach((mName,
+                        idx)=> {
+                        const mVal = String(idx + 1).padStart(2, '0');
+                        %>
+                        <option value="<%= mVal %>" <%=month===mVal ? 'selected' : '' %>><%= mName %>
+                        </option>
+                        <% }) %>
+                    </select>
+                  </div>
+
+                  <div class="d-flex align-items-center gap-1 ms-md-2">
+                    <span class="text-muted small text-nowrap">Tahun:</span>
+                    <select name="year" class="form-select form-select-sm" style="width: 110px;"
+                      onchange="this.form.submit()">
+                      <option value="">Semua Tahun</option>
+                      <% const currentYear=new Date().getFullYear(); for (let y=currentYear - 3; y <=currentYear + 1;
+                        y++) { %>
+                        <option value="<%= y %>" <%=year===String(y) ? 'selected' : '' %>><%= y %>
+                        </option>
+                        <% } %>
+                    </select>
+                  </div>
+
+                  <button type="button" class="btn btn-outline-danger btn-sm px-3 d-flex align-items-center d-none"
+                    id="clearScannedBtn" style="height: 31px;">
+                    <i class="bi bi-trash me-1"></i> Hapus Riwayat Scan
+                  </button>
+
+                  <div class="d-flex align-items-center gap-1 ms-md-2">
+                    <span class="text-muted small text-nowrap">Tampilkan:</span>
+                    <select name="limit" class="form-select form-select-sm" style="width: 80px;"
+                      onchange="this.form.submit()">
+                      <% [5, 10, 15, 25, 50, 100].forEach(l=> { %>
+                        <option value="<%= l %>" <%=pagination.limit===l ? 'selected' : '' %>><%= l %>
+                        </option>
+                        <% }) %>
+                    </select>
+                  </div>
+            </form>
+            <div class="text-muted small">
+              <% if (pagination.total> 0) { %>
+                Menampilkan <strong>
+                  <%= (pagination.page - 1) * pagination.limit + 1 %>
+                </strong> - <strong>
+                  <%= Math.min(pagination.page * pagination.limit, pagination.total) %>
+                </strong> dari <strong>
+                  <%= pagination.total %>
+                </strong> data
+                <% } else { %>
+                  Tidak ada data.
+                  <% } %>
+            </div>
+          </div>
+
+          <div class="table-responsive">
+            <table class="table table-hover align-middle small" id="manifestsTable" style="width: 100%;">
+              <thead class="table-light">
+                <tr>
+                  <th style="width: 30px;"></th>
+                  <th>Resi / Order No</th>
+                  <th>Customer</th>
+                  <th>Pengirim</th>
+                  <th>Kategori</th>
+                  <th>Jml Barang</th>
+                  <th>Status</th>
+                  <th>Tgl Upload</th>
+                  <th style="width: 70px;" class="text-center">Aksi</th>
+                </tr>
+              </thead>
+              <tbody>
+                <% if (manifests.length===0) { %>
+                  <tr>
+                    <td colspan="9" class="text-center text-muted py-4">
+                      <% if (pagination.search) { %>
+                        <i class="bi bi-exclamation-circle fs-3 d-block mb-2 text-danger"></i>
+                        Tidak ada data manifest ditemukan untuk pencarian "<strong>
+                          <%= pagination.search %>
+                        </strong>".
+                        <% } else { %>
+                          <i class="bi bi-upc-scan fs-3 d-block mb-2 text-muted"></i>
+                          Belum ada data manifest yang di-scan. Silakan lakukan scan barcode atau cari data manifest
+                          pada
+                          halaman <strong><a href="/returns/create" class="text-decoration-none text-primary">Create New
+                              Return</a></strong> untuk menampilkan data.
+                          <% } %>
+                    </td>
+                  </tr>
+                  <% } %>
+                    <% manifests.forEach(m=> { %>
+                      <tr id="manifest-row-<%= m.manifest_id %>" data-resi="<%= m.resi_number %>"
+                        data-pesanan="<%= m.no_pesanan %>" class="<%= m.is_checked === 1 ? 'table-success-tint' : '' %>">
+                        <td>
+                          <button class="btn btn-sm btn-outline-info toggle-items" data-id="<%= m.manifest_id %>"
+                            title="Tampilkan detail barang">
+                            <i class="bi bi-chevron-down"></i>
+                          </button>
+                        </td>
+                        <td>
+                          <div class="fw-bold text-dark">
+                            <%= m.resi_number %>
+                          </div>
+                          <small class="text-muted font-monospace">
+                            <%= m.no_pesanan %>
+                          </small>
+                        </td>
+                        <td>
+                          <div>
+                            <%= m.customer_name || '-' %>
+                          </div>
+                          <small class="text-muted">
+                            <%= m.customer_contact || '' %>
+                          </small>
+                        </td>
+                        <td>
+                          <%= formatSourceType(m.source_type) %>
+                        </td>
+                        <td class="text-capitalize">
+                          <%= formatCategory(m.return_category) %>
+                        </td>
+                        <td>
+                          <%= m.total_items %> SKU (<%= m.total_quantity %> pcs)
+                        </td>
+                        <td>
+                          <% if (m.is_processed===1) { %>
+                            <span class="badge bg-success"><i class="bi bi-check-circle"></i> Processed</span>
+                            <% } else { %>
+                              <span class="badge bg-warning text-dark"><i class="bi bi-clock"></i> Pending</span>
+                              <% } %>
+                        </td>
+                        <td>
+                          <%= new Date(m.created_at).toLocaleString('id-ID', { dateStyle: 'short' , timeStyle: 'short'
+                            }) %>
+                        </td>
+                        <td class="text-center">
+                          <div class="d-flex align-items-center justify-content-center gap-2">
+                            <% const canCheckManifest = hasRole(['admin', 'purchasing', 'sales']); %>
+                            <input type="checkbox" class="form-check-input manifest-row-checkbox" 
+                                   data-id="<%= m.manifest_id %>" 
+                                   <%= m.is_checked === 1 ? 'checked' : '' %> 
+                                   <%= canCheckManifest ? '' : 'disabled' %>
+                                   title="<%= m.is_checked === 1 ? `Checked by: ${m.checked_by} (${new Date(m.checked_at).toLocaleString('id-ID', { dateStyle: 'short', timeStyle: 'short' })})` : 'Tandai sudah diperiksa' %>">
+                            
+                            <% if (m.is_processed===0) { %>
+                              <button class="btn btn-sm btn-outline-danger delete-manifest" data-id="<%= m.manifest_id %>"
+                                data-resi="<%= m.resi_number %>" title="Hapus Manifest">
+                                <i class="bi bi-trash"></i>
+                              </button>
+                              <% } else { %>
+                                <button class="btn btn-sm btn-outline-secondary" disabled title="Manifest sudah diproses">
+                                  <i class="bi bi-trash"></i>
+                                </button>
+                                <% } %>
+                          </div>
+                        </td>
+                      </tr>
+                      <% }) %>
+              </tbody>
+            </table>
+          </div>
+
+          <%# Premium Pagination %>
+            <% if (pagination.totalPages> 1) { %>
+              <nav aria-label="Page navigation" class="mt-4">
+                <ul class="pagination justify-content-center responsive-pagination mb-0">
+                  <li class="page-item <%= pagination.page <= 1 ? 'disabled' : '' %>">
+                    <a class="page-link"
+                      href="/returns/manifests?page=<%= pagination.page - 1 %>&limit=<%= pagination.limit %>&search=<%= pagination.search %>&month=<%= month %>&year=<%= year %>"
+                      aria-label="Previous">
+                      <span aria-hidden="true">&laquo;</span>
+                    </a>
+                  </li>
+                  <% for(let p=1; p <=pagination.totalPages; p++) { %>
+                    <li class="page-item <%= pagination.page === p ? 'active' : '' %>">
+                      <a class="page-link"
+                        href="/returns/manifests?page=<%= p %>&limit=<%= pagination.limit %>&search=<%= pagination.search %>&month=<%= month %>&year=<%= year %>">
+                        <%= p %>
+                      </a>
+                    </li>
+                    <% } %>
+                      <li class="page-item <%= pagination.page >= pagination.totalPages ? 'disabled' : '' %>">
+                        <a class="page-link"
+                          href="/returns/manifests?page=<%= pagination.page + 1 %>&limit=<%= pagination.limit %>&search=<%= pagination.search %>&month=<%= month %>&year=<%= year %>"
+                          aria-label="Next">
+                          <span aria-hidden="true">&raquo;</span>
+                        </a>
+                      </li>
+                </ul>
+              </nav>
+              <% } %>
+        </div>
+      </div>
+
+      <!-- Right Column: Upload & Guidelines -->
+      <div class="col-lg-4">
+        <!-- Upload Panel -->
+        <div class="card manifest-card p-4 mb-4">
+          <h5 class="card-title mb-3"><i class="bi bi-cloud-arrow-up text-primary"></i> Upload Manifest Baru</h5>
+          <form method="POST" action="/returns/manifests/upload" enctype="multipart/form-data" id="uploadForm">
+            <div class="drag-drop-area mb-3" id="dragDropArea">
+              <i class="bi bi-file-earmark-excel text-primary fs-1 mb-2 d-block"></i>
+              <span class="d-block fw-bold text-secondary mb-1" id="fileNameDisplay" style="font-size: 0.85rem;">Seret &
+                taruh file Excel</span>
+              <span class="text-muted small d-block mb-2">atau klik untuk browse (.xlsx, .xls)</span>
+              <input type="file" name="manifest_file" id="fileInput" accept=".xlsx, .xls" class="d-none">
+              <button type="button" class="btn btn-primary btn-xs px-3 py-1" style="font-size: 0.75rem;">Pilih
+                File</button>
+            </div>
+
+            <!-- Progress Bar Container -->
+            <div class="d-none mb-3" id="uploadProgressContainer">
+              <div class="progress" style="height: 18px;">
+                <div class="progress-bar progress-bar-striped progress-bar-animated bg-primary" id="uploadProgressBar"
+                  role="progressbar" style="width: 0%; font-size: 0.75rem;" aria-valuenow="0" aria-valuemin="0"
+                  aria-valuemax="100">0%</div>
+              </div>
+              <div id="uploadStatusText" class="small text-muted text-center mt-1" style="font-size: 0.75rem;">
+                Mengunggah
+                file...</div>
+            </div>
+
+            <div class="d-flex justify-content-between align-items-center" id="uploadFormActions">
+              <a href="/returns/manifests/template" class="small text-decoration-none">
+                <i class="bi bi-download"></i> Unduh Template Excel
+              </a>
+              <button type="submit" class="btn btn-primary btn-sm px-3" id="uploadSubmitBtn">
+                <i class="bi bi-upload"></i> Upload Excel
+              </button>
+            </div>
+          </form>
+        </div>
+
+        <!-- Quick Guidelines -->
+        <div class="card manifest-card p-4">
+          <h5 class="card-title mb-2 text-secondary" style="font-size: 0.95rem;"><i class="bi bi-info-circle"></i>
+            Panduan
+            Singkat</h5>
+          <p class="small text-muted mb-3">
+            Sistem ini menyimpan data return manifest yang belum discan di gudang (Pending). Saat menerima paket, staff
+            tinggal melakukan scan barcode nomor resi di menu <strong>New Return</strong> untuk langsung mengisi form
+            secara otomatis.
+          </p>
+          <div class="small text-muted border-top pt-2">
+            <strong class="text-dark d-block mb-1">Dukungan Kolom Excel:</strong>
+            <div class="lh-sm mb-1 text-secondary" style="font-size: 0.75rem; max-height: 255px; overflow-y: auto;">
+              1. <code>Nomor Daftar Outbound</code><br>
+              2. <code>Nomor Pesanan WMS</code><br>
+              3. <code>Nomor Wave</code><br>
+              4. <code>Nomor Perintah OMS</code><br>
+              5. <code>Nomor Pesanan Platform *</code><br>
+              6. <code>SKU Produk *</code><br>
+              7. <code>Nama Produk *</code><br>
+              8. <code>Varian Produk</code><br>
+              9. <code>Status</code><br>
+              10. <code>Jumlah *</code><br>
+              11. <code>Nama Toko</code><br>
+              12. <code>Gudang</code><br>
+              13. <code>Rak</code><br>
+              14. <code>Metode Pengiriman</code><br>
+              15. <code>Jenis Pengiriman</code><br>
+              16. <code>Nomor Pengiriman *</code><br>
+              17. <code>Penerima</code><br>
+              18. <code>Alamat Pengiriman</code><br>
+              19. <code>Waktu Pemesanan</code><br>
+              20. <code>Batas Waktu Pengiriman</code><br>
+              21. <code>Waktu Outbound</code><br>
+              22. <code>Catatan</code><br>
+              23. <code>Waktu Cetak Pesanan</code><br>
+              24. <code>Mata Uang</code><br>
+              25. <code>Total Harga Pesanan</code><br>
+              26. <code>Nama Pemilih</code><br>
+              27. <code>Waktu Picking</code><br>
+              28. <code>Admin Pengemasan</code><br>
+              29. <code>Waktu Packing</code>
+            </div>
+            <small class="text-danger">* Wajib diisi</small>
+          </div>
+        </div>
+      </div>
+    </div>
+</div>
+
+<script>
+  document.addEventListener('DOMContentLoaded', function () {
+    const canCheck = <%= (locals.user && ['admin', 'purchasing', 'sales'].includes(locals.user.role)) ? 'true' : 'false' %>;
+
+    // Toggle items details
+    $('#manifestsTable').on('click', '.toggle-items', function () {
+      const btn = $(this);
+      const icon = btn.find('i');
+      const tr = btn.closest('tr');
+      const manifestId = btn.data('id');
+      const nextRow = tr.next();
+
+      if (nextRow.hasClass('items-detail-row')) {
+        nextRow.remove();
+        icon.removeClass('bi-chevron-up').addClass('bi-chevron-down');
+        btn.removeClass('btn-info').addClass('btn-outline-info');
+      } else {
+        // Close others
+        $('.items-detail-row').remove();
+        $('.toggle-items i').removeClass('bi-chevron-up').addClass('bi-chevron-down');
+        $('.toggle-items').removeClass('btn-info').addClass('btn-outline-info');
+
+        icon.removeClass('bi-chevron-down').addClass('bi-chevron-up');
+        btn.removeClass('btn-outline-info').addClass('bi-info');
+
+        const loadingRow = $('<tr class="items-detail-row bg-light"><td colspan="9" class="text-center py-3"><div class="spinner-border spinner-border-sm text-primary" role="status"></div> Mengambil data barang...</td></tr>');
+        tr.after(loadingRow);
+
+        fetch(`/returns/manifests/${manifestId}/items`)
+          .then(res => res.json())
+          .then(data => {
+            const manifest = data.manifest || {};
+            const items = data.items || [];
+
+            if (items.length === 0) {
+              loadingRow.find('td').html('<span class="text-muted small">Tidak ada barang dalam manifest ini.</span>');
+              return;
+            }
+
+            let itemsHtml = `
+              <td colspan="9" class="p-3 bg-light border-start border-end">
+                <div class="card shadow-sm border-0 mb-3">
+                  <div class="card-header bg-dark text-white py-1 px-3 small fw-bold">
+                    <i class="bi bi-info-circle"></i> Detail Header Manifest
+                  </div>
+                  <div class="card-body bg-white py-2 px-3 small">
+                    <div class="row g-2">
+                      <div class="col-md-3"><strong>Nomor Daftar:</strong> <span class="text-muted">${manifest.nomor_daftar || '-'}</span></div>
+                      <div class="col-md-3"><strong>No. Pesanan WMS:</strong> <span class="text-muted">${manifest.no_pesanan_wms || '-'}</span></div>
+                      <div class="col-md-3"><strong>No. Pesanan OMS:</strong> <span class="text-muted">${manifest.no_pesanan_oms || '-'}</span></div>
+                      <div class="col-md-3"><strong>Status:</strong> <span class="text-muted">${manifest.status || '-'}</span></div>
+                      
+                      <div class="col-md-3"><strong>Nama Toko:</strong> <span class="text-muted">${manifest.nama_toko || '-'}</span></div>
+                      <div class="col-md-3"><strong>Gudang:</strong> <span class="text-muted">${manifest.gudang || '-'}</span></div>
+                      <div class="col-md-3"><strong>Metode Pengiriman:</strong> <span class="text-muted">${manifest.metode_pengiriman || '-'}</span></div>
+                      <div class="col-md-3"><strong>Jenis Pengiriman:</strong> <span class="text-muted">${manifest.jenis_pengiriman || '-'}</span></div>
+                      
+                      <div class="col-md-3"><strong>Penerima:</strong> <span class="text-muted">${manifest.penerima || '-'}</span></div>
+                      <div class="col-md-3"><strong>Waktu Pesanan:</strong> <span class="text-muted">${manifest.waktu_pesanan || '-'}</span></div>
+                      <div class="col-md-3"><strong>Batas Waktu Kirim:</strong> <span class="text-muted">${manifest.batas_waktu_pengiriman || '-'}</span></div>
+                      <div class="col-md-3"><strong>Waktu Outbound:</strong> <span class="text-muted">${manifest.waktu_outbound || '-'}</span></div>
+                      
+                      <div class="col-md-3"><strong>Waktu Cetak:</strong> <span class="text-muted">${manifest.waktu_cetak || '-'}</span></div>
+                      <div class="col-md-3"><strong>Mata Uang:</strong> <span class="text-muted">${manifest.mata_uang || '-'}</span></div>
+                      <div class="col-md-3"><strong>Total Harga Pesanan:</strong> <span class="text-success fw-bold">Rp ${parseFloat(manifest.total_harga_pesanan || 0).toLocaleString('id-ID')}</span></div>
+                      <div class="col-md-3"><strong>Nama Pemilih:</strong> <span class="text-muted">${manifest.nama_pemilik || '-'}</span></div>
+                      
+                      <div class="col-md-3"><strong>Waktu Picking:</strong> <span class="text-muted">${manifest.waktu_picking || '-'}</span></div>
+                      <div class="col-md-3"><strong>Admin Pengemasan:</strong> <span class="text-muted">${manifest.admin_pengemasan || '-'}</span></div>
+                      <div class="col-md-3"><strong>Waktu Packing:</strong> <span class="text-muted">${manifest.waktu_packing || '-'}</span></div>
+                      <div class="col-md-3"><strong>Catatan:</strong> <span class="text-muted">${manifest.notes || '-'}</span></div>
+
+                      <div class="col-md-12"><strong>Alamat Pengiriman:</strong> <span class="text-muted">${manifest.alamat_pengiriman || '-'}</span></div>
+                    </div>
+                  </div>
+                </div>
+
+                <div class="card shadow-sm border-0">
+                  <div class="card-header bg-secondary text-white py-1 px-3 small d-flex justify-content-between align-items-center">
+                    <span class="fw-bold"><i class="bi bi-box-seam"></i> Daftar Barang Manifest</span>
+                    <span class="badge bg-light text-dark">${items.length} SKU</span>
+                  </div>
+                  <div class="table-responsive">
+                    <table class="table table-sm table-hover mb-0 text-muted small align-middle">
+                      <thead class="table-secondary">
+                        <tr>
+                          <th class="ps-3 text-center" style="width: 50px;"><i class="bi bi-patch-check"></i></th>
+                          <th>No</th>
+                          <th>Kode Barang (SKU)</th>
+                          <th>Nama Barang</th>
+                          <th>Varian</th>
+                          <th>Rak</th>
+                          <th>Qty</th>
+                          <th>Harga Satuan</th>
+                          <th>Serial No.</th>
+                          <th>Batch No.</th>
+                          <th>Checked By</th>
+                          <th>Keterangan</th>
+                        </tr>
+                      </thead>
+                      <tbody>
+            `;
+
+            items.forEach(item => {
+              const checkedByText = item.is_checked
+                ? `<span class="badge bg-success-subtle text-success border border-success-subtle px-2 py-1"><i class="bi bi-person-check-fill"></i> ${item.checked_by || ''}</span>
+                   <div class="text-muted mt-1" style="font-size: 0.7rem;">
+                     ${item.checked_at ? new Date(item.checked_at).toLocaleString('id-ID', { dateStyle: 'short', timeStyle: 'short' }) : ''}
+                   </div>`
+                : '<span class="text-muted">-</span>';
+
+              const rowClass = item.is_checked ? 'table-success-tint' : '';
+
+              itemsHtml += `
+                <tr class="${rowClass}" data-item-id="${item.manifest_item_id}">
+                  <td class="text-center ps-3">
+                    <input type="checkbox" class="form-check-input manifest-item-checkbox" 
+                           data-item-id="${item.manifest_item_id}" 
+                           ${item.is_checked ? 'checked' : ''} 
+                           ${canCheck ? '' : 'disabled'}>
+                  </td>
+                  <td class="font-monospace">${item.nomor || '-'}</td>
+                  <td class="font-monospace">${item.item_code || '-'}</td>
+                  <td class="fw-bold text-dark">${item.item_name}</td>
+                  <td><span class="badge bg-light text-dark border">${item.varian_product || '-'}</span></td>
+                  <td><span class="badge bg-light text-dark border">${item.rak || '-'}</span></td>
+                  <td>${item.quantity} pcs</td>
+                  <td>Rp ${parseFloat(item.unit_price).toLocaleString('id-ID')}</td>
+                  <td>${item.serial_number || '-'}</td>
+                  <td>${item.batch_number || '-'}</td>
+                  <td class="checked-by-cell">${checkedByText}</td>
+                  <td>${item.item_description || '-'}</td>
+                </tr>
+              `;
+            });
+
+            itemsHtml += `
+                      </tbody>
+                    </table>
+                  </div>
+                </div>
+              </td>
+            `;
+            loadingRow.html(itemsHtml);
+          })
+          .catch(err => {
+            loadingRow.find('td').html(`<span class="text-danger small">Gagal mengambil data: ${err.message}</span>`);
+          });
+      }
+    });
+
+    // Event listener for toggling manifest item checkbox
+    $('#manifestsTable').on('change', '.manifest-item-checkbox', function () {
+      const checkbox = $(this);
+      const itemId = checkbox.data('item-id');
+      const isChecked = checkbox.is(':checked');
+      const tr = checkbox.closest('tr');
+      const checkedByCell = tr.find('.checked-by-cell');
+
+      checkbox.prop('disabled', true);
+
+      fetch(`/returns/manifests/items/${itemId}/toggle-check`, {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json'
+        },
+        body: JSON.stringify({ isChecked })
+      })
+      .then(res => {
+        if (!res.ok) {
+          throw new Error('Gagal memperbarui status checklist.');
+        }
+        return res.json();
+      })
+      .then(data => {
+        checkbox.prop('disabled', false);
+        if (data.success) {
+          if (data.is_checked) {
+            tr.addClass('table-success-tint');
+            const dateStr = data.checked_at ? new Date(data.checked_at).toLocaleString('id-ID', { dateStyle: 'short', timeStyle: 'short' }) : '';
+            checkedByCell.html(`
+              <span class="badge bg-success-subtle text-success border border-success-subtle px-2 py-1"><i class="bi bi-person-check-fill"></i> ${data.checked_by || ''}</span>
+              <div class="text-muted mt-1" style="font-size: 0.7rem;">${dateStr}</div>
+            `);
+          } else {
+            tr.removeClass('table-success-tint');
+            checkedByCell.html('<span class="text-muted">-</span>');
+          }
+        }
+      })
+      .catch(err => {
+        checkbox.prop('disabled', false);
+        checkbox.prop('checked', !isChecked); // revert checkbox state
+        alert(err.message);
+      });
+    });
+
+    // Event listener for toggling manifest checklist row checkbox
+    $('#manifestsTable').on('change', '.manifest-row-checkbox', function () {
+      const checkbox = $(this);
+      const manifestId = checkbox.data('id');
+      const isChecked = checkbox.is(':checked');
+      const tr = checkbox.closest('tr');
+
+      checkbox.prop('disabled', true);
+
+      fetch(`/returns/manifests/${manifestId}/toggle-check`, {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json'
+        },
+        body: JSON.stringify({ isChecked })
+      })
+      .then(res => {
+        if (!res.ok) {
+          throw new Error('Gagal memperbarui status checklist manifest.');
+        }
+        return res.json();
+      })
+      .then(data => {
+        checkbox.prop('disabled', false);
+        if (data.success) {
+          if (data.is_checked) {
+            tr.addClass('table-success-tint');
+            const dateStr = data.checked_at ? new Date(data.checked_at).toLocaleString('id-ID', { dateStyle: 'short', timeStyle: 'short' }) : '';
+            checkbox.attr('title', `Checked by: ${data.checked_by || ''} (${dateStr})`);
+          } else {
+            tr.removeClass('table-success-tint');
+            checkbox.attr('title', 'Tandai sudah diperiksa');
+          }
+        }
+      })
+      .catch(err => {
+        checkbox.prop('disabled', false);
+        checkbox.prop('checked', !isChecked); // revert checkbox state
+        alert(err.message);
+      });
+    });
+
+    // Auto-expand detail if page was loaded with a search filter
+    <% if (pagination.search && manifests.length > 0) { %>
+      setTimeout(function () {
+        $('#manifestsTable tbody tr:first .toggle-items').click();
+      }, 300);
+    <% } %>
+
+    // Uploader drag and drop setup
+    const dragDropArea = document.getElementById('dragDropArea');
+    const fileInput = document.getElementById('fileInput');
+    const fileNameDisplay = document.getElementById('fileNameDisplay');
+
+    if (dragDropArea && fileInput) {
+      dragDropArea.addEventListener('click', () => fileInput.click());
+
+      fileInput.addEventListener('change', function () {
+        if (this.files && this.files.length > 0) {
+          updateFileName(this.files[0].name);
+        }
+      });
+
+      dragDropArea.addEventListener('dragover', (e) => {
+        e.preventDefault();
+        dragDropArea.classList.add('dragover');
+      });
+
+      dragDropArea.addEventListener('dragleave', () => {
+        dragDropArea.classList.remove('dragover');
+      });
+
+      dragDropArea.addEventListener('drop', (e) => {
+        e.preventDefault();
+        dragDropArea.classList.remove('dragover');
+        if (e.dataTransfer.files && e.dataTransfer.files.length > 0) {
+          fileInput.files = e.dataTransfer.files;
+          updateFileName(e.dataTransfer.files[0].name);
+        }
+      });
+    }
+
+    function updateFileName(name) {
+      fileNameDisplay.textContent = name;
+      fileNameDisplay.classList.remove('text-secondary');
+      fileNameDisplay.classList.add('text-success', 'fw-bold');
+    }
+
+    // AJAX Form submission with progress bar
+    const uploadForm = document.getElementById('uploadForm');
+    if (uploadForm) {
+      uploadForm.addEventListener('submit', function (e) {
+        e.preventDefault();
+
+        const fileInput = document.getElementById('fileInput');
+        if (!fileInput || !fileInput.files || fileInput.files.length === 0) {
+          alert('Silakan pilih file Excel terlebih dahulu.');
+          return;
+        }
+
+        const formData = new FormData(uploadForm);
+        const xhr = new XMLHttpRequest();
+
+        const progressContainer = document.getElementById('uploadProgressContainer');
+        const progressBar = document.getElementById('uploadProgressBar');
+        const statusText = document.getElementById('uploadStatusText');
+        const submitBtn = document.getElementById('uploadSubmitBtn');
+
+        // Disable elements
+        if (submitBtn) {
+          submitBtn.disabled = true;
+          submitBtn.innerHTML = '<span class="spinner-border spinner-border-sm" role="status" aria-hidden="true"></span> Uploading...';
+        }
+        if (dragDropArea) dragDropArea.style.pointerEvents = 'none';
+
+        // Show progress bar
+        if (progressContainer) progressContainer.classList.remove('d-none');
+
+        xhr.upload.addEventListener('progress', function (event) {
+          if (event.lengthComputable) {
+            const percent = Math.round((event.loaded / event.total) * 100);
+            if (progressBar) {
+              progressBar.style.width = percent + '%';
+              progressBar.setAttribute('aria-valuenow', percent);
+              progressBar.textContent = percent + '%';
+            }
+            if (percent === 100) {
+              if (statusText) statusText.textContent = 'Memproses data Excel di server... Mohon tunggu...';
+            }
+          }
+        });
+
+        xhr.addEventListener('load', function () {
+          // Always reload to manifests page, trigger server flash message display
+          window.location.href = '/returns/manifests';
+        });
+
+        xhr.addEventListener('error', function () {
+          alert('Terjadi kesalahan koneksi saat mengunggah.');
+          // Reset UI
+          if (submitBtn) {
+            submitBtn.disabled = false;
+            submitBtn.innerHTML = '<i class="bi bi-upload"></i> Upload Excel';
+          }
+          if (dragDropArea) dragDropArea.style.pointerEvents = 'auto';
+          if (progressContainer) progressContainer.classList.add('d-none');
+        });
+
+        xhr.open('POST', uploadForm.action, true);
+        xhr.send(formData);
+      });
+    }
+
+    // Delete Manifest handler
+    $('#manifestsTable').on('click', '.delete-manifest', function () {
+      const btn = $(this);
+      const manifestId = btn.data('id');
+      const resi = btn.data('resi') || '';
+
+      if (confirm(`Apakah Anda yakin ingin menghapus manifest dengan nomor resi ${resi}?`)) {
+        // Remove from scanned manifests list
+        let list = JSON.parse(localStorage.getItem('scanned_manifests') || '[]');
+        list = list.filter(item => item !== resi);
+        localStorage.setItem('scanned_manifests', JSON.stringify(list));
+        document.cookie = "scanned_manifests=" + encodeURIComponent(JSON.stringify(list)) + "; path=/; max-age=31536000";
+
+        const form = document.createElement('form');
+        form.method = 'POST';
+        form.action = `/returns/manifests/${manifestId}/delete`;
+        document.body.appendChild(form);
+        form.submit();
+      }
+    });
+
+    // Delete All Pending Manifests handler
+    $('#deleteAllPendingBtn').on('click', function () {
+      if (confirm('Apakah Anda yakin ingin menghapus SEMUA manifest yang berstatus PENDING? Tindakan ini tidak dapat dibatalkan.')) {
+        const form = document.createElement('form');
+        form.method = 'POST';
+        form.action = '/returns/manifests/delete-all-pending';
+        document.body.appendChild(form);
+        form.submit();
+      }
+    });
+
+    // ── Scanned Manifests History Logic ─────────────────────────────────────────
+    const urlParams = new URLSearchParams(window.location.search);
+    const searchQuery = (urlParams.get('search') || '').trim();
+
+    // Add active search results to scanned list
+    if (searchQuery) {
+      const manifestRows = document.querySelectorAll('#manifestsTable tbody tr[data-resi]');
+      if (manifestRows.length > 0) {
+        let scannedList = JSON.parse(localStorage.getItem('scanned_manifests') || '[]');
+
+        manifestRows.forEach(row => {
+          const resi = row.getAttribute('data-resi');
+          const pesanan = row.getAttribute('data-pesanan');
+
+          scannedList = scannedList.filter(item => item !== resi && item !== pesanan);
+          if (resi) scannedList.unshift(resi);
+        });
+
+        if (scannedList.length > 50) {
+          scannedList = scannedList.slice(0, 50);
+        }
+
+        localStorage.setItem('scanned_manifests', JSON.stringify(scannedList));
+        document.cookie = "scanned_manifests=" + encodeURIComponent(JSON.stringify(scannedList)) + "; path=/; max-age=31536000";
+      }
+    }
+
+    // Toggle "Hapus Riwayat Scan" button visibility and handle click
+    const clearScannedBtn = document.getElementById('clearScannedBtn');
+    const scannedList = JSON.parse(localStorage.getItem('scanned_manifests') || '[]');
+    if (clearScannedBtn) {
+      if (scannedList.length > 0) {
+        clearScannedBtn.classList.remove('d-none');
+        clearScannedBtn.addEventListener('click', function () {
+          if (confirm('Apakah Anda yakin ingin menghapus semua riwayat scan manifest?')) {
+            localStorage.removeItem('scanned_manifests');
+            document.cookie = "scanned_manifests=; path=/; expires=Thu, 01 Jan 1970 00:00:00 UTC;";
+            window.location.href = '/returns/manifests';
+          }
+        });
+      }
+    }
+  });
+</script>

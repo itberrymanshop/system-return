@@ -1,0 +1,196 @@
+<div class="container-fluid mt-5 pt-4">
+  <div class="row mb-3">
+    <div class="col">
+      <h2><i class="bi bi-bar-chart-line"></i> Summary Report</h2>
+    </div>
+    <div class="col-auto">
+      <form class="d-flex gap-2 align-items-end" method="GET" action="/reports/summary">
+        <div>
+          <label class="form-label mb-1 small">From</label>
+          <input type="date" class="form-control form-control-sm" name="date_from" value="<%= filters.date_from || '' %>">
+        </div>
+        <div>
+          <label class="form-label mb-1 small">To</label>
+          <input type="date" class="form-control form-control-sm" name="date_to" value="<%= filters.date_to || '' %>">
+        </div>
+        <button class="btn btn-primary btn-sm">Filter</button>
+        <a href="/reports/summary" class="btn btn-outline-secondary btn-sm">Reset</a>
+      </form>
+    </div>
+  </div>
+
+  <!-- Stats Cards -->
+  <div class="row g-3 mb-4">
+    <div class="col-md-3">
+      <div class="card text-center border-primary">
+        <div class="card-body">
+          <div class="fs-1 fw-bold text-primary"><%= stats.total_returns %></div>
+          <div class="text-muted">Total Returns</div>
+        </div>
+      </div>
+    </div>
+    <div class="col-md-3">
+      <div class="card text-center border-success">
+        <div class="card-body">
+          <div class="fs-1 fw-bold text-success"><%= stats.completed %></div>
+          <div class="text-muted">Completed</div>
+        </div>
+      </div>
+    </div>
+    <div class="col-md-3">
+      <div class="card text-center border-danger">
+        <div class="card-body">
+          <div class="fs-1 fw-bold text-danger"><%= stats.rejected %></div>
+          <div class="text-muted">Rejected</div>
+        </div>
+      </div>
+    </div>
+    <div class="col-md-3">
+      <div class="card text-center border-info">
+        <div class="card-body">
+          <div class="fs-1 fw-bold text-info"><%= stats.approved %></div>
+          <div class="text-muted">Approved</div>
+        </div>
+      </div>
+    </div>
+    <div class="col-md-3">
+      <div class="card text-center border-warning">
+        <div class="card-body">
+          <div class="fs-1 fw-bold text-warning"><%= stats.pending %></div>
+          <div class="text-muted">Pending</div>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <div class="row g-4 mb-4">
+    <!-- By Status -->
+    <div class="col-md-6">
+      <div class="card h-100">
+        <div class="card-header fw-semibold">By Status</div>
+        <div class="table-responsive">
+          <table class="table table-sm mb-0">
+            <thead class="table-light"><tr><th>Status</th><th>Count</th><th>Total Value</th></tr></thead>
+            <tbody>
+              <% byStatus.forEach(r => { %>
+              <tr>
+                <td><%- getStatusBadge(r.return_status) %></td>
+                <td><%= r.count %></td>
+                <td><%- formatCurrency(r.total_value) %></td>
+              </tr>
+              <% }) %>
+            </tbody>
+          </table>
+        </div>
+      </div>
+    </div>
+    <!-- By Category -->
+    <div class="col-md-6">
+      <div class="card h-100">
+        <div class="card-header fw-semibold">By Category</div>
+        <div class="table-responsive">
+          <table class="table table-sm mb-0">
+            <thead class="table-light"><tr><th>Category</th><th>Count</th><th>Total Value</th></tr></thead>
+            <tbody>
+              <% byCategory.forEach(r => { %>
+              <tr>
+                <td class="text-capitalize"><%= formatCategory(r.return_category) %></td>
+                <td><%= r.count %></td>
+                <td><%- formatCurrency(r.total_value) %></td>
+              </tr>
+              <% }) %>
+            </tbody>
+          </table>
+        </div>
+      </div>
+    </div>
+
+    <!-- By Source -->
+    <div class="col-md-6">
+      <div class="card h-100">
+        <div class="card-header fw-semibold">By Source</div>
+        <div class="table-responsive">
+          <table class="table table-sm mb-0">
+            <thead class="table-light"><tr><th>Source</th><th>Count</th></tr></thead>
+            <tbody>
+              <% bySource.forEach(r => { %>
+              <tr>
+                <td><%= formatSourceType(r.source_type, 'N/A') %></td>
+                <td><%= r.count %></td>
+              </tr>
+              <% }) %>
+            </tbody>
+          </table>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- By PIC -->
+  <% if (byPic && byPic.length) { %>
+  <div class="card mb-4">
+    <div class="card-header fw-semibold">By Person In Charge</div>
+    <div class="table-responsive">
+      <table class="table table-sm mb-0">
+        <thead class="table-light"><tr><th>PIC</th><th>Total</th><th>Completed</th><th>Approved</th><th>Rejected</th><th>Pending</th></tr></thead>
+        <tbody>
+          <% byPic.forEach(r => { %>
+          <%
+            const picPending = r.total_returns - r.completed_returns - r.approved_returns - r.rejected_returns;
+          %>
+          <tr>
+            <td><%= r.full_name || 'Unassigned' %></td>
+            <td><%= r.total_returns %></td>
+            <td>
+              <span class="badge bg-success"><%= r.completed_returns %></span>
+              <div class="text-muted small"><%- formatCurrency(r.completed_returns_amount) %></div>
+            </td>
+            <td>
+              <span class="badge bg-info text-dark"><%= r.approved_returns %></span>
+              <div class="text-muted small"><%- formatCurrency(r.approved_returns_amount) %></div>
+            </td>
+            <td>
+              <span class="badge bg-danger"><%= r.rejected_returns %></span>
+              <div class="text-muted small"><%- formatCurrency(r.rejected_returns_amount) %></div>
+            </td>
+            <td>
+              <span class="badge bg-warning text-dark"><%= picPending %></span>
+              <div class="text-muted small"><%- formatCurrency(r.pending_returns_amount) %></div>
+            </td>
+          </tr>
+          <% }) %>
+        </tbody>
+      </table>
+    </div>
+  </div>
+  <% } %>
+
+  <!-- Trend Chart -->
+  <% if (trend && trend.length) { %>
+  <div class="card">
+    <div class="card-header fw-semibold">Monthly Trend</div>
+    <div class="card-body">
+      <canvas id="trendChart" height="80"></canvas>
+    </div>
+  </div>
+  <script>
+  document.addEventListener('DOMContentLoaded', function () {
+    new Chart(document.getElementById('trendChart'), {
+    type: 'bar',
+    data: {
+      labels: <%- JSON.stringify(trend.map(t => t.month)) %>,
+      datasets: [{
+        label: 'Returns',
+        data: <%- JSON.stringify(trend.map(t => t.count)) %>,
+        borderColor: 'rgb(13,110,253)',
+        backgroundColor: 'rgba(13,110,253,0.1)',
+        fill: true,
+        tension: 0.3
+      }]
+    },
+    options: { responsive: true, plugins: { legend: { display: false } } }
+  });
+  });
+  </script>
+  <% } %>
+</div>

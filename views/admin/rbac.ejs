@@ -1,0 +1,124 @@
+<div class="container-fluid mt-5 pt-4">
+  <div class="row mb-3 align-items-center">
+    <div class="col">
+      <h2><i class="bi bi-shield-lock"></i> RBAC – Hak Akses Menu</h2>
+      <p class="text-muted mb-0">Atur menu yang dapat diakses oleh setiap role. Role <strong>admin</strong> selalu memiliki akses ke semua menu.</p>
+    </div>
+    <div class="col-auto">
+      <a href="/admin/users" class="btn btn-outline-secondary btn-sm">
+        <i class="bi bi-people"></i> User Management
+      </a>
+    </div>
+  </div>
+
+  <div class="card shadow-sm">
+    <div class="card-body p-0">
+      <form method="POST" action="/admin/rbac" id="rbacForm">
+
+        <div class="table-responsive">
+          <table class="table table-bordered table-hover align-middle mb-0">
+            <thead class="table-dark">
+              <tr>
+                <th style="min-width:220px">Menu / Fitur</th>
+                <% ROLES.forEach(role => { %>
+                <th class="text-center" style="min-width:110px">
+                  <% const roleColors = {
+                    admin        : 'danger',
+                    manager      : 'warning',
+                    admin_retur  : 'info',
+                    admin_sorting: 'success',
+                    staff_recover: 'secondary',
+                    purchasing   : 'primary'
+                  }; %>
+                  <span class="badge bg-<%= roleColors[role] || 'dark' %>">
+                    <%= role.replace(/_/g,' ') %>
+                  </span>
+                </th>
+                <% }) %>
+              </tr>
+            </thead>
+            <tbody>
+              <%
+                const groups = {
+                  main    : { label: 'Menu Utama',    icon: 'bi-layout-sidebar' },
+                  returns : { label: 'Returns',        icon: 'bi-box-seam' },
+                  recovery: { label: 'Recovery',       icon: 'bi-recycle' },
+                  approvals:{ label: 'Approvals',      icon: 'bi-check-circle' },
+                  admin   : { label: 'Admin Panel',    icon: 'bi-gear' },
+                };
+                let lastGroup = null;
+              %>
+              <% Object.entries(MENUS).forEach(([menuKey, menu]) => { %>
+                <% if (menu.group !== lastGroup) { lastGroup = menu.group; %>
+                <tr class="table-light">
+                  <td colspan="<%= ROLES.length + 1 %>" class="fw-semibold text-muted small py-1 px-3">
+                    <i class="bi <%= (groups[menu.group] || {icon:'bi-dash'}).icon %>"></i>
+                    <%= (groups[menu.group] || {label: menu.group}).label %>
+                  </td>
+                </tr>
+                <% } %>
+                <tr>
+                  <td class="ps-4">
+                    <span class="text-dark"><%= menu.label %></span>
+                    <code class="ms-1 text-muted small"><%= menuKey %></code>
+                  </td>
+                  <% ROLES.forEach(role => { %>
+                  <td class="text-center">
+                    <% const isAdmin = role === 'admin'; %>
+                    <% const checked = isAdmin || (matrix[menuKey] && matrix[menuKey][role]); %>
+                    <input
+                      type="checkbox"
+                      class="form-check-input fs-5 rbac-check"
+                      name="perm_<%= menuKey %>_<%= role %>"
+                      value="1"
+                      <%= checked ? 'checked' : '' %>
+                      <%= isAdmin ? 'disabled title="Admin selalu memiliki akses penuh"' : '' %>
+                    >
+                    <%# Hidden field to ensure unchecked boxes still submit a value %>
+                    <% if (!isAdmin) { %>
+                    <input type="hidden" name="perm_<%= menuKey %>_<%= role %>" value="0">
+                    <% } %>
+                  </td>
+                  <% }) %>
+                </tr>
+              <% }) %>
+            </tbody>
+          </table>
+        </div>
+
+        <div class="card-footer d-flex justify-content-between align-items-center">
+          <small class="text-muted">
+            <i class="bi bi-info-circle"></i>
+            Perubahan berlaku setelah user login ulang atau dalam 1 menit (cache refresh).
+          </small>
+          <button type="submit" class="btn btn-primary">
+            <i class="bi bi-save"></i> Simpan Hak Akses
+          </button>
+        </div>
+
+      </form>
+    </div>
+  </div>
+</div>
+
+<script>
+// When a checkbox is clicked, ensure only the last hidden input value matters
+// (checked = sends "1", unchecked = sends "0" via hidden field)
+document.querySelectorAll('.rbac-check').forEach(cb => {
+  cb.addEventListener('change', function () {
+    // The hidden sibling always stays "0"; if checkbox is checked, its "1" takes precedence
+    // because the checkbox input comes BEFORE the hidden input in the form data.
+    // We need the checkbox value to override the hidden field value.
+    // Approach: toggle the hidden field to avoid double-submit confusion.
+    const hidden = this.nextElementSibling;
+    if (hidden && hidden.type === 'hidden') {
+      hidden.disabled = this.checked; // disable hidden so only checkbox "1" is sent
+    }
+  });
+  // Initialise on page load
+  const hidden = cb.nextElementSibling;
+  if (hidden && hidden.type === 'hidden' && cb.checked) {
+    hidden.disabled = true;
+  }
+});
+</script>

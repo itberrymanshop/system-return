@@ -1,0 +1,185 @@
+<div class="container-fluid mt-5 pt-4">
+
+  <%# ── Page Header ─────────────────────────────────────────────────────────── %>
+  <div class="row mb-3 align-items-center">
+    <div class="col">
+      <h2><i class="bi bi-truck text-primary"></i> Master Expedisi</h2>
+      <p class="text-muted mb-0">Kelola daftar expedisi pengiriman dan upload data dari file CSV.</p>
+    </div>
+    <div class="col-auto d-flex gap-2">
+      <button class="btn btn-success btn-sm" data-bs-toggle="modal" data-bs-target="#csvModal">
+        <i class="bi bi-file-earmark-arrow-up"></i> Upload CSV
+      </button>
+      <a href="/master-expedisi/create" class="btn btn-primary btn-sm">
+        <i class="bi bi-plus-circle"></i> Tambah Expedisi
+      </a>
+    </div>
+  </div>
+
+  <%# ── Filter / Search ─────────────────────────────────────────────────────── %>
+  <div class="card mb-3">
+    <div class="card-body py-2">
+      <form method="GET" action="/master-expedisi" class="row g-2 align-items-end">
+        <div class="col-md-5">
+          <label class="form-label form-label-sm mb-1">Cari</label>
+          <input type="text" name="search" class="form-control form-control-sm"
+                 placeholder="Kode atau nama expedisi..."
+                 value="<%= filters.search || '' %>">
+        </div>
+        <div class="col-md-3">
+          <label class="form-label form-label-sm mb-1">Status</label>
+          <select name="status" class="form-select form-select-sm">
+            <option value="">Semua</option>
+            <option value="active"   <%= filters.status === 'active'   ? 'selected' : '' %>>Aktif</option>
+            <option value="inactive" <%= filters.status === 'inactive' ? 'selected' : '' %>>Nonaktif</option>
+          </select>
+        </div>
+        <div class="col-auto">
+          <button type="submit" class="btn btn-sm btn-outline-primary">
+            <i class="bi bi-search"></i> Filter
+          </button>
+          <a href="/master-expedisi" class="btn btn-sm btn-outline-secondary ms-1">
+            <i class="bi bi-x-circle"></i> Reset
+          </a>
+        </div>
+      </form>
+    </div>
+  </div>
+
+  <%# ── Data Table ──────────────────────────────────────────────────────────── %>
+  <div class="card">
+    <div class="card-header d-flex justify-content-between align-items-center">
+      <h6 class="mb-0"><i class="bi bi-table"></i> Daftar Expedisi</h6>
+      <span class="badge bg-secondary"><%= items.length %> expedisi</span>
+    </div>
+    <div class="table-responsive">
+      <table class="table table-hover datatable mb-0">
+        <thead class="table-light">
+          <tr>
+            <th>#</th>
+            <th>Kode Expedisi</th>
+            <th>Nama Expedisi</th>
+            <th>Status</th>
+            <th>Dibuat</th>
+            <th class="text-center">Aksi</th>
+          </tr>
+        </thead>
+        <tbody>
+          <% if (items.length === 0) { %>
+            <tr>
+              <td colspan="6" class="text-center text-muted py-5">
+                <i class="bi bi-truck fs-2 d-block mb-2"></i>
+                Belum ada data expedisi. Tambahkan manual atau upload CSV.
+              </td>
+            </tr>
+          <% } %>
+          <% items.forEach((item, i) => { %>
+          <tr>
+            <td><%= i + 1 %></td>
+            <td><code class="text-primary fw-semibold"><%= item.kode_expedisi %></code></td>
+            <td><strong><%= item.nama_expedisi %></strong></td>
+            <td>
+              <% if (item.status === 'active') { %>
+                <span class="badge bg-success">Aktif</span>
+              <% } else { %>
+                <span class="badge bg-secondary">Nonaktif</span>
+              <% } %>
+            </td>
+            <td>
+              <small class="text-muted">
+                <%= formatDate(item.created_at) %>
+              </small>
+            </td>
+            <td class="text-center">
+              <div class="btn-group btn-group-sm">
+                <a href="/master-expedisi/<%= item.id %>/edit"
+                   class="btn btn-outline-warning" title="Edit">
+                  <i class="bi bi-pencil"></i>
+                </a>
+                <form action="/master-expedisi/<%= item.id %>?_method=DELETE" method="POST"
+                      onsubmit="return confirm('Hapus expedisi <%= item.nama_expedisi %>?')">
+                  <button type="submit" class="btn btn-outline-danger" title="Hapus">
+                    <i class="bi bi-trash3"></i>
+                  </button>
+                </form>
+              </div>
+            </td>
+          </tr>
+          <% }) %>
+        </tbody>
+      </table>
+    </div>
+  </div>
+</div>
+
+<%# ── CSV Upload Modal ──────────────────────────────────────────────────────── %>
+<div class="modal fade" id="csvModal" tabindex="-1">
+  <div class="modal-dialog modal-lg">
+    <div class="modal-content">
+      <div class="modal-header bg-success text-white">
+        <h5 class="modal-title"><i class="bi bi-file-earmark-spreadsheet"></i> Upload File CSV</h5>
+        <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal"></button>
+      </div>
+      <form action="/master-expedisi/upload-csv" method="POST" enctype="multipart/form-data">
+        <div class="modal-body">
+
+          <div class="alert alert-info d-flex align-items-start gap-2">
+            <i class="bi bi-info-circle-fill fs-5 mt-1"></i>
+            <div>
+              <strong>Format CSV yang didukung:</strong><br>
+              Baris pertama harus berupa <strong>header kolom</strong>. Kolom <strong>nama_expedisi</strong> wajib ada.
+              Jika <strong>kode_expedisi</strong> tidak disertakan, sistem akan <em>generate otomatis</em>.
+              Jika kode sudah ada, data akan <em>diperbarui</em> (upsert).
+            </div>
+          </div>
+
+          <div class="mb-3">
+            <h6 class="text-muted">Kolom yang tersedia:</h6>
+            <div class="table-responsive">
+              <table class="table table-sm table-bordered">
+                <thead class="table-secondary">
+                  <tr>
+                    <th>Kolom Header</th>
+                    <th>Keterangan</th>
+                    <th>Wajib</th>
+                  </tr>
+                </thead>
+                <tbody>
+                  <tr>
+                    <td><code>kode_expedisi</code></td>
+                    <td>Kode unik expedisi (jika kosong, di-generate otomatis)</td>
+                    <td><span class="badge bg-secondary">Opsional</span></td>
+                  </tr>
+                  <tr>
+                    <td><code>nama_expedisi</code></td>
+                    <td>Nama expedisi / jasa pengiriman</td>
+                    <td><span class="badge bg-danger">Wajib</span></td>
+                  </tr>
+                </tbody>
+              </table>
+            </div>
+            <small class="text-muted">
+              Contoh baris CSV:<br>
+              <code>kode_expedisi,nama_expedisi</code><br>
+              <code>,JNE Regular</code><br>
+              <code>,J&T Express</code>
+            </small>
+          </div>
+
+          <div class="mb-3">
+            <label class="form-label fw-semibold">Pilih File CSV <span class="text-danger">*</span></label>
+            <input type="file" name="csv_file" accept=".csv,text/csv" class="form-control" required>
+            <div class="form-text">Maksimal ukuran file: 5 MB</div>
+          </div>
+
+        </div>
+        <div class="modal-footer">
+          <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Batal</button>
+          <button type="submit" class="btn btn-success">
+            <i class="bi bi-upload"></i> Proses Upload
+          </button>
+        </div>
+      </form>
+    </div>
+  </div>
+</div>

@@ -1,0 +1,260 @@
+<div class="container-fluid mt-5 pt-4">
+
+  <!-- Header -->
+  <div class="row mb-3 align-items-center">
+    <div class="col">
+      <h2><i class="bi bi-upc-scan"></i> Proses Sorting – <code><%= ret.return_number %></code></h2>
+      <p class="text-muted mb-0">
+        <%- getStatusBadge(ret.current_status) %>
+        <% if (ret.sla_deadline) { %>
+          <span class="badge bg-<%= slaInfo.color %> ms-2"><i class="bi bi-clock"></i> SLA: <%= slaInfo.label %></span>
+        <% } %>
+      </p>
+    </div>
+    <div class="col-auto d-flex gap-2">
+      <a href="/returns/<%= ret.return_id %>" class="btn btn-sm btn-outline-secondary">
+        <i class="bi bi-eye"></i> Lihat Detail
+      </a>
+      <a href="/sorting" class="btn btn-sm btn-outline-dark">
+        <i class="bi bi-arrow-left"></i> Kembali
+      </a>
+    </div>
+  </div>
+
+  <!-- Return Info Card -->
+  <div class="card mb-4">
+    <div class="card-header bg-secondary text-white"><h6 class="mb-0"><i class="bi bi-info-circle"></i> Informasi Return</h6></div>
+    <div class="card-body">
+      <div class="row g-3">
+        <div class="col-md-3">
+          <small class="text-muted d-block">Sumber / Pengirim</small>
+          <strong><%= ret.customer_name || '-' %></strong>
+          <br><span class="badge bg-secondary"><%= formatSourceType(ret.source_type) %></span>
+        </div>
+        <div class="col-md-3">
+          <small class="text-muted d-block">Tanggal Return</small>
+          <strong><%= formatDate(ret.return_date) %></strong>
+          <% if (ret.inbound_date) { %><br><small class="text-success"><i class="bi bi-check-circle"></i> Inbound: <%= formatDateTime(ret.inbound_date) %></small><% } %>
+        </div>
+        <div class="col-md-3">
+          <small class="text-muted d-block">SLA Deadline</small>
+          <strong><%= ret.sla_deadline ? formatDate(ret.sla_deadline) : 'Belum di-set' %></strong>
+          <% if (ret.sla_days) { %><br><small class="text-muted"><%= ret.sla_days %> hari target</small><% } %>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- Step 1: Confirm Inbound (only for Inbound status) -->
+  <% if (ret.current_status === 'Inbound') { %>
+  <div class="card mb-4 border-warning">
+    <div class="card-header bg-warning text-dark">
+      <h6 class="mb-0"><i class="bi bi-1-circle-fill"></i> Step 1: Konfirmasi Inbound</h6>
+    </div>
+    <div class="card-body">
+      <form method="POST" action="/sorting/<%= ret.return_id %>/confirm-inbound">
+        <div class="row g-3">
+          <div class="col-md-4">
+            <label class="form-label">Tanggal Inbound</label>
+            <input type="date" class="form-control" name="inbound_date"
+              value="<%= formatDateInput(ret.inbound_date || new Date()) %>">
+          </div>
+          <div class="col-md-4">
+            <label class="form-label">Petugas Admin Sorting <span class="text-danger">*</span></label>
+            <select class="form-select" name="inspector_user_id" required>
+              <option value="">-- Pilih Admin Sorting --</option>
+              <% sorters.forEach(s => { %>
+                <option value="<%= s.user_id %>" <%= ret.inspector_user_id === s.user_id ? 'selected' : '' %>><%= s.full_name %></option>
+              <% }) %>
+              <% if (sorters.length === 0) { %>
+                <option value="" disabled class="text-danger">Tidak ada Admin Sorting aktif</option>
+              <% } %>
+            </select>
+          </div>
+        </div>
+        <div class="mt-3">
+          <button type="submit" class="btn btn-warning">
+            <i class="bi bi-box-arrow-in-down"></i> Konfirmasi Inbound & Mulai Sorting
+          </button>
+        </div>
+      </form>
+    </div>
+  </div>
+  <% } %>
+
+  <!-- Step 2: QC per Item -->
+  <% if (['Sorting','Inbound'].includes(ret.current_status)) { %>
+  <div class="card mb-4">
+    <div class="card-header bg-info text-white d-flex justify-content-between align-items-center">
+        <h6 class="mb-0"><i class="bi bi-2-circle-fill"></i> Step 2: SKU & Qty per Item</h6>
+        <span class="badge bg-light text-dark"><%= ret.items.length %> item</span>
+      </div>
+    <div class="card-body p-0">
+      <% ret.items.forEach((item, idx) => { %>
+      <div class="p-3 border-bottom">
+        <div class="d-flex justify-content-between align-items-start mb-2">
+          <div>
+            <strong><%= item.item_name %></strong>
+            <% if (item.item_code || item.sku) { %>
+              <span class="badge bg-light text-dark ms-2"><i class="bi bi-upc"></i> <%= item.sku || item.item_code %></span>
+            <% } %>
+            <% if (item.serial_number) { %><br><small class="text-muted">S/N: <%= item.serial_number %></small><% } %>
+          </div>
+          <div>
+            <span class="badge bg-light text-dark">Qty: <strong><%= item.quantity %></strong></span>
+          </div>
+        </div>
+
+        <% if (item.image_path) { %>
+        <div class="mb-2">
+          <% let imgs = []; try { imgs = JSON.parse(item.image_path); } catch(e) { imgs = item.image_path ? [item.image_path] : []; } %>
+          <% imgs.forEach(img => { %>
+            <a href="<%= img %>" target="_blank">
+              <img src="<%= img %>" style="width:60px;height:60px;object-fit:cover;border-radius:4px;margin-right:4px" alt="foto">
+            </a>
+          <% }) %>
+        </div>
+        <% } %>
+
+        <form method="POST" action="/sorting/<%= ret.return_id %>/items/<%= item.item_id %>/qc">
+          <div class="row g-2">
+            <div class="col-md-2">
+              <label class="form-label form-label-sm">SKU</label>
+              <input type="text" class="form-control form-control-sm" name="sku"
+                value="<%= item.sku || item.item_code || '' %>" placeholder="SKU produk">
+            </div>
+            <div class="col-md-1">
+              <label class="form-label form-label-sm">QTY</label>
+              <input type="number" min="1" class="form-control form-control-sm" name="quantity" value="<%= item.quantity %>">
+            </div>
+            <div class="col-md-2">
+              <label class="form-label form-label-sm">Status</label>
+              <select class="form-select form-select-sm disposition-select" name="disposition" data-item-id="<%= item.item_id %>">
+                <option value="rekondisi"       <%= item.disposition==='rekondisi'?'selected':'' %>>Rekondisi</option>
+                <option value="refurbish"       <%= item.disposition==='refurbish'?'selected':'' %>>Refurbish</option>
+                <option value="write_off"       <%= item.disposition==='write_off'?'selected':'' %>>Write-Off</option>
+                <option value="return_to_supplier" <%= item.disposition==='return_to_supplier'?'selected':'' %>>Supplier Lokal</option>
+              </select>
+            </div>
+            <div class="col-md-2" id="itemCategoryCol-<%= item.item_id %>" style="<%= ['rekondisi', 'refurbish'].includes(item.disposition) ? '' : 'display: none;' %>">
+              <label class="form-label form-label-sm">Kategori Produk <span class="text-danger">*</span></label>
+              <select class="form-select form-select-sm item-category-select" name="item_category" <%= ['rekondisi', 'refurbish'].includes(item.disposition) ? 'required' : '' %>>
+                <option value="">-- Pilih --</option>
+                <option value="Elektronik" <%= item.item_category==='Elektronik'?'selected':'' %>>Elektronik</option>
+                <option value="Non Elektronik" <%= item.item_category==='Non Elektronik'?'selected':'' %>>Non Elektronik</option>
+              </select>
+            </div>
+            <div class="col-md-2" id="itemVendorCol-<%= item.item_id %>" style="<%= item.disposition === 'return_to_supplier' ? '' : 'display: none;' %>">
+              <label class="form-label form-label-sm">Supplier <span class="text-danger">*</span></label>
+              <select class="form-select form-select-sm item-vendor-select" name="vendor_id" <%= item.disposition === 'return_to_supplier' ? 'required' : '' %>>
+                <option value="">-- Pilih --</option>
+                <% vendors.forEach(v => { %>
+                  <option value="<%= v.vendor_id %>" <%= item.vendor_id === v.vendor_id ? 'selected' : '' %>><%= v.vendor_name %></option>
+                <% }) %>
+              </select>
+            </div>
+            <div class="col-md-3">
+              <label class="form-label form-label-sm">Lokasi Fisik</label>
+              <input type="text" class="form-control form-control-sm" name="physical_location"
+                value="<%= item.physical_location || item.location || '' %>" placeholder="Rak / Bin">
+            </div>
+            <div class="col-md-2">
+              <label class="form-label form-label-sm">&nbsp;</label>
+              <button type="submit" class="btn btn-sm btn-primary d-block w-100">
+                <i class="bi bi-save"></i> Simpan
+              </button>
+            </div>
+          </div>
+        </form>
+      </div>
+      <% }) %>
+        <div class="p-3 border-top">
+          <h6 class="mb-2"><i class="bi bi-check-circle-fill"></i> Finalisasi Kategorisasi</h6>
+          <p class="text-muted">Tentukan kategori akhir untuk return ini (finalisasi ada di Step 2).</p>
+          <form method="POST" action="/sorting/<%= ret.return_id %>/categorize">
+            <div class="row g-3 mb-3">
+              <div class="col-md-3">
+                <div class="form-check form-check-card border rounded p-3">
+                  <input class="form-check-input" type="radio" name="category" value="rekondisi" id="catRkd" required>
+                  <label class="form-check-label" for="catRkd">
+                    <strong><i class="bi bi-tools text-primary"></i> Rekondisi</strong>
+                    <br><small class="text-muted">Diperbaiki dan dijual kembali sebagai kondisi rekondisi</small>
+                  </label>
+                </div>
+              </div>
+              <div class="col-md-3">
+                <div class="form-check form-check-card border rounded p-3">
+                  <input class="form-check-input" type="radio" name="category" value="refurbish" id="catRfb" required>
+                  <label class="form-check-label" for="catRfb">
+                    <strong><i class="bi bi-stars text-warning"></i> Refurbish</strong>
+                    <br><small class="text-muted">Dipoles/diperbarui – dijual dengan brand/label refurbish</small>
+                  </label>
+                </div>
+              </div>
+              <div class="col-md-3">
+                <div class="form-check form-check-card border rounded p-3">
+                  <input class="form-check-input" type="radio" name="category" value="write_off" id="catWO" required>
+                  <label class="form-check-label" for="catWO">
+                    <strong><i class="bi bi-trash3 text-danger"></i> Write-Off</strong>
+                    <br><small class="text-muted">Dijual sebagai scrap / potongan harga besar ke vendor</small>
+                  </label>
+                </div>
+              </div>
+              <div class="col-md-3">
+                <div class="form-check form-check-card border rounded p-3">
+                  <input class="form-check-input" type="radio" name="category" value="return_to_supplier" id="catRts" required>
+                  <label class="form-check-label" for="catRts">
+                    <strong><i class="bi bi-truck text-secondary"></i> Supplier Lokal</strong>
+                    <br><small class="text-muted">Dikembalikan ke supplier lokal (Retur Supplier)</small>
+                  </label>
+                </div>
+              </div>
+            </div>
+            <button type="submit" class="btn btn-success">
+              <i class="bi bi-check-circle"></i> Finalisasi Kategorisasi
+            </button>
+          </form>
+        </div>
+    </div>
+  </div>
+  <% } else { %>
+  <div class="alert alert-success">
+    <i class="bi bi-check-circle-fill"></i> Return ini telah dikategorisasi sebagai
+    <strong><%= (ret.product_category||'').replace('_','-').toUpperCase() %></strong>
+    pada <%= ret.categorized_at ? formatDateTime(ret.categorized_at) : '-' %>.
+    <a href="/returns/<%= ret.return_id %>" class="ms-3">Lihat Detail</a>
+  </div>
+  <% } %>
+</div>
+
+<script>
+  document.addEventListener('DOMContentLoaded', function () {
+    const selects = document.querySelectorAll('.disposition-select');
+    selects.forEach(select => {
+      select.addEventListener('change', function () {
+        const itemId = this.dataset.itemId;
+        const col = document.getElementById('itemCategoryCol-' + itemId);
+        const catSelect = col.querySelector('.item-category-select');
+        if (['rekondisi', 'refurbish'].includes(this.value)) {
+          col.style.display = '';
+          catSelect.setAttribute('required', 'true');
+        } else {
+          col.style.display = 'none';
+          catSelect.removeAttribute('required');
+          catSelect.value = '';
+        }
+
+        const vendorCol = document.getElementById('itemVendorCol-' + itemId);
+        const vendorSelect = vendorCol.querySelector('.item-vendor-select');
+        if (this.value === 'return_to_supplier') {
+          vendorCol.style.display = '';
+          vendorSelect.setAttribute('required', 'true');
+        } else {
+          vendorCol.style.display = 'none';
+          vendorSelect.removeAttribute('required');
+          vendorSelect.value = '';
+        }
+      });
+    });
+  });
+</script>

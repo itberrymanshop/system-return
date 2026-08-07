@@ -1,0 +1,458 @@
+<div class="container-fluid mt-5 pt-4">
+
+  <%# ── Page Header ─────────────────────────────────────────────────────────── %>
+  <div class="row mb-3 align-items-center">
+    <div class="col">
+      <h2><i class="bi bi-box-seam-fill text-primary"></i> Master Barang</h2>
+      <p class="text-muted mb-0">Kelola daftar barang dan upload data dari file Excel (XLSX).</p>
+    </div>
+    <div class="col-auto d-flex gap-2">
+      <a href="/master-barang/export-xlsx" class="btn btn-outline-success btn-sm">
+        <i class="bi bi-file-earmark-arrow-down"></i> Export Excel (XLSX)
+      </a>
+      <button class="btn btn-success btn-sm" data-bs-toggle="modal" data-bs-target="#xlsxModal">
+        <i class="bi bi-file-earmark-arrow-up"></i> Upload Excel
+      </button>
+      <a href="/master-barang/create" class="btn btn-primary btn-sm">
+        <i class="bi bi-plus-circle"></i> Tambah Barang
+      </a>
+    </div>
+  </div>
+
+  <%# ── Filter / Search ─────────────────────────────────────────────────────── %>
+  <div class="card mb-3">
+    <div class="card-body py-2">
+      <form method="GET" action="/master-barang" class="row g-2 align-items-end">
+        <div class="col-md-4">
+          <label class="form-label form-label-sm mb-1">Cari</label>
+          <input type="text" name="search" class="form-control form-control-sm"
+                 placeholder="Kode atau nama barang..."
+                 value="<%= filters.search || '' %>">
+        </div>
+        <div class="col-md-3">
+          <label class="form-label form-label-sm mb-1">Kategori</label>
+          <select name="kategori" class="form-select form-select-sm">
+            <option value="">Semua Kategori</option>
+            <% kategoriList.forEach(k => { %>
+              <option value="<%= k %>" <%= filters.kategori === k ? 'selected' : '' %>><%= k %></option>
+            <% }) %>
+          </select>
+        </div>
+        <div class="col-md-2">
+          <label class="form-label form-label-sm mb-1">Status</label>
+          <select name="status" class="form-select form-select-sm">
+            <option value="">Semua</option>
+            <option value="active"   <%= filters.status === 'active'   ? 'selected' : '' %>>Aktif</option>
+            <option value="inactive" <%= filters.status === 'inactive' ? 'selected' : '' %>>Nonaktif</option>
+          </select>
+        </div>
+        <div class="col-auto">
+          <button type="submit" class="btn btn-sm btn-outline-primary">
+            <i class="bi bi-search"></i> Filter
+          </button>
+          <a href="/master-barang" class="btn btn-sm btn-outline-secondary ms-1">
+            <i class="bi bi-x-circle"></i> Reset
+          </a>
+        </div>
+      </form>
+    </div>
+  </div>
+
+  <%# ── Data Table ──────────────────────────────────────────────────────────── %>
+  <div class="card">
+    <div class="card-header d-flex justify-content-between align-items-center">
+      <h6 class="mb-0"><i class="bi bi-table"></i> Daftar Barang</h6>
+      <span class="badge bg-secondary"><%= items.length %> barang</span>
+    </div>
+    <div class="table-responsive">
+      <table class="table table-hover datatable mb-0">
+        <thead class="table-light">
+          <tr>
+            <th>#</th>
+            <th>Kode Barang</th>
+            <th>Nama Barang</th>
+            <th>Kategori</th>
+            <th>Satuan</th>
+            <th>Harga Beli</th>
+            <th>Harga Jual</th>
+            <th>Min Stok</th>
+            <th>Status</th>
+            <th class="text-center">Aksi</th>
+          </tr>
+        </thead>
+        <tbody>
+          <% if (items.length === 0) { %>
+            <tr>
+              <td colspan="10" class="text-center text-muted py-5">
+                <i class="bi bi-inbox fs-2 d-block mb-2"></i>
+                Belum ada data barang. Tambahkan manual atau upload Excel.
+              </td>
+            </tr>
+          <% } %>
+          <% items.forEach((item, i) => { %>
+          <tr>
+            <td><%= i + 1 %></td>
+            <td><code class="text-primary"><%= item.kode_barang %></code></td>
+            <td>
+              <strong><%= item.nama_barang %></strong>
+              <% if (item.deskripsi) { %>
+                <br><small class="text-muted"><%= item.deskripsi.substring(0, 60) %><%= item.deskripsi.length > 60 ? '…' : '' %></small>
+              <% } %>
+            </td>
+            <td>
+              <% if (item.kategori) { %>
+                <span class="badge bg-info text-dark"><%= item.kategori %></span>
+              <% } else { %>
+                <span class="text-muted">-</span>
+              <% } %>
+            </td>
+            <td><%= item.satuan || '-' %></td>
+            <td><small><%= formatCurrency(item.harga_beli) %></small></td>
+            <td><small><strong><%= formatCurrency(item.harga_jual) %></strong></small></td>
+            <td class="text-center">
+              <% if (item.stok_minimum > 0) { %>
+                <span class="badge bg-warning text-dark"><%= item.stok_minimum %></span>
+              <% } else { %>
+                <span class="text-muted">-</span>
+              <% } %>
+            </td>
+            <td>
+              <% if (item.status === 'active') { %>
+                <span class="badge bg-success">Aktif</span>
+              <% } else { %>
+                <span class="badge bg-secondary">Nonaktif</span>
+              <% } %>
+            </td>
+            <td class="text-center">
+              <div class="btn-group btn-group-sm">
+                <a href="/master-barang/<%= item.id %>/edit"
+                   class="btn btn-outline-warning" title="Edit">
+                  <i class="bi bi-pencil"></i>
+                </a>
+                <form action="/master-barang/<%= item.id %>?_method=DELETE" method="POST"
+                      onsubmit="return confirm('Hapus barang <%= item.nama_barang %>?')">
+                  <button type="submit" class="btn btn-outline-danger" title="Hapus">
+                    <i class="bi bi-trash3"></i>
+                  </button>
+                </form>
+              </div>
+            </td>
+          </tr>
+          <% }) %>
+        </tbody>
+      </table>
+    </div>
+  </div>
+</div>
+
+<%# ── Excel Upload Modal ──────────────────────────────────────────────────────── %>
+<div class="modal fade" id="xlsxModal" tabindex="-1" data-bs-backdrop="static" data-bs-keyboard="false">
+  <div class="modal-dialog modal-lg">
+    <div class="modal-content">
+      <div class="modal-header bg-success text-white">
+        <h5 class="modal-title"><i class="bi bi-file-earmark-spreadsheet"></i> Upload File Excel (XLSX)</h5>
+        <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal" id="btnTopCloseUpload"></button>
+      </div>
+      <form id="xlsxUploadForm" action="/master-barang/upload-xlsx" method="POST" enctype="multipart/form-data">
+        <div class="modal-body">
+
+          <div id="xlsxFormFields">
+            <div class="alert alert-info d-flex align-items-start gap-2">
+              <i class="bi bi-info-circle-fill fs-5 mt-1"></i>
+              <div>
+                <strong>Format Excel yang didukung:</strong><br>
+                Baris pertama harus berupa <strong>header kolom</strong>. Kolom <strong>Kode Barang</strong>, <strong>Nama Barang</strong>, dan <strong>Harga Jual</strong> wajib ada.
+                Jika kode barang sudah ada di database, data barang tersebut akan <em>diperbarui</em> (upsert).
+              </div>
+            </div>
+
+            <%# ── Template info ─────────────────────────────────────────────── %>
+            <div class="mb-3">
+              <h6 class="text-muted">Kolom yang tersedia:</h6>
+              <div class="table-responsive">
+                <table class="table table-sm table-bordered">
+                  <thead class="table-secondary">
+                    <tr>
+                      <th>Kolom Header</th>
+                      <th>Keterangan</th>
+                      <th>Wajib</th>
+                    </tr>
+                  </thead>
+                  <tbody>
+                    <tr><td><code>Kode Barang</code></td><td>Kode unik barang (SKU)</td><td><span class="badge bg-danger">Wajib</span></td></tr>
+                    <tr><td><code>Nama Barang</code></td><td>Nama/deskripsi barang</td><td><span class="badge bg-danger">Wajib</span></td></tr>
+                    <tr><td><code>Harga Jual</code></td><td>Harga jual barang (angka)</td><td><span class="badge bg-danger">Wajib</span></td></tr>
+                    <tr><td><code>Kategori</code></td><td>Kategori barang</td><td><span class="badge bg-secondary">Opsional</span></td></tr>
+                    <tr><td><code>Satuan</code></td><td>Satuan (pcs, unit, kg, dll)</td><td><span class="badge bg-secondary">Opsional</span></td></tr>
+                    <tr><td><code>Harga Beli</code></td><td>Harga beli (angka)</td><td><span class="badge bg-secondary">Opsional</span></td></tr>
+                    <tr><td><code>Stok Minimum</code></td><td>Batas minimum stok</td><td><span class="badge bg-secondary">Opsional</span></td></tr>
+                    <tr><td><code>Deskripsi</code></td><td>Keterangan tambahan</td><td><span class="badge bg-secondary">Opsional</span></td></tr>
+                  </tbody>
+                </table>
+              </div>
+              <small class="text-muted">
+                * Header bersifat case-insensitive (huruf besar/kecil tidak berpengaruh) dan spasi otomatis disesuaikan.
+              </small>
+            </div>
+
+            <div class="mb-3">
+              <label class="form-label fw-semibold">Pilih File Excel <span class="text-danger">*</span></label>
+              <input type="file" name="xlsx_file" id="xlsxFileInput" accept=".xlsx,.xls,application/vnd.openxmlformats-officedocument.spreadsheetml.sheet,application/vnd.ms-excel" class="form-control" required>
+              <div class="form-text">Maksimal ukuran file: 5 MB</div>
+            </div>
+          </div>
+
+          <!-- Progress Container (hidden by default) -->
+          <div id="xlsxProgressContainer" class="d-none py-3">
+            <div class="text-center mb-3">
+              <div class="spinner-border text-success mb-2" role="status" id="xlsxProgressSpinner"></div>
+              <h5 class="fw-semibold text-dark" id="xlsxStatusText">Mengunggah file Excel...</h5>
+              <p class="text-muted small mb-0" id="xlsxProgressDetail">Mohon tunggu sebentar, file Anda sedang diunggah ke server.</p>
+            </div>
+            
+            <div class="progress mb-3" style="height: 25px; border-radius: 8px;">
+              <div id="xlsxProgressBar" class="progress-bar progress-bar-striped progress-bar-animated bg-success" role="progressbar" style="width: 0%; font-weight: bold; font-size: 0.95rem; border-radius: 8px;" aria-valuenow="0" aria-valuemin="0" aria-valuemax="100">0%</div>
+            </div>
+
+            <div class="row text-center g-2 mt-2">
+              <div class="col-4">
+                <div class="border rounded p-2 bg-light">
+                  <div class="text-muted small">Baru</div>
+                  <h4 class="fw-bold text-success mb-0" id="countInserted">0</h4>
+                </div>
+              </div>
+              <div class="col-4">
+                <div class="border rounded p-2 bg-light">
+                  <div class="text-muted small">Update</div>
+                  <h4 class="fw-bold text-primary mb-0" id="countUpdated">0</h4>
+                </div>
+              </div>
+              <div class="col-4">
+                <div class="border rounded p-2 bg-light">
+                  <div class="text-muted small">Dilewati</div>
+                  <h4 class="fw-bold text-secondary mb-0" id="countSkipped">0</h4>
+                </div>
+              </div>
+            </div>
+          </div>
+
+          <!-- Alert error container inside modal -->
+          <div id="xlsxErrorAlert" class="alert alert-danger d-none mt-3" role="alert">
+            <i class="bi bi-exclamation-circle-fill"></i> <span id="xlsxErrorMsg">Terjadi kesalahan saat memproses file.</span>
+          </div>
+
+        </div>
+        <div class="modal-footer" id="xlsxModalFooter">
+          <button type="button" class="btn btn-secondary" id="btnCancelUpload" data-bs-dismiss="modal">Batal</button>
+          <button type="submit" class="btn btn-success" id="btnSubmitUpload">
+            <i class="bi bi-upload"></i> Proses Upload
+          </button>
+        </div>
+      </form>
+    </div>
+  </div>
+</div>
+
+<script>
+document.addEventListener('DOMContentLoaded', function() {
+  const form = document.getElementById('xlsxUploadForm');
+  const formFields = document.getElementById('xlsxFormFields');
+  const progressContainer = document.getElementById('xlsxProgressContainer');
+  const progressBar = document.getElementById('xlsxProgressBar');
+  const statusText = document.getElementById('xlsxStatusText');
+  const progressDetail = document.getElementById('xlsxProgressDetail');
+  const spinner = document.getElementById('xlsxProgressSpinner');
+  
+  const countInserted = document.getElementById('countInserted');
+  const countUpdated = document.getElementById('countUpdated');
+  const countSkipped = document.getElementById('countSkipped');
+  
+  const errorAlert = document.getElementById('xlsxErrorAlert');
+  const errorMsg = document.getElementById('xlsxErrorMsg');
+  
+  const btnCancel = document.getElementById('btnCancelUpload');
+  const btnSubmit = document.getElementById('btnSubmitUpload');
+  const btnTopClose = document.getElementById('btnTopCloseUpload');
+  const modalEl = document.getElementById('xlsxModal');
+  
+  let pollingInterval = null;
+  let isProcessing = false;
+
+  // Intercept modal close when importing to avoid half-done states
+  modalEl.addEventListener('hide.bs.modal', function(e) {
+    if (isProcessing) {
+      e.preventDefault();
+      alert('Proses impor Excel sedang berlangsung, mohon tunggu hingga selesai.');
+    }
+  });
+
+  form.addEventListener('submit', function(e) {
+    e.preventDefault();
+    
+    const fileInput = document.getElementById('xlsxFileInput');
+    if (!fileInput.files.length) return;
+    
+    isProcessing = true;
+    
+    // Hide fields, show progress container, clear old error
+    formFields.classList.add('d-none');
+    progressContainer.classList.remove('d-none');
+    errorAlert.classList.add('d-none');
+    
+    // Disable footer actions & close buttons
+    btnSubmit.disabled = true;
+    btnCancel.classList.add('d-none'); // hide Batal button
+    btnTopClose.classList.add('d-none'); // hide top X button
+    
+    // Reset indicators
+    progressBar.style.width = '0%';
+    progressBar.innerText = '0%';
+    progressBar.setAttribute('aria-valuenow', 0);
+    progressBar.className = 'progress-bar progress-bar-striped progress-bar-animated bg-success';
+    statusText.innerText = 'Mengunggah file Excel...';
+    progressDetail.innerText = 'File Anda sedang dikirim ke server. Mohon tunggu.';
+    spinner.className = 'spinner-border text-success mb-2';
+    spinner.innerHTML = '';
+    
+    countInserted.innerText = '0';
+    countUpdated.innerText = '0';
+    countSkipped.innerText = '0';
+
+    // Build form data
+    const formData = new FormData(form);
+    
+    // Start AJAX upload
+    const xhr = new XMLHttpRequest();
+    xhr.open('POST', '/master-barang/upload-xlsx', true);
+    xhr.setRequestHeader('X-Requested-With', 'XMLHttpRequest');
+    
+    // Track upload progress of the file itself
+    xhr.upload.addEventListener('progress', function(event) {
+      if (event.lengthComputable) {
+        const percent = Math.round((event.loaded / event.total) * 100);
+        if (percent < 100) {
+          statusText.innerText = 'Mengunggah file Excel...';
+          progressDetail.innerText = `Mengirim file ke server: ${percent}% selesai.`;
+        } else {
+          statusText.innerText = 'Memvalidasi file...';
+          progressDetail.innerText = 'Server sedang membaca struktur file Excel Anda.';
+        }
+      }
+    });
+
+    xhr.onload = function() {
+      if (xhr.status >= 200 && xhr.status < 300) {
+        try {
+          const res = JSON.parse(xhr.responseText);
+          if (res.success && res.taskId) {
+            // Start polling the server for insertion progress
+            startPollingProgress(res.taskId);
+          } else {
+            handleError(res.error || 'Respons server tidak valid.');
+          }
+        } catch (err) {
+          handleError('Gagal membaca respons dari server.');
+        }
+      } else {
+        try {
+          const res = JSON.parse(xhr.responseText);
+          handleError(res.error || 'Gagal mengunggah file.');
+        } catch (e) {
+          handleError('Terjadi kesalahan koneksi server.');
+        }
+      }
+    };
+
+    xhr.onerror = function() {
+      handleError('Terjadi kesalahan koneksi jaringan.');
+    };
+
+    xhr.send(formData);
+  });
+
+  function startPollingProgress(taskId) {
+    statusText.innerText = 'Memproses data Excel...';
+    progressDetail.innerText = 'Menyimpan data barang ke database.';
+    
+    pollingInterval = setInterval(function() {
+      fetch('/master-barang/upload-progress/' + taskId, {
+        headers: { 'X-Requested-With': 'XMLHttpRequest' }
+      })
+      .then(response => {
+        if (!response.ok) throw new Error('Gagal memeriksa status.');
+        return response.json();
+      })
+      .then(data => {
+        // Calculate progress percentage
+        const total = data.total || 1;
+        const progress = data.progress || 0;
+        const percent = Math.min(Math.round((progress / total) * 100), 100);
+        
+        progressBar.style.width = percent + '%';
+        progressBar.innerText = percent + '%';
+        progressBar.setAttribute('aria-valuenow', percent);
+        
+        countInserted.innerText = data.inserted;
+        countUpdated.innerText = data.updated;
+        countSkipped.innerText = data.skipped;
+        
+        if (data.status === 'completed') {
+          finishSuccess(data);
+        } else if (data.status === 'failed') {
+          handleError(data.error || 'Pemrosesan gagal.');
+        } else {
+          progressDetail.innerText = `Memproses baris ke-${progress} dari ${total} total data...`;
+        }
+      })
+      .catch(err => {
+        console.warn('Polling error:', err);
+      });
+    }, 500);
+  }
+
+  function finishSuccess(data) {
+    clearInterval(pollingInterval);
+    isProcessing = false;
+    
+    // Change progress look
+    progressBar.className = 'progress-bar bg-success';
+    progressBar.style.width = '100%';
+    progressBar.innerText = '100%';
+    
+    // Update texts
+    statusText.innerText = 'Proses Impor Selesai!';
+    progressDetail.innerText = 'Semua data telah berhasil diproses.';
+    spinner.className = 'bi bi-check-circle-fill text-success fs-1 mb-2';
+    
+    // Update buttons in footer & show close buttons
+    btnCancel.classList.remove('d-none');
+    btnTopClose.classList.remove('d-none');
+    btnCancel.innerText = 'Selesai & Muat Ulang';
+    btnCancel.onclick = function() {
+      window.location.reload();
+    };
+  }
+
+  function handleError(message) {
+    clearInterval(pollingInterval);
+    isProcessing = false;
+    
+    // Reset footer/inputs
+    btnSubmit.disabled = false;
+    btnCancel.classList.remove('d-none');
+    btnTopClose.classList.remove('d-none');
+    btnCancel.innerText = 'Tutup';
+    btnCancel.onclick = null;
+    
+    // Hide progress, show fields again with error
+    progressContainer.classList.add('d-none');
+    formFields.classList.remove('d-none');
+    
+    errorMsg.innerText = message;
+    errorAlert.classList.remove('d-none');
+    
+    // Scroll error into view
+    errorAlert.scrollIntoView({ behavior: 'smooth', block: 'nearest' });
+  }
+});
+</script>

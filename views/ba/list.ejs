@@ -1,0 +1,315 @@
+<style>
+  .clickable-row {
+    cursor: pointer;
+    transition: background-color 0.2s ease;
+  }
+
+  .clickable-row:hover {
+    background-color: rgba(0, 0, 0, 0.05);
+  }
+
+  .clickable-row.table-active {
+    background-color: rgba(27, 82, 178, 0.12) !important;
+  }
+
+  /* Excel-like Berita Acara Detail Table Styles */
+  .excel-ba-header-main {
+    background-color: #107c41;
+    color: #ffffff;
+    text-align: center;
+    font-weight: bold;
+    font-size: 1.4rem;
+    letter-spacing: 1px;
+    height: 50px;
+    border-bottom: 2px solid #444 !important;
+  }
+
+  .excel-logo-block {
+    background-color: #000;
+    width: 160px;
+    text-align: center;
+    border-right: 2px solid #444 !important;
+    vertical-align: middle;
+  }
+
+  .excel-ba-title {
+    font-weight: bold;
+    font-size: 1.1rem;
+    text-align: center;
+    background-color: #000;
+    color: #fff;
+    border-bottom: 2px solid #444 !important;
+  }
+
+  .excel-ba-info-label {
+    width: 130px;
+    background-color: #0c0c0c;
+    color: #aaa;
+    font-weight: 600;
+    font-size: 0.85rem;
+  }
+
+  .excel-ba-info-value {
+    background-color: #121212;
+    color: #fff;
+    font-weight: 500;
+    font-size: 0.9rem;
+  }
+
+  .excel-ba-approval-header {
+    text-align: center;
+    font-weight: bold;
+    font-size: 0.85rem;
+    background-color: #0c0c0c;
+    color: #aaa;
+    border-bottom: 2px solid #444 !important;
+  }
+
+  .excel-ba-approval-col {
+    width: 120px;
+    text-align: center;
+    font-size: 0.8rem;
+    font-weight: bold;
+    background-color: #0c0c0c;
+    color: #fff;
+    border-bottom: 1px solid #444 !important;
+  }
+
+  .excel-ba-approval-name {
+    width: 120px;
+    height: 60px;
+    text-align: center;
+    background-color: #000;
+    font-size: 0.8rem;
+    vertical-align: middle;
+  }
+
+  .excel-ba-table {
+    width: 100%;
+    border-collapse: collapse;
+    background-color: #ffffff !important;
+    color: #333333 !important;
+    border: 2px solid #cccccc !important;
+    font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+  }
+
+  .excel-ba-table th {
+    background-color: #107c41 !important;
+    color: #ffffff !important;
+    border: 1px solid #cccccc !important;
+    padding: 10px;
+    font-weight: bold;
+    font-size: 0.85rem;
+    text-transform: none;
+    letter-spacing: 0.5px;
+  }
+
+  .excel-ba-table td {
+    background-color: #ffffff !important;
+    color: #333333 !important;
+    border: 1px solid #cccccc !important;
+    padding: 8px 10px;
+    font-size: 0.85rem;
+    vertical-align: middle;
+  }
+
+  .excel-ba-table td[style*="color: #aaa"],
+  .excel-ba-table td[style*="color: #666"] {
+    background-color: #f8f9fa !important;
+    color: #555555 !important;
+    font-weight: bold !important;
+  }
+
+  .excel-ba-table tbody tr:hover {
+    background-color: #f8f9fa !important;
+  }
+</style>
+
+<div class="container-fluid mt-5 pt-4">
+  <div class="row mb-3 align-items-center">
+    <div class="col">
+      <h2><i class="bi bi-file-earmark-text"></i> Berita Acara Retur Final</h2>
+    </div>
+    <div class="col-auto d-flex gap-2">
+      <a href="/ba/vendors" class="btn btn-sm btn-outline-secondary"><i class="bi bi-building"></i> Vendor</a>
+    </div>
+  </div>
+
+  <!-- Filters -->
+  <div class="card mb-3">
+    <div class="card-body py-3">
+      <form method="GET" id="filter-form">
+        <!-- Row 1 -->
+        <div class="row g-3 mb-3">
+          <!-- Search Keyword -->
+          <div class="col-md-4">
+            <label class="form-label form-label-sm fw-bold mb-1"><i class="bi bi-search text-muted"></i> Pencarian</label>
+            <input type="text" class="form-control form-control-sm" name="search" placeholder="Nomor BA, Judul, Supplier..." value="<%= filters.search || '' %>">
+          </div>
+          <!-- Supplier/Vendor -->
+          <div class="col-md-4">
+            <label class="form-label form-label-sm fw-bold mb-1"><i class="bi bi-building text-muted"></i> Supplier</label>
+            <select class="form-select form-select-sm" name="vendor_id">
+              <option value="">Semua</option>
+              <% vendors.forEach(v => { %>
+                <option value="<%= v.vendor_id %>" <%= filters.vendor_id == v.vendor_id ? 'selected' : '' %>><%= v.vendor_name %></option>
+              <% }) %>
+            </select>
+          </div>
+          <!-- Status -->
+          <div class="col-md-4">
+            <label class="form-label form-label-sm fw-bold mb-1"><i class="bi bi-info-circle text-muted"></i> Status</label>
+            <select class="form-select form-select-sm" name="status">
+              <option value="">Semua</option>
+              <% [
+                { value: 'rekondisi', label: 'Rekondisi' },
+                { value: 'refurbish', label: 'Refurbish' },
+                { value: 'write_off', label: 'Write Off' },
+                { value: 'return_to_supplier', label: 'Supplier Lokal' }
+              ].forEach(option => { %>
+                <option value="<%= option.value %>" <%= filters.status === option.value ? 'selected' : '' %>><%= option.label %></option>
+              <% }) %>
+            </select>
+          </div>
+        </div>
+
+        <!-- Row 2 -->
+        <div class="row g-3 align-items-end">
+          <!-- Start Date -->
+          <div class="col-md-3">
+            <label class="form-label form-label-sm fw-bold mb-1"><i class="bi bi-calendar-event text-muted"></i> Mulai Tanggal</label>
+            <input type="date" class="form-control form-control-sm" name="start_date" value="<%= filters.start_date || '' %>">
+          </div>
+          <!-- End Date -->
+          <div class="col-md-3">
+            <label class="form-label form-label-sm fw-bold mb-1"><i class="bi bi-calendar-check text-muted"></i> Sampai Tanggal</label>
+            <input type="date" class="form-control form-control-sm" name="end_date" value="<%= filters.end_date || '' %>">
+          </div>
+          <!-- Actions & Export -->
+          <div class="col-md-6 text-end">
+            <button type="submit" class="btn btn-sm btn-primary"><i class="bi bi-search"></i> Cari</button>
+            <a href="/ba" class="btn btn-sm btn-outline-secondary ms-1">Reset</a>
+            <button type="button" onclick="exportFilteredData()" class="btn btn-sm btn-success ms-1">
+              <i class="bi bi-file-earmark-excel"></i> Export All Excel
+            </button>
+          </div>
+        </div>
+      </form>
+    </div>
+  </div>
+
+  <!-- Unified Berita Acara Table -->
+  <div class="card mb-5">
+    <div class="table-responsive">
+      <table class="table table-hover datatable mb-0" data-order="[[9, &quot;desc&quot;]]">
+        <thead class="table-light">
+          <tr>
+            <th>#</th><th>Nomor BA</th><th>SKU</th><th>Total Qty</th><th>No Resi</th>
+            <th>Supplier</th><th>Judul</th><th>Harga Final</th><th>Status</th><th>Dibuat</th><th>Aksi</th>
+          </tr>
+        </thead>
+        <tbody>
+          <% if (docs.length === 0) { %>
+            <tr><td colspan="11" class="text-center text-muted py-4">Belum ada Berita Acara.</td></tr>
+          <% } %>
+          <% docs.forEach((d, i) => { %>
+          <% 
+            const categories = d.item_dispositions ? [...new Set(d.item_dispositions.split(', ').filter(Boolean))] : [];
+            const statusMap = {
+              rekondisi: { label: 'REKONDISI', color: 'primary' },
+              refurbish: { label: 'REFURBISH', color: 'dark' },
+              write_off: { label: 'WRITE OFF', color: 'danger' },
+              return_to_supplier: { label: 'SUPPLIER LOKAL', color: 'secondary' },
+              retur_final: { label: 'RETUR FINAL', color: 'primary' }
+            };
+
+            const statusEntries = [];
+            if (categories.length) {
+              categories.forEach(category => {
+                if (statusMap[category]) statusEntries.push(statusMap[category]);
+              });
+            }
+
+            if (!statusEntries.length) {
+              statusEntries.push(statusMap[d.ba_type] || {
+                label: (d.ba_type || '-').replace('_', ' ').toUpperCase(),
+                color: 'secondary'
+              });
+            }
+
+            const statusFilterQuery = filters.status || '';
+          %>
+                  <tr class="clickable-row <%= ba && ba.ba_id === d.ba_id ? 'table-active font-weight-bold' : '' %>"
+                    onclick="if (!event.target.closest('a') && !event.target.closest('button') && !event.target.closest('form')) window.location.href='/ba?ba_id=<%= d.ba_id %>&status=<%= statusFilterQuery %>'"
+                    style="cursor: pointer;">
+                    <td>
+                      <%= i + 1 %>
+                    </td>
+                    <td><code><%= d.ba_number %></code></td>
+                    <td>
+                      <% if (d.skus) { %>
+                        <div class="d-flex flex-wrap gap-1">
+                          <% d.skus.split(', ').forEach(s => { %>
+                    <span class="badge bg-light text-dark border font-monospace" style="font-size: 0.75rem;"><%= s %></span>
+                  <% }) %>
+                </div>
+              <% } else { %>
+                <span class="text-muted">-</span>
+              <% } %>
+            </td>
+            <td><strong><%= d.total_qty || 0 %></strong></td>
+            <td>
+              <% if (d.resi_number) { %>
+                <small class="text-muted"><i class="bi bi-truck"></i> <%= d.resi_number %></small>
+              <% } else { %>
+                <span class="text-muted">-</span>
+              <% } %>
+            </td>
+            <td><strong><%= d.vendor_name || ' -' %></strong>
+                    </td>
+                    <td><small>
+                        <%= d.title || '-' %>
+                      </small></td>
+                    <td>
+                      <%= d.final_price ? formatCurrency(d.final_price) : '-' %>
+                    </td>
+                    <td>
+                      <div class="d-flex flex-wrap gap-1">
+                        <% statusEntries.forEach(entry => { %>
+                          <span class="badge bg-<%= entry.color %>"><%= entry.label %></span>
+                        <% }) %>
+                      </div>
+                    </td>
+                    <td><small>
+                        <%= formatDate(d.created_at) %>
+                      </small></td>
+                    <td>
+                      <a href="/ba/<%= d.ba_id %>" class="btn btn-sm btn-outline-primary" title="Detail"><i class="bi bi-eye"></i></a>
+                      <a href="/ba/<%= d.ba_id %>/export-excel" class="btn btn-sm btn-outline-success ms-1" title="Cetak Excel"><i class="bi bi-file-earmark-excel"></i></a>
+                      <% if (['draft','pending_sign'].includes(d.status)) { %>
+                        <a href="/ba/<%= d.ba_id %>/sign" class="btn btn-sm btn-outline-warning ms-1" title="Tanda Tangan">
+                          <i class="bi bi-pen"></i>
+                        </a>
+                      <% } %>
+                    </td>
+                  </tr>
+                  <% }) %>
+                </tbody>
+              </table>
+            </div>
+          </div>
+
+  <script>
+    function exportFilteredData() {
+      const form = document.getElementById('filter-form');
+      const formData = new FormData(form);
+      const params = new URLSearchParams();
+      for (const [key, value] of formData.entries()) {
+        if (value) {
+          params.append(key, value);
+        }
+      }
+      window.location.href = '/ba/export-all?' + params.toString();
+    }
+  </script>
+</div>

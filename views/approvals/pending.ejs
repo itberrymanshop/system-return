@@ -1,0 +1,98 @@
+<div class="container-fluid mt-5 pt-4">
+  <div class="row mb-3">
+    <div class="col">
+      <h2><i class="bi bi-hourglass-split"></i> Pending Approvals</h2>
+      <nav aria-label="breadcrumb">
+        <ol class="breadcrumb">
+          <li class="breadcrumb-item"><a href="/pending">Dashboard</a></li>
+          <li class="breadcrumb-item">Approvals</li>
+          <li class="breadcrumb-item active">Pending</li>
+        </ol>
+      </nav>
+    </div>
+  </div>
+
+  <div class="card mb-3 border-info">
+    <div class="card-body py-2">
+      <i class="bi bi-info-circle text-info"></i>
+      <span class="ms-1"><%= returns.length %> return(s) require your approval.</span>
+    </div>
+  </div>
+
+  <% if (!returns.length) { %>
+    <div class="card">
+      <div class="card-body text-center text-muted py-5">
+        <i class="bi bi-check-circle" style="font-size:3rem"></i>
+        <p class="mt-2 mb-0">All caught up! No pending approvals.</p>
+      </div>
+    </div>
+  <% } else { %>
+  <div class="row">
+    <% returns.forEach(r => { %>
+    <% const aging = parseInt(r.aging_days) || 0; %>
+    <div class="col-lg-6 mb-3">
+      <div class="card h-100">
+        <div class="card-header d-flex justify-content-between align-items-center">
+          <div>
+            <a href="/returns/<%= r.return_id %>" class="fw-bold text-decoration-none">
+              <% if (r.resi_number) { %>
+                <code>Resi: <%= r.resi_number %></code>
+              <% } else { %>
+                <code>Detail</code>
+              <% } %>
+            </a>
+          </div>
+          <div>
+            <%- getStatusBadge(r.current_status) %>
+          </div>
+        </div>
+        <div class="card-body">
+          <div class="row g-2 mb-3">
+            <div class="col-6">
+              <small class="text-muted">Customer</small><br>
+              <strong><%= r.customer_name || 'N/A' %></strong>
+            </div>
+            <div class="col-6">
+              <small class="text-muted">Date</small><br>
+              <strong><%= formatDate(r.return_date) %></strong>
+            </div>
+            <div class="col-6">
+              <small class="text-muted">Category</small><br>
+              <strong class="text-capitalize"><%= formatCategory(r.return_category) %></strong>
+            </div>
+            <div class="col-6">
+              <small class="text-muted">Value</small><br>
+              <strong class="text-success"><%- formatCurrency(r.total_value) %></strong>
+            </div>
+            <div class="col-6">
+              <small class="text-muted">PIC</small><br>
+              <strong><%= r.pic_name || 'N/A' %></strong>
+            </div>
+            <div class="col-6">
+              <small class="text-muted">Aging</small><br>
+              <span class="badge bg-<%= getAgingClass(aging) %>"><%= aging %> days</span>
+            </div>
+          </div>
+
+          <form method="POST" action="/approvals/<%= r.return_id %>/approve">
+            <div class="mb-2">
+              <textarea class="form-control form-control-sm" name="comments" rows="2"
+                        placeholder="Comments (optional)..."></textarea>
+            </div>
+            <div class="d-flex gap-2">
+              <button type="submit" name="action" value="approve" class="btn btn-success btn-sm flex-grow-1">
+                <i class="bi bi-check-lg"></i> Approve
+              </button>
+              <button type="submit" name="action" value="reject" class="btn btn-danger btn-sm flex-grow-1"
+                      onclick="return confirm('Reject this return?')">
+                <i class="bi bi-x-lg"></i> Reject
+              </button>
+            </div>
+          </form>
+        </div>
+      </div>
+    </div>
+    <% }) %>
+  </div>
+  <% } %>
+</div>

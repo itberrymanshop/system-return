@@ -1,0 +1,271 @@
+<div class="container-fluid mt-5 pt-4">
+  <div class="row mb-3">
+    <div class="col">
+      <h2><i class="bi bi-upc-scan"></i> Antrian Sorting</h2>
+      <p class="text-muted">Returns dalam status <strong>Inbound</strong> dan <strong>Sorting</strong> yang perlu
+        diproses.</p>
+    </div>
+    <div class="col-auto">
+      <a href="/returns/create" class="btn btn-primary btn-sm">
+        <i class="bi bi-plus-circle"></i> Input Retur Baru
+      </a>
+    </div>
+  </div>
+
+  <%# SLA Alerts %>
+  <% if (slaAlerts.length> 0) { %>
+    <div class="alert alert-danger mb-3">
+      <i class="bi bi-exclamation-triangle-fill"></i>
+      <strong>
+        <%= slaAlerts.length %> return
+      </strong> mendekati atau melewati batas SLA.
+    </div>
+  <% } %>
+
+  <form id="bulkSortForm" method="POST" action="/sorting/bulk">
+    <!-- Bulk Action Card -->
+    <div id="bulkActionCard" class="card mb-3 border-primary d-none">
+      <div class="card-header bg-primary text-white">
+        <h6 class="mb-0"><i class="bi bi-play-circle-fill"></i> Proses Sorting SKU Terpilih</h6>
+      </div>
+      <div class="card-body">
+        <div class="row g-3 align-items-end">
+          <div class="col-md-3">
+            <label class="form-label fw-bold small">Status QC / Disposition <span
+                class="text-danger">*</span></label>
+            <select class="form-select form-select-sm" id="bulkDisposition" name="disposition" required>
+              <option value="">-- Pilih Status QC --</option>
+              <option value="rekondisi">Rekondisi</option>
+              <option value="refurbish">Refurbish</option>
+              <option value="write_off">Write-Off</option>
+              <option value="return_to_supplier">Supplier Lokal</option>
+            </select>
+          </div>
+          <div class="col-md-3" id="bulkVendorCol" style="display: none;">
+            <label class="form-label fw-bold small">Supplier <span class="text-danger">*</span></label>
+            <select class="form-select form-select-sm" id="bulkVendorId" name="vendor_id">
+              <option value="">-- Pilih Supplier --</option>
+              <% vendors.forEach(v => { %>
+                <option value="<%= v.vendor_id %>"><%= v.vendor_name %></option>
+              <% }) %>
+            </select>
+          </div>
+          <div class="col-md-3">
+            <label class="form-label fw-bold small">Lokasi Fisik (Rak / Bin)</label>
+            <input type="text" class="form-control form-control-sm" name="physical_location"
+              placeholder="Contoh: RAK-A1">
+          </div>
+          <div class="col-md-3">
+            <button type="submit" class="btn btn-primary btn-sm w-100">
+              <i class="bi bi-check-circle"></i> Proses Sorting (<span id="selectedCount">0</span> SKU)
+            </button>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <div class="card">
+      <div class="card-header d-flex justify-content-between align-items-center">
+        <h6 class="mb-0"><i class="bi bi-list-check"></i> Daftar Antrian</h6>
+        <span class="badge bg-secondary">
+          <%= items.length %> item
+        </span>
+      </div>
+      <div class="table-responsive">
+        <table class="table table-hover datatable mb-0">
+          <thead class="table-light">
+            <tr>
+              <th style="width: 40px;"><input type="checkbox" id="selectAll"></th>
+              <th>#</th>
+              <th>Return #</th>
+              <th>Tgl Masuk</th>
+              <th>SKU</th>
+              <th>Nama Barang</th>
+              <th>Qty</th>
+              <th>Kondisi</th>
+              <th>Kategori Produk</th>
+              <th>Status QC</th>
+              <th>SLA</th>
+              <th>Aksi</th>
+            </tr>
+          </thead>
+          <tbody>
+            <% if (items.length===0) { %>
+              <tr>
+                <td colspan="12" class="text-center text-muted py-4">Antrian kosong</td>
+              </tr>
+            <% } %>
+            <% items.forEach((item, i)=> { %>
+              <tr class="<%= item.slaAlert ? 'table-danger' : '' %>">
+                <td>
+                  <input type="checkbox" name="item_ids[]" value="<%= item.item_id %>"
+                    class="item-checkbox">
+                </td>
+                <td>
+                  <%= i + 1 %>
+                </td>
+                <td>
+                  <% if (item.resi_number) { %>
+                    <small class="text-muted"><i class="bi bi-truck"></i>
+                      <%= item.resi_number %>
+                    </small>
+                  <% } else { %>
+                    <span class="text-muted">-</span>
+                  <% } %>
+                </td>
+                <td>
+                  <small>
+                    <%= formatDate(item.return_date) %>
+                  </small>
+                  <% if (item.inbound_date) { %>
+                    <br><small class="text-success"><i class="bi bi-check-circle"></i> Inbound: <%=
+                        formatDate(item.inbound_date) %></small>
+                  <% } %>
+                </td>
+                <td><a href="/sorting/<%= item.return_id %>" class="fw-bold text-decoration-none"><code><%= item.sku %></code></a></td>
+                <td><strong>
+                    <%= item.item_name %>
+                  </strong></td>
+                <td>
+                  <%= item.quantity %>
+                </td>
+                <td class="text-capitalize">
+                  <%= formatCategory(item.return_category) %>
+                </td>
+                <td>
+                  <select class="form-select form-select-sm row-category-select"
+                    name="category_<%= item.item_id %>" disabled>
+                    <option value="">-- Pilih --</option>
+                    <option value="Elektronik" <%=item.item_category==='Elektronik' ? 'selected' : '' %>
+                      >Elektronik</option>
+                    <option value="Non Elektronik" <%=item.item_category==='Non Elektronik' ? 'selected'
+                      : '' %>>Non Elektronik</option>
+                  </select>
+                </td>
+                <td>
+                  <span
+                    class="badge bg-<%= item.disposition === 'pending' ? 'warning' : 'success' %> text-capitalize">
+                    <%= item.disposition %>
+                  </span>
+                </td>
+                <td>
+                  <% if (item.sla_deadline) { %>
+                    <span class="badge bg-<%= item.slaInfo.color %> text-nowrap">
+                      <i class="bi bi-clock"></i>
+                      <%= item.slaInfo.label %>
+                    </span>
+                    <br><small class="text-muted">
+                      <%= formatDate(item.sla_deadline) %>
+                    </small>
+                  <% } else { %><span class="text-muted">-</span>
+                  <% } %>
+                </td>
+                <td>
+                  <button type="button" class="btn btn-sm btn-outline-primary text-nowrap single-process-btn" data-item-id="<%= item.item_id %>">
+                    <i class="bi bi-arrow-right-circle"></i> Proses
+                  </button>
+                </td>
+              </tr>
+            <% }) %>
+          </tbody>
+        </table>
+      </div>
+    </div>
+  </form>
+</div>
+
+<script>
+  document.addEventListener('DOMContentLoaded', function () {
+    const selectAll = document.getElementById('selectAll');
+    const bulkCard = document.getElementById('bulkActionCard');
+    const selectedCountSpan = document.getElementById('selectedCount');
+    const bulkDisposition = document.getElementById('bulkDisposition');
+
+    function updateBulkCard() {
+      const checked = document.querySelectorAll('.item-checkbox:checked');
+      if (checked.length > 0) {
+        bulkCard.classList.remove('d-none');
+        selectedCountSpan.textContent = checked.length;
+      } else {
+        bulkCard.classList.add('d-none');
+      }
+    }
+
+    function updateRowCategories() {
+      const bulkDisp = bulkDisposition ? bulkDisposition.value : '';
+      const isReq = ['rekondisi', 'refurbish'].includes(bulkDisp);
+      const activeCheckboxes = document.querySelectorAll('.item-checkbox');
+
+      activeCheckboxes.forEach(cb => {
+        const row = cb.closest('tr');
+        const select = row.querySelector('.row-category-select');
+        if (select) {
+          if (cb.checked && isReq) {
+            select.removeAttribute('disabled');
+            select.setAttribute('required', 'true');
+          } else {
+            select.setAttribute('disabled', 'true');
+            select.removeAttribute('required');
+          }
+        }
+      });
+    }
+
+    if (bulkDisposition) {
+      bulkDisposition.addEventListener('change', function () {
+        updateRowCategories();
+        
+        const bulkVendorCol = document.getElementById('bulkVendorCol');
+        const bulkVendorId = document.getElementById('bulkVendorId');
+        if (this.value === 'return_to_supplier') {
+          bulkVendorCol.style.display = '';
+          bulkVendorId.setAttribute('required', 'true');
+        } else {
+          bulkVendorCol.style.display = 'none';
+          bulkVendorId.removeAttribute('required');
+          bulkVendorId.value = '';
+        }
+      });
+    }
+
+    if (selectAll) {
+      selectAll.addEventListener('change', function () {
+        const activeCheckboxes = document.querySelectorAll('.item-checkbox');
+        activeCheckboxes.forEach(cb => {
+          cb.checked = this.checked;
+        });
+        updateBulkCard();
+        updateRowCategories();
+      });
+    }
+
+    // Event delegation for checkbox changes
+    document.addEventListener('change', function (e) {
+      if (e.target.classList.contains('item-checkbox')) {
+        if (!e.target.checked && selectAll) {
+          selectAll.checked = false;
+        }
+        updateBulkCard();
+        updateRowCategories();
+      }
+    });
+
+    // Event delegation for single "Proses" button click
+    document.addEventListener('click', function (e) {
+      const btn = e.target.closest('.single-process-btn');
+      if (btn) {
+        e.preventDefault();
+        const itemId = btn.dataset.itemId;
+        const activeCheckboxes = document.querySelectorAll('.item-checkbox');
+        activeCheckboxes.forEach(cb => {
+          cb.checked = (cb.value === itemId);
+        });
+        updateBulkCard();
+        updateRowCategories();
+        if (bulkCard) {
+          bulkCard.scrollIntoView({ behavior: 'smooth', block: 'center' });
+        }
+      }
+    });
+  });
+</script>

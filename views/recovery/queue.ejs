@@ -1,0 +1,480 @@
+<div class="container-fluid mt-5 pt-4">
+  <div class="row mb-3">
+    <div class="col">
+      <h2><i class="bi bi-<%= filters.type === 'write_off' ? 'trash3' : 'recycle' %>"></i> <%= filters.type === 'write_off' ? 'Write-Off Queue' : 'Refurbish Queue' %></h2>
+      <p class="text-muted">Returns dalam tahap <%= filters.type === 'write_off' ? 'Write-Off' : 'Rekondisi & Refurbish' %> yang perlu diproses.</p>
+    </div>
+  </div>
+
+  <!-- Filters -->
+  <div class="card mb-3">
+    <div class="card-body py-2">
+      <form method="GET" class="row g-2 align-items-end">
+        <input type="hidden" name="type" value="<%= filters.type %>">
+        <div class="col-md-3">
+          <label class="form-label form-label-sm">Status</label>
+          <select class="form-select form-select-sm" name="status">
+            <option value="">Semua</option>
+            <% const statuses = filters.type === 'write_off' ? ['Write_Off','Pricing','Recovery'] : ['Rekondisi','Refurbish','Pricing','Recovery']; %>
+            <% statuses.forEach(s => { %>
+              <option value="<%= s %>" <%= filters.status===s?'selected':'' %>><%= s.replace('_',' ') %></option>
+            <% }) %>
+          </select>
+        </div>
+        <% if (filters.type !== 'write_off') { %>
+        <div class="col-md-3">
+          <label class="form-label form-label-sm">Kategori</label>
+          <select class="form-select form-select-sm" name="category">
+            <option value="">Semua</option>
+            <% ['rekondisi','refurbish'].forEach(c => { %>
+              <option value="<%= c %>" <%= filters.category===c?'selected':'' %>><%= c.replace('_','-').toUpperCase() %></option>
+            <% }) %>
+          </select>
+        </div>
+        <% } %>
+        <div class="col-auto">
+          <button type="submit" class="btn btn-sm btn-primary">Filter</button>
+          <a href="/recovery?type=<%= filters.type %>" class="btn btn-sm btn-outline-secondary ms-1">Reset</a>
+        </div>
+      </form>
+    </div>
+  </div>
+
+  <div class="card">
+    <div class="card-header d-flex justify-content-between align-items-center">
+      <h6 class="mb-0"><i class="bi bi-<%= filters.type === 'write_off' ? 'trash3' : 'recycle' %>"></i> Daftar <%= filters.type === 'write_off' ? 'Write-Off' : 'Refurbish' %></h6>
+      <div class="d-flex align-items-center gap-2">
+        <% if (filters.type === 'write_off') { %>
+          <button id="btnBulkWriteOff" class="btn btn-sm btn-danger" style="display: none;" data-bs-toggle="modal" data-bs-target="#bulkWriteOffModal">
+            <i class="bi bi-file-earmark-plus"></i> Buat Berita Acara Terpilih
+          </button>
+        <% } %>
+        <% if (filters.type === 'refurbish') { %>
+          <button id="btnBulkComplete" class="btn btn-sm btn-success" style="display: none;" data-bs-toggle="modal" data-bs-target="#bulkCompleteModal">
+            <i class="bi bi-check-circle"></i> Selesaikan Terpilih
+          </button>
+        <% } %>
+        <span class="badge bg-secondary"><%= returns.length %> item</span>
+      </div>
+    </div>
+    <div class="table-responsive">
+      <table class="table table-hover datatable mb-0">
+        <thead class="table-light">
+          <tr>
+            <th style="width: 40px;"><input type="checkbox" id="selectAllItems"></th>
+            <th>#</th>
+            <th>No Resi</th>
+            <th>Customer</th>
+            <th>SKU</th>
+            <th>Nama Barang</th>
+            <th>Qty</th>
+            <% if (filters.type !== 'write_off') { %>
+              <th>Status</th>
+            <% } %>
+            <th>Kategori Produk</th>
+            <% if (filters.type === 'write_off') { %>
+              <th>Kondisi</th>
+            <% } %>
+            <% if (filters.type !== 'refurbish' && filters.type !== 'write_off') { %>
+              <th>Harga Recovery</th>
+            <% } %>
+            <th>SLA</th>
+            <% if (filters.type !== 'refurbish' && filters.type !== 'write_off') { %>
+              <th>Aksi</th>
+            <% } %>
+          </tr>
+        </thead>
+        <tbody>
+          <% if (returns.length === 0) { %>
+            <tr><td colspan="10" class="text-center text-muted py-4">Tidak ada data</td></tr>
+          <% } %>
+          <% returns.forEach((r, i) => { %>
+          <% 
+            const isEligible = r.current_status !== 'Completed'; 
+          %>
+          <tr>
+            <td>
+              <% if (isEligible) { %>
+                <input type="checkbox" class="item-checkbox" 
+                  data-item-id="<%= r.item_id %>" 
+                  data-sku="<%= r.sku %>" 
+                  data-name="<%= r.item_name %>" 
+                  data-category="<%= r.item_category || '-' %>"
+                  data-disposition="<%= r.disposition %>"
+                  data-return-id="<%= r.return_id %>">
+              <% } else { %>
+                <input type="checkbox" disabled>
+              <% } %>
+            </td>
+            <td><%= i + 1 %></td>
+            <td>
+              <% if (r.resi_number) { %>
+                <small class="text-muted"><i class="bi bi-truck"></i> <%= r.resi_number %></small>
+              <% } else { %>
+                <span class="text-muted">-</span>
+              <% } %>
+            </td>
+            <td><%= r.customer_name || '-' %></td>
+            <td>
+              <% if (filters.type === 'write_off') { %>
+                <code><%= r.sku %></code>
+              <% } else { %>
+                <a href="/recovery/item/<%= r.item_id %>" class="fw-bold text-decoration-none"><code><%= r.sku %></code></a>
+              <% } %>
+            </td>
+            <td><strong><%= r.item_name %></strong></td>
+            <td><%= r.quantity %></td>
+            <% if (filters.type !== 'write_off') { %>
+              <td class="text-capitalize">
+                <% const catColors = {rekondisi:'primary',refurbish:'warning',write_off:'danger'}; %>
+                <span class="badge bg-<%= catColors[r.disposition]||'secondary' %>">
+                  <%= r.disposition %>
+                </span>
+              </td>
+            <% } %>
+            <td>
+              <% if (r.item_category) { %>
+                <span class="badge bg-light text-dark border font-monospace" style="font-size: 0.75rem;"><%= r.item_category %></span>
+              <% } else { %><span class="text-muted">-</span><% } %>
+            </td>
+            <% if (filters.type === 'write_off') { %>
+              <td><%- getStatusBadge(r.current_status) %></td>
+            <% } %>
+            <% if (filters.type !== 'refurbish' && filters.type !== 'write_off') { %>
+              <td>
+                <% if (r.recovery_price) { %>
+                  <%- formatCurrency(r.recovery_price) %>
+                <% } else { %><span class="text-muted">Belum ada</span><% } %>
+              </td>
+            <% } %>
+            <td>
+              <% if (r.sla_deadline) { %>
+                <span class="badge bg-<%= r.slaInfo.color %> text-nowrap">
+                  <i class="bi bi-clock"></i> <%= r.slaInfo.label %>
+                </span>
+              <% } else { %><span class="text-muted">-</span><% } %>
+            </td>
+            <% if (filters.type !== 'refurbish' && filters.type !== 'write_off') { %>
+              <td>
+                <a href="/recovery/item/<%= r.item_id %>" class="btn btn-sm btn-outline-success">
+                  <i class="bi bi-arrow-right-circle"></i> Kelola
+                </a>
+              </td>
+            <% } %>
+          </tr>
+          <% }) %>
+        </tbody>
+      </table>
+    </div>
+  </div>
+</div>
+
+<!-- Bulk Refurbish Complete Modal -->
+<% if (filters.type === 'refurbish') { %>
+<div class="modal fade" id="bulkCompleteModal" tabindex="-1" aria-labelledby="bulkCompleteModalLabel" aria-hidden="true">
+  <div class="modal-dialog modal-lg">
+    <div class="modal-content">
+      <form method="POST" action="/recovery/bulk-complete?type=refurbish">
+        <!-- Hidden inputs container for bulk complete item ids -->
+        <div id="bulkCompleteHiddenInputs"></div>
+
+        <div class="modal-header">
+          <h5 class="modal-title" id="bulkCompleteModalLabel"><i class="bi bi-check-circle"></i> Selesaikan SKU & Buat Berita Acara (Refurbish/Rekondisi)</h5>
+          <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+        </div>
+        <div class="modal-body">
+          <div class="row g-3 mb-4">
+            <div class="col-md-6">
+              <label class="form-label">Judul Berita Acara <span class="text-danger">*</span></label>
+              <input type="text" class="form-control" name="title" required placeholder="Contoh: BA Serah Terima Hasil Refurbish...">
+            </div>
+            <div class="col-md-6">
+              <label class="form-label">Vendor / Penerima</label>
+              <select class="form-select" name="vendor_id">
+                <option value="">Tidak ada / Internal</option>
+                <% vendors.forEach(v => { %>
+                  <option value="<%= v.vendor_id %>"><%= v.vendor_name %> (<%= v.vendor_type %>)</option>
+                <% }) %>
+              </select>
+            </div>
+            <div class="col-12">
+              <label class="form-label">Isi / Kronologi Berita Acara</label>
+              <textarea class="form-control" name="content" rows="4" placeholder="Uraikan kronologi, dasar perbaikan selesai, dll."></textarea>
+            </div>
+          </div>
+
+          <h6>SKU Terpilih:</h6>
+          <div class="table-responsive">
+            <table class="table table-sm align-middle mb-0">
+              <thead>
+                <tr>
+                  <th>SKU</th>
+                  <th>Nama Barang</th>
+                  <th>Status</th>
+                  <th>Kategori</th>
+                </tr>
+              </thead>
+              <tbody id="bulkCompleteList">
+                <!-- Dynamically populated by JS -->
+              </tbody>
+            </table>
+          </div>
+
+          <!-- Paging Controls -->
+          <div class="d-flex justify-content-between align-items-center mt-2 px-1" id="modalCompletePagination" style="display: none !important;">
+            <small class="text-muted" id="modalCompletePageInfo"></small>
+            <nav aria-label="Modal pagination">
+              <ul class="pagination pagination-sm mb-0">
+                <li class="page-item" id="modalCompletePrev"><a class="page-link" href="javascript:void(0)">‹</a></li>
+                <li class="page-item" id="modalCompleteNext"><a class="page-link" href="javascript:void(0)">›</a></li>
+              </ul>
+            </nav>
+          </div>
+        </div>
+        <div class="modal-footer">
+          <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Batal</button>
+          <button type="submit" class="btn btn-success"><i class="bi bi-check-circle"></i> Buat BA & Selesaikan SKU</button>
+        </div>
+      </form>
+    </div>
+  </div>
+</div>
+<% } %>
+
+<!-- Bulk Write-Off Modal -->
+<% if (filters.type === 'write_off') { %>
+<div class="modal fade" id="bulkWriteOffModal" tabindex="-1" aria-labelledby="bulkWriteOffModalLabel" aria-hidden="true">
+  <div class="modal-dialog modal-lg">
+    <div class="modal-content">
+      <form method="POST" action="/recovery/bulk-write-off">
+        <div class="modal-header">
+          <h5 class="modal-title" id="bulkWriteOffModalLabel"><i class="bi bi-file-earmark-plus"></i> Buat Berita Acara Per Batch (Write-Off)</h5>
+          <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+        </div>
+        <div class="modal-body">
+          <div class="row g-3 mb-4">
+            <div class="col-md-6">
+              <label class="form-label">Judul Berita Acara <span class="text-danger">*</span></label>
+              <input type="text" class="form-control" name="title" required placeholder="Contoh: BA Write-Off Batch...">
+            </div>
+            <div class="col-md-6">
+              <label class="form-label">Vendor / Penerima</label>
+              <select class="form-select" name="vendor_id">
+                <option value="">Tidak ada / Internal</option>
+                <% vendors.forEach(v => { %>
+                  <option value="<%= v.vendor_id %>"><%= v.vendor_name %> (<%= v.vendor_type %>)</option>
+                <% }) %>
+              </select>
+            </div>
+            <div class="col-12">
+              <label class="form-label">Isi / Kronologi Berita Acara</label>
+              <textarea class="form-control" name="content" rows="4" placeholder="Uraikan kronologi, dasar write-off, dll."></textarea>
+            </div>
+          </div>
+
+          <h6>SKU Terpilih:</h6>
+          <div class="table-responsive">
+            <table class="table table-sm align-middle">
+              <thead>
+                <tr>
+                  <th>SKU</th>
+                  <th>Nama Barang</th>
+                  <th>Status</th>
+                  <th>Kategori</th>
+                </tr>
+              </thead>
+              <tbody id="bulkWriteOffList">
+                <!-- Dynamically populated by JS -->
+              </tbody>
+            </table>
+          </div>
+        </div>
+        <div class="modal-footer">
+          <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Batal</button>
+          <button type="submit" class="btn btn-danger"><i class="bi bi-check-circle"></i> Buat BA & Selesaikan SKU</button>
+        </div>
+      </form>
+    </div>
+  </div>
+</div>
+<% } %>
+
+<script>
+  document.addEventListener('DOMContentLoaded', function () {
+    const selectAllCheckbox = document.getElementById('selectAllItems');
+    const itemCheckboxes = document.querySelectorAll('.item-checkbox');
+    const btnBulkWriteOff = document.getElementById('btnBulkWriteOff');
+    const btnBulkComplete = document.getElementById('btnBulkComplete');
+    const bulkWriteOffModal = document.getElementById('bulkWriteOffModal');
+    const bulkWriteOffList = document.getElementById('bulkWriteOffList');
+    const bulkCompleteModal = document.getElementById('bulkCompleteModal');
+    const bulkCompleteList = document.getElementById('bulkCompleteList');
+
+    function toggleBulkButton() {
+      const checkedCount = document.querySelectorAll('.item-checkbox:checked').length;
+      if (checkedCount > 0) {
+        if (btnBulkWriteOff) btnBulkWriteOff.style.display = 'inline-block';
+        if (btnBulkComplete) btnBulkComplete.style.display = 'inline-block';
+      } else {
+        if (btnBulkWriteOff) btnBulkWriteOff.style.display = 'none';
+        if (btnBulkComplete) btnBulkComplete.style.display = 'none';
+      }
+    }
+
+    if (selectAllCheckbox) {
+      selectAllCheckbox.addEventListener('change', function () {
+        itemCheckboxes.forEach(cb => {
+          if (!cb.disabled) {
+            cb.checked = this.checked;
+          }
+        });
+        toggleBulkButton();
+      });
+    }
+
+    itemCheckboxes.forEach(cb => {
+      cb.addEventListener('change', function () {
+        if (!this.checked && selectAllCheckbox) {
+          selectAllCheckbox.checked = false;
+        }
+        toggleBulkButton();
+      });
+    });
+
+    if (bulkWriteOffModal) {
+      bulkWriteOffModal.addEventListener('show.bs.modal', function () {
+        bulkWriteOffList.innerHTML = '';
+        const checkedBoxes = document.querySelectorAll('.item-checkbox:checked');
+        
+        checkedBoxes.forEach(cb => {
+          const itemId = cb.dataset.itemId;
+          const sku = cb.dataset.sku;
+          const name = cb.dataset.name;
+          const category = cb.dataset.category || '-';
+          const disposition = cb.dataset.disposition || 'write_off';
+
+          const dispColors = { write_off: 'danger' };
+          const dispLabel = disposition.toUpperCase().replace('_', ' ');
+          const dispColor = dispColors[disposition] || 'secondary';
+
+          const row = document.createElement('tr');
+          row.innerHTML = `
+            <td>
+              <input type="hidden" name="item_ids" value="${itemId}">
+              <span class="badge bg-dark font-monospace">${sku}</span>
+            </td>
+            <td><strong>${name}</strong></td>
+            <td><span class="badge bg-${dispColor}">${dispLabel}</span></td>
+            <td><span class="text-uppercase">${category.replace('_','-')}</span></td>
+          `;
+          bulkWriteOffList.appendChild(row);
+        });
+      });
+    }
+
+    let completeItems = [];
+    let completeCurrentPage = 1;
+    const itemsPerPage = 5;
+
+    function renderCompleteModalPage(page) {
+      const startIndex = (page - 1) * itemsPerPage;
+      const endIndex = Math.min(startIndex + itemsPerPage, completeItems.length);
+      
+      if (bulkCompleteList) {
+        bulkCompleteList.innerHTML = '';
+        for (let i = startIndex; i < endIndex; i++) {
+          bulkCompleteList.appendChild(completeItems[i]);
+        }
+      }
+
+      // Update page info
+      const pageInfo = document.getElementById('modalCompletePageInfo');
+      if (pageInfo) {
+        pageInfo.textContent = `Menampilkan ${completeItems.length ? startIndex + 1 : 0}-${endIndex} dari ${completeItems.length}`;
+      }
+
+      // Update prev/next button states
+      const prevBtn = document.getElementById('modalCompletePrev');
+      const nextBtn = document.getElementById('modalCompleteNext');
+      if (prevBtn) prevBtn.classList.toggle('disabled', page === 1);
+      if (nextBtn) nextBtn.classList.toggle('disabled', endIndex >= completeItems.length);
+    }
+
+    if (bulkCompleteModal) {
+      bulkCompleteModal.addEventListener('show.bs.modal', function () {
+        const checkedBoxes = document.querySelectorAll('.item-checkbox:checked');
+        completeItems = [];
+        completeCurrentPage = 1;
+
+        // Populate hidden inputs
+        const hiddenInputsContainer = document.getElementById('bulkCompleteHiddenInputs');
+        if (hiddenInputsContainer) {
+          hiddenInputsContainer.innerHTML = '';
+          checkedBoxes.forEach(cb => {
+            const input = document.createElement('input');
+            input.type = 'hidden';
+            input.name = 'item_ids';
+            input.value = cb.dataset.itemId;
+            hiddenInputsContainer.appendChild(input);
+          });
+        }
+
+        // Build list elements for display
+        checkedBoxes.forEach(cb => {
+          const sku = cb.dataset.sku;
+          const name = cb.dataset.name;
+          const category = cb.dataset.category || '-';
+          const disposition = cb.dataset.disposition || 'refurbish';
+
+          const dispColors = { rekondisi: 'primary', refurbish: 'warning' };
+          const dispLabel = disposition.toUpperCase();
+          const dispColor = dispColors[disposition] || 'secondary';
+
+          const row = document.createElement('tr');
+          row.innerHTML = `
+            <td><span class="badge bg-dark font-monospace">${sku}</span></td>
+            <td><strong>${name}</strong></td>
+            <td><span class="badge bg-${dispColor}">${dispLabel}</span></td>
+            <td><span class="text-uppercase">${category.replace('_','-')}</span></td>
+          `;
+          completeItems.push(row);
+        });
+
+        // Show/hide pagination controls based on total items
+        const paginationContainer = document.getElementById('modalCompletePagination');
+        if (paginationContainer) {
+          if (completeItems.length > itemsPerPage) {
+            paginationContainer.style.setProperty('display', 'flex', 'important');
+          } else {
+            paginationContainer.style.setProperty('display', 'none', 'important');
+          }
+        }
+
+        renderCompleteModalPage(1);
+      });
+    }
+
+    // Prev/Next handlers
+    const prevBtn = document.getElementById('modalCompletePrev');
+    if (prevBtn) {
+      prevBtn.addEventListener('click', function () {
+        if (completeCurrentPage > 1) {
+          completeCurrentPage--;
+          renderCompleteModalPage(completeCurrentPage);
+        }
+      });
+    }
+
+    const nextBtn = document.getElementById('modalCompleteNext');
+    if (nextBtn) {
+      nextBtn.addEventListener('click', function () {
+        const maxPage = Math.ceil(completeItems.length / itemsPerPage);
+        if (completeCurrentPage < maxPage) {
+          completeCurrentPage++;
+          renderCompleteModalPage(completeCurrentPage);
+        }
+      });
+    }
+  });
+</script>
+

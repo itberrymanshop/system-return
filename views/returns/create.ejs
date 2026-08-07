@@ -1,0 +1,802 @@
+<script src="https://unpkg.com/html5-qrcode/html5-qrcode.min.js"></script>
+<style>
+  .barang-dropdown {
+    position: absolute;
+    top: 100%;
+    left: 0;
+    right: 0;
+    z-index: 1050;
+    background: #fff;
+    border: 1px solid #ced4da;
+    border-radius: 0.375rem;
+    box-shadow: 0 4px 12px rgba(0, 0, 0, .12);
+    max-height: 220px;
+    overflow-y: auto;
+  }
+
+  .barang-drop-item {
+    padding: 6px 10px;
+    cursor: pointer;
+    font-size: 0.82rem;
+    border-bottom: 1px solid #f0f0f0;
+  }
+
+  .barang-drop-item:last-child {
+    border-bottom: none;
+  }
+
+  .barang-drop-item:hover {
+    background: #f0f4ff;
+  }
+</style>
+
+<div class="container-fluid mt-5 pt-4">
+  <div class="row mb-3">
+    <div class="col">
+      <h2><i class="bi bi-plus-circle"></i> Create New Return</h2>
+      <nav aria-label="breadcrumb">
+        <ol class="breadcrumb">
+          <li class="breadcrumb-item"><a href="/dashboard">Dashboard</a></li>
+          <li class="breadcrumb-item"><a href="/returns">Returns</a></li>
+          <li class="breadcrumb-item active">New Return</li>
+        </ol>
+      </nav>
+    </div>
+  </div>
+
+  <form method="POST" action="/returns/create" enctype="multipart/form-data" data-validate="true">
+    <div class="row">
+      <!-- Left column -->
+      <div class="col-lg-8">
+        <div class="card mb-4">
+          <div class="card-header bg-primary text-white">
+            <h6 class="mb-0"><i class="bi bi-file-earmark-plus"></i> Return Details</h6>
+          </div>
+          <div class="card-body">
+            <!-- Section 1: Return Information -->
+            <h5 class="card-title text-primary mb-3"><i class="bi bi-info-circle"></i> Return Information</h5>
+            
+            <!-- Scan / Search Barcode -->
+            <div class="p-3 mb-4 bg-light border rounded-3 d-flex align-items-center gap-3">
+              <div class="flex-shrink-0 text-primary fs-3">
+                <i class="bi bi-upc-scan"></i>
+              </div>
+              <div class="flex-grow-1">
+                <label class="form-label mb-1 fw-bold text-dark small">Scan Barcode / Cari Data Manifest (Resi / No
+                  Pesanan)</label>
+                <div class="input-group input-group-sm">
+                  <input type="text" id="manifestSearchInput" class="form-control form-control-sm"
+                     placeholder="Scan barcode nomor resi atau nomor pesanan...">
+                  <button class="btn btn-primary btn-sm" type="button" id="btnManifestSearch">
+                    <i class="bi bi-search"></i> Cari
+                  </button>
+                  <button class="btn btn-outline-primary btn-sm" type="button" id="btnCameraScan" data-bs-toggle="modal"
+                     data-bs-target="#cameraScanModal">
+                    <i class="bi bi-camera"></i> Scan Kamera
+                  </button>
+                </div>
+                <div class="form-text small mb-0 text-muted">Tempelkan kursor ke input di atas lalu scan barcode, atau
+                  ketik manual lalu tekan Enter/tombol Cari.</div>
+              </div>
+            </div>
+
+            <div class="row g-3">
+              <div class="col-md-6">
+                <label class="form-label">Return Date <span class="text-danger">*</span></label>
+                <input type="date" class="form-control" name="return_date"
+                  value="<%= formatDateInput(new Date()) %>" required>
+              </div>
+              <div class="col-md-6">
+                <label class="form-label">Source Type <span class="text-danger">*</span></label>
+                <select class="form-select" name="source_type" required>
+                  <option value="">-- Select --</option>
+                  <% 
+                    const sources = [
+                      ['retur_penjualan_mp', 'Retur Penjualan MP'],
+                      ['retur_penjualan_grosir', 'Retur Penjualan Grosir'],
+                      ['retur_internal_qc', 'Retur Internal (QC)']
+                    ];
+                    sources.forEach(([v, l]) => { 
+                  %>
+                    <option value="<%= v %>">
+                      <%= l %>
+                    </option>
+                  <% }) %>
+                </select>
+              </div>
+              <div class="col-md-6" id="col_customer_name">
+                <label class="form-label">Customer</label>
+                <input type="text" class="form-control" name="customer_name" placeholder="Name">
+              </div>
+              <div class="col-md-6" id="col_customer_contact">
+                <label class="form-label">Contact</label>
+                <input type="text" class="form-control" name="customer_contact" placeholder="Phone / Email">
+              </div>
+              <div class="col-md-6" id="col_no_pesanan">
+                <label class="form-label">Order Number (No. Pesanan)</label>
+                <input type="text" class="form-control" name="no_pesanan" placeholder="Contoh: ORD99999">
+              </div>
+              <div class="col-md-6" id="col_resi_number">
+                <label class="form-label">Resi Number (Nomor Resi)</label>
+                <input type="text" class="form-control" name="resi_number" placeholder="Contoh: JP123456789">
+              </div>
+              <div class="col-md-6">
+                <label class="form-label">Courier (Ekspedisi)</label>
+                <select class="form-select" name="resi_courier" id="courierSelect">
+                  <option value="">-- Select Courier (Optional) --</option>
+                  <% couriers.forEach(c=> { %>
+                    <option value="<%= c.nama_expedisi %>">
+                      <%= c.nama_expedisi %>
+                    </option>
+                    <% }) %>
+                      <option value="other">Lainnya...</option>
+                </select>
+              </div>
+              <div class="col-md-6 d-none" id="otherCourierCol">
+                <label class="form-label">Nama Kurir Lainnya</label>
+                <input type="text" class="form-control" name="other_courier" placeholder="Masukkan nama kurir">
+              </div>
+
+
+              <div class="col-12">
+                <label class="form-label">Return Reason</label>
+                <textarea class="form-control" name="return_reason" rows="2"
+                  placeholder="Describe the reason (optional)..."></textarea>
+              </div>
+            </div>
+
+            <hr class="my-4">
+
+            <!-- Section 2: Return Items -->
+            <div class="d-flex justify-content-between align-items-center mb-3">
+              <h5 class="card-title text-success mb-0"><i class="bi bi-box-seam"></i> Return Items</h5>
+              <button type="button" class="btn btn-success btn-sm" onclick="addReturnItem()">
+                <i class="bi bi-plus"></i> Add Item
+              </button>
+            </div>
+
+            <div id="itemsContainer">
+              <div class="item-row border rounded p-3 mb-3" id="item-1">
+                <div class="d-flex justify-content-between mb-2">
+                  <h6 class="mb-0">Item #1</h6>
+                </div>
+                <div class="row g-2">
+                  <div class="col-md-3">
+                    <label class="form-label">Item Code</label>
+                    <div class="position-relative">
+                      <input type="text" class="form-control form-control-sm item-code-input" name="items[1][item_code]"
+                        placeholder="Cari kode / SKU..." autocomplete="off" oninput="searchBarang(this, 1)">
+                      <div class="barang-dropdown d-none" id="dropdown-code-1"></div>
+                    </div>
+                  </div>
+                  <div class="col-md-4">
+                    <label class="form-label">Item Name <span class="text-danger">*</span></label>
+                    <div class="position-relative">
+                      <input type="text" class="form-control form-control-sm item-name-input" name="items[1][item_name]"
+                        placeholder="Cari nama barang..." autocomplete="off" oninput="searchBarang(this, 1)" required>
+                      <div class="barang-dropdown d-none" id="dropdown-name-1"></div>
+                    </div>
+                  </div>
+                  <div class="col-md-3">
+                    <label class="form-label">Kondisi <span class="text-danger">*</span></label>
+                    <select class="form-select form-select-sm" name="items[1][return_category]" required>
+                      <option value="">-- Select Kondisi --</option>
+                      <option value="baik">Baik</option>
+                      <option value="kurang_part">Kurang Part</option>
+                      <option value="packaging_rusak">Packaging Rusak</option>
+                      <option value="pecah">Pecah</option>
+                    </select>
+                  </div>
+                  <div class="col-md-2">
+                    <label class="form-label">Qty <span class="text-danger">*</span></label>
+                    <input type="number" class="form-control form-control-sm item-quantity" name="items[1][quantity]"
+                      value="1" min="1" required onchange="recalcTotals()">
+                  </div>
+
+                  <div class="col-md-12">
+                    <label class="form-label">Photos</label>
+                    <input type="file" class="form-control form-control-sm" name="items[1][photos][]" multiple
+                      accept="image/jpeg,image/png,image/gif,image/webp" onchange="previewPhotos(this, 1)">
+                    <div id="photo-preview-1" class="d-flex flex-wrap gap-1 mt-1"></div>
+                    <div class="form-text">Optional. Select multiple. Max 5 MB each (jpg, png, gif, webp).</div>
+                  </div>
+                </div>
+              </div>
+            </div>
+          </div>
+        </div>
+
+        <div class="d-flex gap-2">
+          <button type="submit" class="btn btn-primary"><i class="bi bi-save"></i> Create Return</button>
+          <a href="/returns" class="btn btn-secondary">Cancel</a>
+        </div>
+      </div>
+
+      <!-- Right info panel -->
+      <div class="col-lg-4">
+        <div class="card border-info">
+          <div class="card-header bg-info text-white">
+            <h6 class="mb-0"><i class="bi bi-info-circle"></i> Quick Guide</h6>
+          </div>
+          <div class="card-body small">
+            <ul class="ps-3">
+              <li>Fill in all required fields (marked with <span class="text-danger">*</span>).</li>
+              <li>Add at least one item to the return.</li>
+              <li>The system will automatically assign a return number.</li>
+              <li>Decision-tree rules will be evaluated on submission.</li>
+            </ul>
+          </div>
+        </div>
+
+        <div class="card mt-3">
+          <div class="card-header">
+            <h6 class="mb-0">Total Summary</h6>
+          </div>
+          <div class="card-body">
+            <div class="d-flex justify-content-between">
+              <span>Items:</span>
+              <strong id="totalItemsDisplay">0</strong>
+            </div>
+            <div class="d-flex justify-content-between">
+              <span>Total Value:</span>
+              <strong id="totalValueDisplay">Rp 0</strong>
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+  </form>
+
+  <!-- Modal Scanner Kamera -->
+  <div class="modal fade" id="cameraScanModal" tabindex="-1" aria-labelledby="cameraScanModalLabel" aria-hidden="true"
+    data-bs-backdrop="static" data-bs-keyboard="false">
+    <div class="modal-dialog modal-dialog-centered">
+      <div class="modal-content">
+        <div class="modal-header">
+          <h5 class="modal-title" id="cameraScanModalLabel"><i class="bi bi-camera text-primary"></i> Scan Barcode via
+            Kamera</h5>
+          <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"
+            id="btnCloseScannerModal"></button>
+        </div>
+        <div class="modal-body text-center">
+          <div class="mb-3 text-start d-none" id="cameraSelectContainer">
+            <label class="form-label small mb-1 fw-bold text-dark"><i class="bi bi-camera-video"></i> Pilih Kamera:</label>
+            <select id="cameraSelect" class="form-select form-select-sm"></select>
+          </div>
+          <div id="reader"
+            style="width: 100%; max-width: 400px; margin: 0 auto; border-radius: 8px; overflow: hidden; border: 1px solid #dee2e6;">
+          </div>
+          <div id="scannerFeedback" class="mt-3 text-muted small">Menginisialisasi kamera... silakan berikan izin akses
+            jika diminta.</div>
+        </div>
+        <div class="modal-footer">
+          <button type="button" class="btn btn-secondary btn-sm" data-bs-dismiss="modal"
+            id="btnCancelScanner">Batal</button>
+        </div>
+      </div>
+    </div>
+  </div>
+</div>
+
+<script>
+  var itemCounter = 1;
+
+  function addReturnItem() {
+    itemCounter++;
+    const container = document.getElementById('itemsContainer');
+    const div = document.createElement('div');
+    div.className = 'item-row border rounded p-3 mb-3';
+    div.id = 'item-' + itemCounter;
+    div.innerHTML = `
+    <div class="d-flex justify-content-between mb-2">
+      <h6 class="mb-0">Item #${itemCounter}</h6>
+      <button type="button" class="btn btn-sm btn-outline-danger" onclick="removeItem(${itemCounter})">
+        <i class="bi bi-trash"></i>
+      </button>
+    </div>
+    <div class="row g-2">
+      <div class="col-md-3">
+        <label class="form-label">Item Code</label>
+        <div class="position-relative">
+          <input type="text" class="form-control form-control-sm item-code-input" name="items[${itemCounter}][item_code]"
+                 placeholder="Cari kode / SKU..." autocomplete="off"
+                 oninput="searchBarang(this, ${itemCounter})">
+          <div class="barang-dropdown d-none" id="dropdown-code-${itemCounter}"></div>
+        </div>
+      </div>
+      <div class="col-md-4">
+        <label class="form-label">Item Name <span class="text-danger">*</span></label>
+        <div class="position-relative">
+          <input type="text" class="form-control form-control-sm item-name-input" name="items[${itemCounter}][item_name]"
+                 placeholder="Cari nama barang..." autocomplete="off"
+                 oninput="searchBarang(this, ${itemCounter})" required>
+          <div class="barang-dropdown d-none" id="dropdown-name-${itemCounter}"></div>
+        </div>
+      </div>
+      <div class="col-md-3">
+        <label class="form-label">Kondisi <span class="text-danger">*</span></label>
+        <select class="form-select form-select-sm" name="items[${itemCounter}][return_category]" required>
+          <option value="">-- Select Kondisi --</option>
+          <option value="baik">Baik</option>
+          <option value="kurang_part">Kurang Part</option>
+          <option value="packaging_rusak">Packaging Rusak</option>
+          <option value="pecah">Pecah</option>
+        </select>
+      </div>
+      <div class="col-md-2">
+        <label class="form-label">Qty <span class="text-danger">*</span></label>
+        <input type="number" class="form-control form-control-sm item-quantity" name="items[${itemCounter}][quantity]"
+               value="1" min="1" required onchange="recalcTotals()">
+      </div>
+
+      <div class="col-md-12">
+        <label class="form-label">Photos</label>
+        <input type="file" class="form-control form-control-sm" name="items[${itemCounter}][photos][]" multiple
+               accept="image/jpeg,image/png,image/gif,image/webp" onchange="previewPhotos(this, ${itemCounter})">
+        <div id="photo-preview-${itemCounter}" class="d-flex flex-wrap gap-1 mt-1"></div>
+        <div class="form-text">Optional. Select multiple. Max 5 MB each (jpg, png, gif, webp).</div>
+      </div>
+    </div>`;
+    container.appendChild(div);
+    recalcTotals();
+  }
+
+  function removeItem(idx) {
+    const el = document.getElementById('item-' + idx);
+    if (el) el.remove();
+    recalcTotals();
+  }
+
+  function recalcTotals() {
+    let items = 0, value = 0;
+    document.querySelectorAll('.item-row').forEach(row => {
+      items++;
+      const qty = parseFloat(row.querySelector('.item-quantity')?.value) || 0;
+      const price = parseFloat(row.querySelector('.item-price')?.value) || 0;
+      value += qty * price;
+    });
+    document.getElementById('totalItemsDisplay').textContent = items;
+    document.getElementById('totalValueDisplay').textContent = 'Rp\u00a0' + value.toLocaleString('id-ID');
+  }
+
+  recalcTotals();
+
+  // ── Master Barang Autocomplete ──────────────────────────────────────────────
+  var _barangCache = {};
+  var _barangTimer = null;
+
+  function searchBarang(input, idx) {
+    clearTimeout(_barangTimer);
+    var q = input.value.trim();
+    var isCode = input.classList.contains('item-code-input');
+    var dropId = isCode ? 'dropdown-code-' + idx : 'dropdown-name-' + idx;
+    var drop = document.getElementById(dropId);
+    if (!drop) return;
+
+    if (q.length < 2) { drop.classList.add('d-none'); drop.innerHTML = ''; return; }
+
+    _barangTimer = setTimeout(function () {
+      var cacheKey = q.toLowerCase();
+      if (_barangCache[cacheKey]) { renderBarangDrop(drop, _barangCache[cacheKey], idx); return; }
+
+      fetch('/master-barang/api/search?q=' + encodeURIComponent(q))
+        .then(function (r) { return r.json(); })
+        .then(function (data) {
+          _barangCache[cacheKey] = data;
+          renderBarangDrop(drop, data, idx);
+        })
+        .catch(function () { drop.classList.add('d-none'); });
+    }, 220);
+  }
+
+  function renderBarangDrop(drop, items, idx) {
+    if (!items.length) { drop.classList.add('d-none'); drop.innerHTML = ''; return; }
+    drop.innerHTML = items.map(function (b) {
+      return '<div class="barang-drop-item" onmousedown="fillBarang(event,' + idx + ')"' +
+        ' data-kode="' + escAttr(b.kode_barang) + '"' +
+        ' data-nama="' + escAttr(b.nama_barang) + '"' +
+        ' data-satuan="' + escAttr(b.satuan || '') + '"' +
+        ' data-harga="' + (parseFloat(b.harga_jual) || 0) + '">' +
+        '<span class="fw-semibold text-primary">' + esc(b.kode_barang) + '</span> &mdash; ' + esc(b.nama_barang) +
+        (b.satuan ? ' <small class="text-muted">(' + esc(b.satuan) + ')</small>' : '') +
+        '</div>';
+    }).join('');
+    drop.classList.remove('d-none');
+  }
+
+  function fillBarang(e, idx) {
+    e.preventDefault();
+    var item = e.currentTarget;
+    var row = document.getElementById('item-' + idx);
+    if (!row) return;
+    row.querySelector('.item-code-input').value = item.dataset.kode;
+    row.querySelector('.item-name-input').value = item.dataset.nama;
+    var priceInput = row.querySelector('.item-price');
+    if (priceInput && parseFloat(item.dataset.harga) > 0) priceInput.value = item.dataset.harga;
+    // close all dropdowns for this row
+    ['dropdown-code-' + idx, 'dropdown-name-' + idx].forEach(function (id) {
+      var d = document.getElementById(id);
+      if (d) { d.classList.add('d-none'); d.innerHTML = ''; }
+    });
+    recalcTotals();
+  }
+
+  function esc(s) { var d = document.createElement('div'); d.textContent = String(s); return d.innerHTML; }
+  function escAttr(s) { return String(s).replace(/"/g, '&quot;').replace(/'/g, '&#39;'); }
+
+  // Close dropdowns when clicking outside
+  document.addEventListener('click', function (e) {
+    if (!e.target.closest('.position-relative')) {
+      document.querySelectorAll('.barang-dropdown').forEach(function (d) {
+        d.classList.add('d-none'); d.innerHTML = '';
+      });
+    }
+  });
+
+  function previewPhotos(input, idx) {
+    const container = document.getElementById('photo-preview-' + idx);
+    if (!container) return;
+    container.innerHTML = '';
+    Array.from(input.files).forEach(file => {
+      const reader = new FileReader();
+      reader.onload = e => {
+        const img = document.createElement('img');
+        img.src = e.target.result;
+        img.className = 'rounded';
+        img.style.cssText = 'width:72px;height:72px;object-fit:cover;';
+        container.appendChild(img);
+      };
+      reader.readAsDataURL(file);
+    });
+  }
+
+  // Show/hide other courier input based on selection
+  document.getElementById('courierSelect')?.addEventListener('change', function () {
+    const otherCol = document.getElementById('otherCourierCol');
+    if (otherCol) {
+      if (this.value === 'other') {
+        otherCol.classList.remove('d-none');
+        otherCol.querySelector('input')?.setAttribute('required', 'true');
+      } else {
+        otherCol.classList.add('d-none');
+        otherCol.querySelector('input')?.removeAttribute('required');
+      }
+    }
+  });
+
+  // Source Type change handler: hide customer/contact/pesanan/resi fields and disable Courier if Internal QC
+  const sourceSelect = document.querySelector('select[name="source_type"]');
+  const courierSelect = document.getElementById('courierSelect');
+  const otherCourierCol = document.getElementById('otherCourierCol');
+  const fieldsToHide = [
+    document.getElementById('col_customer_name'),
+    document.getElementById('col_customer_contact'),
+    document.getElementById('col_no_pesanan'),
+    document.getElementById('col_resi_number')
+  ];
+
+  function updateFieldsBySourceType() {
+    if (!sourceSelect) return;
+    const val = sourceSelect.value;
+    const isInternal = (val === 'retur_internal_qc' || val === 'retur_penjualan_grosir');
+
+    if (isInternal) {
+      // Disable courier field
+      if (courierSelect) {
+        courierSelect.value = "";
+        courierSelect.disabled = true;
+      }
+      if (otherCourierCol) {
+        otherCourierCol.classList.add('d-none');
+        const otherInput = otherCourierCol.querySelector('input');
+        if (otherInput) {
+          otherInput.value = "";
+          otherInput.removeAttribute('required');
+        }
+      }
+
+      // Hide and clear other fields
+      fieldsToHide.forEach(el => {
+        if (el) {
+          el.classList.add('d-none');
+          const input = el.querySelector('input');
+          if (input) input.value = "";
+        }
+      });
+    } else {
+      // Enable courier field
+      if (courierSelect) {
+        courierSelect.disabled = false;
+      }
+
+      // Show fields
+      fieldsToHide.forEach(el => {
+        if (el) {
+          el.classList.remove('d-none');
+        }
+      });
+    }
+  }
+
+  if (sourceSelect) {
+    sourceSelect.addEventListener('change', updateFieldsBySourceType);
+    // Initialize state
+    updateFieldsBySourceType();
+  }
+
+  // ── Manifest Search & Barcode Scan ──────────────────────────────────────────
+  const manifestSearchInput = document.getElementById('manifestSearchInput');
+  const btnManifestSearch = document.getElementById('btnManifestSearch');
+
+  if (manifestSearchInput) {
+    // Listen for Enter key
+    manifestSearchInput.addEventListener('keydown', function (e) {
+      if (e.key === 'Enter') {
+        e.preventDefault();
+        triggerManifestSearch();
+      }
+    });
+  }
+
+  if (btnManifestSearch) {
+    btnManifestSearch.addEventListener('click', function (e) {
+      e.preventDefault();
+      triggerManifestSearch();
+    });
+  }
+
+  function handleManifestScanOrSearch(query) {
+    if (!query) return;
+
+    fetch('/returns/api/manifest-lookup?q=' + encodeURIComponent(query))
+      .then(response => {
+        if (!response.ok) {
+          throw new Error('Manifest tidak ditemukan');
+        }
+        return response.json();
+      })
+      .then(manifest => {
+        // Manifest found!
+        let scannedList = JSON.parse(localStorage.getItem('scanned_manifests') || '[]');
+        
+        // Remove existing items with same resi or order number to avoid duplicates
+        scannedList = scannedList.filter(item => item !== manifest.resi_number && item !== manifest.no_pesanan);
+        
+        // Add resi number to the beginning of the list
+        scannedList.unshift(manifest.resi_number);
+        
+        // Keep list size within reasonable limit (e.g. 50 items)
+        if (scannedList.length > 50) {
+          scannedList = scannedList.slice(0, 50);
+        }
+        
+        localStorage.setItem('scanned_manifests', JSON.stringify(scannedList));
+        
+        // Write to cookie
+        document.cookie = "scanned_manifests=" + encodeURIComponent(JSON.stringify(scannedList)) + "; path=/; max-age=31536000";
+        
+        // Redirect to Manifest Dashboard
+        window.location.href = '/returns/manifests';
+      })
+      .catch(error => {
+        alert('Data manifest tidak ditemukan untuk resi atau nomor pesanan: ' + query);
+      });
+  }
+
+  function triggerManifestSearch() {
+    const query = manifestSearchInput.value.trim();
+    if (!query) {
+      alert('Silakan masukkan nomor resi atau nomor pesanan terlebih dahulu.');
+      return;
+    }
+    handleManifestScanOrSearch(query);
+  }
+
+  function loadManifestItems(items, defaultCategory) {
+    const container = document.getElementById('itemsContainer');
+    container.innerHTML = '';
+    itemCounter = 0;
+
+    items.forEach(item => {
+      itemCounter++;
+      const itemCategory = item.return_category || defaultCategory || '';
+      const div = document.createElement('div');
+      div.className = 'item-row border rounded p-3 mb-3';
+      div.id = 'item-' + itemCounter;
+      div.innerHTML = `
+      <div class="d-flex justify-content-between mb-2">
+        <h6 class="mb-0">Item #${itemCounter}</h6>
+        <button type="button" class="btn btn-sm btn-outline-danger" onclick="removeItem(${itemCounter})">
+          <i class="bi bi-trash"></i>
+        </button>
+      </div>
+      <div class="row g-2">
+        <div class="col-md-3">
+          <label class="form-label">Item Code</label>
+          <div class="position-relative">
+            <input type="text" class="form-control form-control-sm item-code-input" name="items[${itemCounter}][item_code]"
+                   placeholder="Cari kode / SKU..." autocomplete="off"
+                   value="${item.item_code || ''}"
+                   oninput="searchBarang(this, ${itemCounter})">
+            <div class="barang-dropdown d-none" id="dropdown-code-${itemCounter}"></div>
+          </div>
+        </div>
+        <div class="col-md-4">
+          <label class="form-label">Item Name <span class="text-danger">*</span></label>
+          <div class="position-relative">
+            <input type="text" class="form-control form-control-sm item-name-input" name="items[${itemCounter}][item_name]"
+                   placeholder="Cari nama barang..." autocomplete="off"
+                   value="${item.item_name || ''}"
+                   oninput="searchBarang(this, ${itemCounter})" required>
+            <div class="barang-dropdown d-none" id="dropdown-name-${itemCounter}"></div>
+          </div>
+        </div>
+        <div class="col-md-3">
+          <label class="form-label">Kondisi <span class="text-danger">*</span></label>
+          <select class="form-select form-select-sm" name="items[${itemCounter}][return_category]" required>
+            <option value="">-- Select Kondisi --</option>
+            <option value="baik" ${itemCategory === 'baik' ? 'selected' : ''}>Baik</option>
+            <option value="kurang_part" ${itemCategory === 'kurang_part' ? 'selected' : ''}>Kurang Part</option>
+            <option value="packaging_rusak" ${itemCategory === 'packaging_rusak' ? 'selected' : ''}>Packaging Rusak</option>
+            <option value="pecah" ${itemCategory === 'pecah' ? 'selected' : ''}>Pecah</option>
+          </select>
+        </div>
+        <div class="col-md-2">
+          <label class="form-label">Qty <span class="text-danger">*</span></label>
+          <input type="number" class="form-control form-control-sm item-quantity" name="items[${itemCounter}][quantity]"
+                 value="${item.quantity || 1}" min="1" required onchange="recalcTotals()">
+        </div>
+
+        <div class="col-md-12">
+          <label class="form-label">Photos</label>
+          <input type="file" class="form-control form-control-sm" name="items[${itemCounter}][photos][]" multiple
+                 accept="image/jpeg,image/png,image/gif,image/webp" onchange="previewPhotos(this, ${itemCounter})">
+          <div id="photo-preview-${itemCounter}" class="d-flex flex-wrap gap-1 mt-1"></div>
+          <div class="form-text">Optional. Select multiple. Max 5 MB each (jpg, png, gif, webp).</div>
+        </div>
+      </div>
+    `;
+      container.appendChild(div);
+    });
+    recalcTotals();
+  }
+
+  // ── Camera Scanner Logic using html5-qrcode ──────────────────────────────────
+  let html5QrCode = null;
+
+  const cameraScanModalEl = document.getElementById('cameraScanModal');
+  if (cameraScanModalEl) {
+    cameraScanModalEl.addEventListener('shown.bs.modal', function () {
+      startCameraScanner();
+    });
+
+    cameraScanModalEl.addEventListener('hidden.bs.modal', function () {
+      stopCameraScanner();
+    });
+  }
+
+  let currentCameraId = null;
+
+  function startCameraScanner() {
+    const feedback = document.getElementById('scannerFeedback');
+    const cameraSelectContainer = document.getElementById('cameraSelectContainer');
+    const cameraSelect = document.getElementById('cameraSelect');
+
+    if (feedback) feedback.textContent = "Menginisialisasi kamera... silakan berikan izin akses jika diminta.";
+
+    html5QrCode = new Html5Qrcode("reader");
+
+    const qrCodeSuccessCallback = (decodedText, decodedResult) => {
+      if (decodedText) {
+        if (manifestSearchInput) {
+          manifestSearchInput.value = decodedText;
+        }
+
+        const modalInstance = bootstrap.Modal.getInstance(cameraScanModalEl);
+        if (modalInstance) {
+          modalInstance.hide();
+        }
+
+        handleManifestScanOrSearch(decodedText);
+      }
+    };
+
+    const config = { fps: 15, qrbox: { width: 280, height: 160 } };
+
+    // Request camera permissions by getting the cameras list first
+    Html5Qrcode.getCameras().then(cameras => {
+      if (cameras && cameras.length > 0) {
+        // Clear previous options
+        cameraSelect.innerHTML = '';
+        
+        // Populate select options
+        cameras.forEach(camera => {
+          const option = document.createElement('option');
+          option.value = camera.id;
+          option.text = camera.label || `Kamera ${cameraSelect.options.length + 1}`;
+          cameraSelect.appendChild(option);
+        });
+
+        // Show camera selection UI
+        cameraSelectContainer.classList.remove('d-none');
+
+        // Select rear camera by default if present
+        let defaultCameraId = cameras[0].id;
+        const rearCamera = cameras.find(c => /back|rear|environment/i.test(c.label));
+        if (rearCamera) {
+          defaultCameraId = rearCamera.id;
+        }
+        cameraSelect.value = defaultCameraId;
+        currentCameraId = defaultCameraId;
+
+        // Add change listener
+        cameraSelect.onchange = function() {
+          const newCameraId = this.value;
+          if (newCameraId !== currentCameraId) {
+            const doStop = html5QrCode.isScanning ? html5QrCode.stop() : Promise.resolve();
+            doStop.then(() => {
+              currentCameraId = newCameraId;
+              if (feedback) feedback.textContent = "Beralih kamera...";
+              html5QrCode.start(newCameraId, config, qrCodeSuccessCallback)
+                .then(() => {
+                  if (feedback) feedback.textContent = "Kamera aktif. Arahkan barcode ke dalam bingkai scanner.";
+                })
+                .catch(err => {
+                  console.error("Gagal mengganti kamera:", err);
+                  if (feedback) feedback.innerHTML = `<span class="text-danger">Gagal mengganti kamera: ${err.message || err}</span>`;
+                });
+            }).catch(err => {
+              console.error("Gagal menghentikan scanner sebelum ganti kamera:", err);
+            });
+          }
+        };
+
+        // Start default camera
+        html5QrCode.start(defaultCameraId, config, qrCodeSuccessCallback)
+          .then(() => {
+            if (feedback) feedback.textContent = "Kamera aktif. Arahkan barcode ke dalam bingkai scanner.";
+          })
+          .catch(err => {
+            console.error("Gagal memulai default kamera:", err);
+            if (feedback) feedback.innerHTML = `<span class="text-danger">Gagal membuka kamera: ${err.message || err}</span>`;
+          });
+
+      } else {
+        // Fallback to environment facingMode if no detailed cameras returned
+        html5QrCode.start({ facingMode: "environment" }, config, qrCodeSuccessCallback)
+          .then(() => {
+            if (feedback) feedback.textContent = "Kamera aktif (Default). Arahkan barcode ke dalam bingkai scanner.";
+          })
+          .catch(err => {
+            console.error("Gagal memulai default kamera:", err);
+            if (feedback) feedback.innerHTML = `<span class="text-danger">Gagal membuka kamera: ${err.message || err}</span>`;
+          });
+      }
+    }).catch(err => {
+      console.error("Gagal mengambil daftar kamera:", err);
+      // Fallback
+      html5QrCode.start({ facingMode: "environment" }, config, qrCodeSuccessCallback)
+        .then(() => {
+          if (feedback) feedback.textContent = "Kamera aktif (Default). Arahkan barcode ke dalam bingkai scanner.";
+        })
+        .catch(err => {
+          console.error("Gagal memulai default kamera:", err);
+          if (feedback) feedback.innerHTML = `<span class="text-danger">Gagal membuka kamera: ${err.message || err}</span>`;
+        });
+    });
+  }
+
+  function stopCameraScanner() {
+    if (html5QrCode) {
+      const doStop = html5QrCode.isScanning ? html5QrCode.stop() : Promise.resolve();
+      doStop.then(() => {
+        console.log("Scanner kamera dihentikan.");
+        html5QrCode.clear();
+        html5QrCode = null;
+      }).catch(err => {
+        console.error("Gagal menghentikan scanner kamera:", err);
+        html5QrCode = null;
+      });
+    }
+  }
+</script>

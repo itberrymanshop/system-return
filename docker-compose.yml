@@ -1,0 +1,18 @@
+services:
+  return-berryman: 
+    build: .
+    container_name: return-berryman
+    restart: unless-stopped
+    ports:
+      - "${HOST_PORT:-3000}:3000"
+    networks:
+      - dokploy-network
+    env_file:
+      - .env
+    volumes:
+      - /home/ubuntu/data/berryman/upload:/app/uploads
+
+
+networks:
+  dokploy-network:
+    external: true

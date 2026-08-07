@@ -1,0 +1,209 @@
+<div class="container-fluid mt-5 pt-4">
+  <div class="row mb-3">
+    <div class="col">
+      <h2><i class="bi bi-people"></i> User Management</h2>
+    </div>
+    <div class="col-auto">
+      <button class="btn btn-primary btn-sm" data-bs-toggle="modal" data-bs-target="#addUserModal">
+        <i class="bi bi-person-plus"></i> Add User
+      </button>
+    </div>
+  </div>
+
+  <div class="card">
+    <div class="table-responsive">
+      <table class="table table-hover datatable mb-0">
+        <thead class="table-light">
+          <tr>
+            <th>#</th><th>Full Name</th><th>Username</th><th>Email</th>
+            <th>Role</th><th>Status</th><th>Last Login</th><th>Actions</th>
+          </tr>
+        </thead>
+        <tbody>
+          <% users.forEach((u, i) => { %>
+          <tr>
+            <td><%= i+1 %></td>
+            <td>
+              <div class="fw-semibold"><%= u.full_name %></div>
+              <small class="text-muted"><%= u.department || '' %></small>
+            </td>
+            <td><%= u.username %></td>
+            <td><%= u.email || '-' %></td>
+            <td><% const roleColor = {admin:'danger',manager:'warning',purchasing:'primary',admin_retur:'info',admin_sorting:'success',staff_recover:'secondary'}; %><span class="badge bg-<%= roleColor[u.role]||'info' %>"><%= u.role.replace(/_/g,' ') %></span></td>
+            <td><span class="badge bg-<%= u.is_active ? 'success' : 'secondary' %>"><%= u.is_active ? 'Active' : 'Inactive' %></span></td>
+            <td><small><%= u.last_login ? formatDateTime(u.last_login) : 'Never' %></small></td>
+            <td>
+              <div class="btn-group btn-group-sm">
+                <button class="btn btn-outline-warning" data-bs-toggle="modal" data-bs-target="#editUserModal"
+                  data-id="<%= u.user_id %>"
+                  data-fname="<%= u.full_name %>"
+                  data-username="<%= u.username %>"
+                  data-email="<%= u.email || '' %>"
+                  data-phone="<%= u.phone || '' %>"
+                  data-dept="<%= u.department || '' %>"
+                  data-role="<%= u.role %>"
+                  data-active="<%= u.is_active %>">
+                  <i class="bi bi-pencil"></i>
+                </button>
+                <button class="btn btn-outline-info" data-bs-toggle="modal" data-bs-target="#resetPwModal"
+                  data-id="<%= u.user_id %>" data-name="<%= u.full_name %>">
+                  <i class="bi bi-key"></i>
+                </button>
+                <% if (u.user_id !== user.user_id) { %>
+                <form method="POST" action="/admin/users/<%= u.user_id %>/delete" class="d-inline">
+                  <button type="submit" class="btn btn-outline-danger confirm-delete" title="Delete">
+                    <i class="bi bi-trash"></i>
+                  </button>
+                </form>
+                <% } %>
+              </div>
+            </td>
+          </tr>
+          <% }) %>
+        </tbody>
+      </table>
+    </div>
+  </div>
+</div>
+
+<!-- Add User Modal -->
+<div class="modal fade" id="addUserModal" tabindex="-1">
+  <div class="modal-dialog">
+    <div class="modal-content">
+      <form method="POST" action="/admin/users/create">
+        <div class="modal-header"><h5 class="modal-title">Add New User</h5>
+          <button type="button" class="btn-close" data-bs-dismiss="modal"></button></div>
+        <div class="modal-body">
+          <div class="row g-3">
+            <div class="col-12">
+              <label class="form-label">Full Name <span class="text-danger">*</span></label>
+              <input type="text" class="form-control" name="full_name" required>
+            </div>
+            <div class="col-md-6">
+              <label class="form-label">Username <span class="text-danger">*</span></label>
+              <input type="text" class="form-control" name="username" required>
+            </div>
+            <div class="col-md-6">
+              <label class="form-label">Password <span class="text-danger">*</span></label>
+              <input type="password" class="form-control" name="password" required minlength="6">
+            </div>
+            <div class="col-md-6">
+              <label class="form-label">Email</label>
+              <input type="email" class="form-control" name="email">
+            </div>
+            <div class="col-md-6">
+              <label class="form-label">Phone</label>
+              <input type="text" class="form-control" name="phone">
+            </div>
+            <div class="col-md-6">
+              <label class="form-label">Department</label>
+              <input type="text" class="form-control" name="department">
+            </div>
+            <div class="col-md-6">
+              <label class="form-label">Role</label>
+              <select class="form-select" name="role">
+                <% [['admin_retur','Admin Retur'],['admin_sorting','Admin Sorting'],['staff_recover','Staff Recover'],['purchasing','Purchasing'],['manager','Manager / FAT'],['admin','Admin']].forEach(([v,l]) => { %>
+                  <option value="<%= v %>"><%= l %></option>
+                <% }) %>
+              </select>
+            </div>
+          </div>
+        </div>
+        <div class="modal-footer">
+          <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Cancel</button>
+          <button type="submit" class="btn btn-primary">Create User</button>
+        </div>
+      </form>
+    </div>
+  </div>
+</div>
+
+<!-- Edit User Modal -->
+<div class="modal fade" id="editUserModal" tabindex="-1">
+  <div class="modal-dialog">
+    <div class="modal-content">
+      <form method="POST" id="editUserForm">
+        <div class="modal-header"><h5 class="modal-title">Edit User</h5>
+          <button type="button" class="btn-close" data-bs-dismiss="modal"></button></div>
+        <div class="modal-body">
+          <div class="row g-3">
+            <div class="col-12">
+              <label class="form-label">Full Name</label>
+              <input type="text" class="form-control" name="full_name" id="eFullName" required>
+            </div>
+            <div class="col-md-6">
+              <label class="form-label">Email</label>
+              <input type="email" class="form-control" name="email" id="eEmail">
+            </div>
+            <div class="col-md-6">
+              <label class="form-label">Phone</label>
+              <input type="text" class="form-control" name="phone" id="ePhone">
+            </div>
+            <div class="col-md-6">
+              <label class="form-label">Department</label>
+              <input type="text" class="form-control" name="department" id="eDept">
+            </div>
+            <div class="col-md-6">
+              <label class="form-label">Role</label>
+              <select class="form-select" name="role" id="eRole">
+                <% [['admin_retur','Admin Retur'],['admin_sorting','Admin Sorting'],['staff_recover','Staff Recover'],['purchasing','Purchasing'],['manager','Manager / FAT'],['admin','Admin']].forEach(([v,l]) => { %>
+                  <option value="<%= v %>"><%= l %></option>
+                <% }) %>
+              </select>
+            </div>
+            <div class="col-md-6">
+              <label class="form-label">Status</label>
+              <select class="form-select" name="is_active" id="eActive">
+                <option value="1">Active</option>
+                <option value="0">Inactive</option>
+              </select>
+            </div>
+          </div>
+        </div>
+        <div class="modal-footer">
+          <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Cancel</button>
+          <button type="submit" class="btn btn-warning">Save Changes</button>
+        </div>
+      </form>
+    </div>
+  </div>
+</div>
+
+<!-- Reset Password Modal -->
+<div class="modal fade" id="resetPwModal" tabindex="-1">
+  <div class="modal-dialog modal-sm">
+    <div class="modal-content">
+      <form method="POST" id="resetPwForm">
+        <div class="modal-header"><h5 class="modal-title">Reset Password</h5>
+          <button type="button" class="btn-close" data-bs-dismiss="modal"></button></div>
+        <div class="modal-body">
+          <p class="mb-2">Reset password for <strong id="resetUserName"></strong></p>
+          <label class="form-label">New Password <span class="text-danger">*</span></label>
+          <input type="password" class="form-control" name="new_password" required minlength="6">
+        </div>
+        <div class="modal-footer">
+          <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Cancel</button>
+          <button type="submit" class="btn btn-info text-white">Reset</button>
+        </div>
+      </form>
+    </div>
+  </div>
+</div>
+
+<script>
+document.getElementById('editUserModal').addEventListener('show.bs.modal', function(e) {
+  const b = e.relatedTarget;
+  document.getElementById('editUserForm').action = '/admin/users/' + b.dataset.id + '/update';
+  document.getElementById('eFullName').value = b.dataset.fname;
+  document.getElementById('eEmail').value    = b.dataset.email;
+  document.getElementById('ePhone').value    = b.dataset.phone;
+  document.getElementById('eDept').value     = b.dataset.dept;
+  document.getElementById('eRole').value     = b.dataset.role;
+  document.getElementById('eActive').value   = b.dataset.active;
+});
+document.getElementById('resetPwModal').addEventListener('show.bs.modal', function(e) {
+  const b = e.relatedTarget;
+  document.getElementById('resetPwForm').action = '/admin/users/' + b.dataset.id + '/reset-password';
+  document.getElementById('resetUserName').textContent = b.dataset.name;
+});
+</script>

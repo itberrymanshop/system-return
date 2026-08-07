@@ -1,0 +1,97 @@
+<%- include('../partials/flash') %>
+
+<div class="d-flex justify-content-between align-items-center mb-4">
+  <h3><%= title %></h3>
+  <div>
+    <!-- <a href="/sla/report/breaches" class="btn btn-info me-2">
+      <i class="bi bi-exclamation-circle"></i> Laporan SLA Breach
+    </a>
+    <a href="/sla/report/summary" class="btn btn-secondary me-2">
+      <i class="bi bi-bar-chart"></i> SLA Summary
+    </a> -->
+    <a href="/sla/create" class="btn btn-primary">
+      <i class="bi bi-plus-circle"></i> Tambah SLA
+    </a>
+  </div>
+</div>
+
+<!-- SLA Type Filter -->
+<div class="mb-3">
+  <ul class="nav nav-tabs" role="tablist">
+    <% slaTypes.forEach(function(type) { %>
+      <li class="nav-item" role="presentation">
+        <a class="nav-link <%= type.sla_type === currentType ? 'active' : '' %>" 
+           href="/sla?type=<%= type.sla_type %>">
+          <%= type.sla_type === 'STANDARD' ? 'SLA STANDARD' : 'SLA MASA TENGGANG' %>
+        </a>
+      </li>
+    <% }) %>
+  </ul>
+</div>
+
+<!-- SLA Configs Table -->
+<div class="table-responsive">
+  <table class="table table-hover">
+    <thead class="table-light">
+      <tr>
+        <th>#</th>
+        <th>Nama SLA</th>
+        <th>Code Name</th>
+        <th>Filter 1</th>
+        <th>Filter 2</th>
+        <th>Batas Waktu</th>
+        <th>Status</th>
+        <th>Aksi</th>
+      </tr>
+    </thead>
+    <tbody>
+      <% if (items.length === 0) { %>
+        <tr>
+          <td colspan="8" class="text-center text-muted py-4">
+            Tidak ada SLA config untuk tipe ini.
+          </td>
+        </tr>
+      <% } else {
+        items.forEach(function(item, idx) { 
+      %>
+      <tr>
+        <td><%= idx + 1 %></td>
+        <td><strong><%= item.sla_name %></strong></td>
+        <td>
+          <span class="badge bg-info"><%= item.code_name %></span>
+        </td>
+        <td>
+          <% if (item.code_trigger && item.code_trigger !== '[No Code]') { %>
+            <span class="text-muted"><%= item.code_trigger %></span>
+          <% } else { %>
+            <span class="text-muted">-</span>
+          <% } %>
+        </td>
+        <td>
+          <% if (item.code_trigger_2 && item.code_trigger_2 !== '[No Code]') { %>
+            <span class="text-muted"><%= item.code_trigger_2 %></span>
+          <% } else { %>
+            <span class="text-muted">-</span>
+          <% } %>
+        </td>
+        <td>
+          <strong><%= item.sla_hours %></strong> jam 
+          <small class="text-muted">(<%= item.sla_days %> hari)</small>
+        </td>
+        <td>
+          <% if (item.is_active) { %>
+            <span class="badge bg-success">Aktif</span>
+          <% } else { %>
+            <span class="badge bg-secondary">Tidak Aktif</span>
+          <% } %>
+        </td>
+        <td>
+          <a class="btn btn-sm btn-outline-primary" href="/sla/<%= item.sla_id %>/edit">
+            <i class="bi bi-pencil"></i> Edit
+          </a>
+        </td>
+      </tr>
+      <% }) } %>
+    </tbody>
+  </table>
+</div>

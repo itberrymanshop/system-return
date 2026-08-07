@@ -1,0 +1,508 @@
+<style>
+  .barang-dropdown {
+    position: absolute;
+    top: 100%;
+    left: 0;
+    right: 0;
+    z-index: 1050;
+    background: #fff;
+    border: 1px solid #ced4da;
+    border-radius: 0.375rem;
+    box-shadow: 0 4px 12px rgba(0, 0, 0, .12);
+    max-height: 220px;
+    overflow-y: auto;
+  }
+
+  .barang-drop-item {
+    padding: 6px 10px;
+    cursor: pointer;
+    font-size: 0.82rem;
+    border-bottom: 1px solid #f0f0f0;
+  }
+
+  .barang-drop-item:last-child {
+    border-bottom: none;
+  }
+
+  .barang-drop-item:hover {
+    background: #f0f4ff;
+  }
+</style>
+
+<div class="container-fluid mt-5 pt-4">
+  <div class="row mb-3">
+    <div class="col">
+      <h2><i class="bi bi-pencil"></i> Edit Return</h2>
+      <nav aria-label="breadcrumb">
+        <ol class="breadcrumb">
+          <li class="breadcrumb-item"><a href="/dashboard">Dashboard</a></li>
+          <li class="breadcrumb-item"><a href="/returns">Returns</a></li>
+          <li class="breadcrumb-item">
+            <a href="<%= itemId ? '/returns/item/' + itemId : '/returns/' + ret.return_id %>">
+              <%= ret.return_number %>
+            </a>
+          </li>
+          <li class="breadcrumb-item active">Edit</li>
+        </ol>
+      </nav>
+    </div>
+  </div>
+
+  <form method="POST" action="/returns/<%= ret.return_id %>/edit<%= itemId ? '?itemId=' + itemId : '' %>" enctype="multipart/form-data" data-validate="true">
+    <div class="row">
+      <div class="col-lg-8">
+        <div class="card mb-4">
+          <div class="card-header bg-warning text-dark">
+            <h6 class="mb-0"><i class="bi bi-pencil-square"></i> Return Details</h6>
+          </div>
+          <div class="card-body">
+            <!-- Section 1: Return Information -->
+            <h5 class="card-title text-warning mb-3"><i class="bi bi-info-circle"></i> Return Information</h5>
+            
+            <div class="row g-3">
+              <div class="col-md-6">
+                <label class="form-label">Return Date <span class="text-danger">*</span></label>
+                <input type="date" class="form-control" name="return_date"
+                  value="<%= formatDateInput(ret.return_date) %>" required>
+              </div>
+              <div class="col-md-6">
+                <label class="form-label">Source Type <span class="text-danger">*</span></label>
+                <select class="form-select" name="source_type" required>
+                  <% 
+                    const sources = [
+                      ['retur_penjualan_mp', 'Retur Penjualan MP'],
+                      ['retur_penjualan_grosir', 'Retur Penjualan Grosir'],
+                      ['retur_internal_qc', 'Retur Internal (QC)']
+                    ];
+                    sources.forEach(([v, l]) => { 
+                  %>
+                    <option value="<%= v %>" <%= ret.source_type === v ? 'selected' : '' %>><%= l %></option>
+                  <% }) %>
+                </select>
+              </div>
+              <div class="col-md-6" id="col_customer_name">
+                <label class="form-label">Customer</label>
+                <input type="text" class="form-control" name="customer_name" value="<%= ret.customer_name || '' %>">
+              </div>
+              <div class="col-md-6" id="col_customer_contact">
+                <label class="form-label">Contact</label>
+                <input type="text" class="form-control" name="customer_contact"
+                  value="<%= ret.customer_contact || '' %>">
+              </div>
+              <div class="col-md-6" id="col_no_pesanan">
+                <label class="form-label">Order Number (No. Pesanan)</label>
+                <input type="text" class="form-control" name="no_pesanan" value="<%= ret.no_pesanan || '' %>"
+                  placeholder="Contoh: ORD99999">
+              </div>
+              <div class="col-md-6" id="col_resi_number">
+                <label class="form-label">Resi Number (Nomor Resi)</label>
+                <input type="text" class="form-control" name="resi_number" value="<%= ret.resi_number || '' %>"
+                  placeholder="Contoh: JP123456789">
+              </div>
+              <div class="col-md-6">
+                <label class="form-label">Courier (Ekspedisi)</label>
+                <select class="form-select" name="resi_courier" id="courierSelect">
+                  <option value="">-- Select Courier (Optional) --</option>
+                  <% let isMatched=false; couriers.forEach(c=> {
+                    const selected = ret.resi_courier === c.nama_expedisi;
+                    if (selected) isMatched = true;
+                    %>
+                    <option value="<%= c.nama_expedisi %>" <%=selected ? 'selected' : '' %>><%= c.nama_expedisi %>
+                    </option>
+                    <% }) %>
+                      <option value="other" <%=(ret.resi_courier && !isMatched) ? 'selected' : '' %>>Lainnya...</option>
+                </select>
+              </div>
+              <div class="col-md-6 <%= (ret.resi_courier && !isMatched) ? '' : 'd-none' %>" id="otherCourierCol">
+                <label class="form-label">Nama Kurir Lainnya</label>
+                <input type="text" class="form-control" name="other_courier"
+                  value="<%= (ret.resi_courier && !isMatched) ? ret.resi_courier : '' %>"
+                  placeholder="Masukkan nama kurir">
+              </div>
+
+
+              <div class="col-12">
+                <label class="form-label">Return Reason</label>
+                <textarea class="form-control" name="return_reason" rows="2"
+                  placeholder="Describe the reason (optional)..."><%= ret.return_reason || '' %></textarea>
+              </div>
+            </div>
+
+            <hr class="my-4">
+
+            <!-- Section 2: Return Items -->
+            <div class="d-flex justify-content-between align-items-center mb-3">
+              <h5 class="card-title text-success mb-0"><i class="bi bi-box-seam"></i> Return Items</h5>
+              <button type="button" class="btn btn-success btn-sm" onclick="addReturnItem()">
+                <i class="bi bi-plus"></i> Add Item
+              </button>
+            </div>
+
+            <div id="itemsContainer">
+              <% ret.items.forEach((item, idx)=> { %>
+                <div class="item-row border rounded p-3 mb-3" id="item-<%= idx+1 %>">
+                  <div class="d-flex justify-content-between mb-2">
+                    <h6 class="mb-0">Item #<%= idx+1 %>
+                    </h6>
+                    <% if (!itemId) { %>
+                    <button type="button" class="btn btn-sm btn-outline-danger" onclick="removeItem(<%= idx+1 %>)">
+                      <i class="bi bi-trash"></i>
+                    </button>
+                    <% } %>
+                  </div>
+                  <div class="row g-2">
+                    <div class="col-md-3">
+                      <label class="form-label">Item Code</label>
+                      <div class="position-relative">
+                        <input type="text" class="form-control form-control-sm item-code-input"
+                          name="items[<%= idx+1 %>][item_code]" value="<%= item.item_code || '' %>"
+                          placeholder="Cari kode / SKU..." autocomplete="off"
+                          oninput="searchBarang(this, <%= idx+1 %>)">
+                        <div class="barang-dropdown d-none" id="dropdown-code-<%= idx+1 %>"></div>
+                      </div>
+                    </div>
+                    <div class="col-md-4">
+                      <label class="form-label">Item Name <span class="text-danger">*</span></label>
+                      <div class="position-relative">
+                        <input type="text" class="form-control form-control-sm item-name-input"
+                          name="items[<%= idx+1 %>][item_name]" value="<%= item.item_name %>"
+                          placeholder="Cari nama barang..." autocomplete="off"
+                          oninput="searchBarang(this, <%= idx+1 %>)" required>
+                        <div class="barang-dropdown d-none" id="dropdown-name-<%= idx+1 %>"></div>
+                      </div>
+                    </div>
+                    <div class="col-md-3">
+                      <label class="form-label">Kondisi <span class="text-danger">*</span></label>
+                      <select class="form-select form-select-sm" name="items[<%= idx+1 %>][return_category]" required>
+                        <option value="">-- Select Kondisi --</option>
+                        <% 
+                          const itemCategories = [
+                            ['baik', 'Baik'],
+                            ['kurang_part', 'Kurang Part'],
+                            ['packaging_rusak', 'Packaging Rusak'],
+                            ['pecah', 'Pecah']
+                          ];
+                          itemCategories.forEach(([v, l]) => { 
+                        %>
+                          <option value="<%= v %>" <%= item.return_category === v ? 'selected' : '' %>>
+                            <%= l %>
+                          </option>
+                        <% }) %>
+                      </select>
+                    </div>
+                    <div class="col-md-2">
+                      <label class="form-label">Qty</label>
+                      <input type="number" class="form-control form-control-sm item-quantity"
+                        name="items[<%= idx+1 %>][quantity]" value="<%= item.quantity %>" min="1" required
+                        onchange="recalcTotals()">
+                    </div>
+
+                    <div class="col-md-12">
+                      <label class="form-label">Photos</label>
+                      <% let existingPhotos=[]; try { existingPhotos=JSON.parse(item.image_path || '[]' ); } catch(e) {
+                        if (item.image_path) existingPhotos=[item.image_path]; } %>
+                        <div id="existing-photos-<%= idx+1 %>" class="d-flex flex-wrap gap-1 mb-2">
+                          <% existingPhotos.forEach(src=> { %>
+                            <div class="position-relative existing-photo-thumb">
+                              <img src="<%= src %>" data-src="<%= src %>"
+                                style="width:72px;height:72px;object-fit:cover;border-radius:4px;" alt="photo">
+                              <button type="button" class="btn btn-danger btn-sm position-absolute top-0 end-0 p-0 lh-1"
+                                style="width:18px;height:18px;font-size:.65rem;border-radius:50%;"
+                                onclick="removeExistingPhoto(<%= idx+1 %>, '<%= src %>')">&#x2715;</button>
+                            </div>
+                            <% }) %>
+                        </div>
+                        <input type="hidden" id="kept-photos-<%= idx+1 %>"
+                          name="items[<%= idx+1 %>][existing_image_path]" value="<%= JSON.stringify(existingPhotos) %>">
+                        <div id="photo-preview-<%= idx+1 %>" class="d-flex flex-wrap gap-1 mb-1"></div>
+                        <input type="file" class="form-control form-control-sm" name="items[<%= idx+1 %>][photos][]"
+                          accept="image/jpeg,image/png,image/gif,image/webp" multiple
+                          onchange="previewPhotos(this, <%= idx+1 %>)">
+                        <div class="form-text">Add more photos. Existing photos above can be removed individually. Max 5
+                          MB each.</div>
+                    </div>
+                  </div>
+                </div>
+                <% }) %>
+            </div>
+          </div>
+        </div>
+
+        <div class="d-flex gap-2">
+          <button type="submit" class="btn btn-warning"><i class="bi bi-save"></i> Save Changes</button>
+          <a href="/returns" class="btn btn-secondary">Cancel</a>
+        </div>
+      </div>
+
+      <div class="col-lg-4">
+        <div class="card">
+          <div class="card-header">
+            <h6 class="mb-0">Total Summary</h6>
+          </div>
+          <div class="card-body">
+            <div class="d-flex justify-content-between">
+              <span>Items:</span>
+              <strong id="totalItemsDisplay">
+                <%= ret.items.length %>
+              </strong>
+            </div>
+            <div class="d-flex justify-content-between">
+              <span>Total Value:</span>
+              <strong id="totalValueDisplay"><%- formatCurrency(ret.total_value) %></strong>
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+  </form>
+</div>
+
+<script>
+  var itemCounter = <%= ret.items.length %>;
+
+  function addReturnItem() {
+    itemCounter++;
+    const container = document.getElementById('itemsContainer');
+    const div = document.createElement('div');
+    div.className = 'item-row border rounded p-3 mb-3';
+    div.id = 'item-' + itemCounter;
+    div.innerHTML = `
+    <div class="d-flex justify-content-between mb-2">
+      <h6 class="mb-0">Item #${itemCounter}</h6>
+      <button type="button" class="btn btn-sm btn-outline-danger" onclick="removeItem(${itemCounter})">
+        <i class="bi bi-trash"></i>
+      </button>
+    </div>
+    <div class="row g-2">
+      <div class="col-md-3"><label class="form-label">Item Code</label>
+        <div class="position-relative">
+          <input type="text" class="form-control form-control-sm item-code-input" name="items[${itemCounter}][item_code]"
+                 placeholder="Cari kode / SKU..." autocomplete="off"
+                 oninput="searchBarang(this, ${itemCounter})">
+          <div class="barang-dropdown d-none" id="dropdown-code-${itemCounter}"></div>
+        </div></div>
+      <div class="col-md-4"><label class="form-label">Item Name <span class="text-danger">*</span></label>
+        <div class="position-relative">
+          <input type="text" class="form-control form-control-sm item-name-input" name="items[${itemCounter}][item_name]"
+                 placeholder="Cari nama barang..." autocomplete="off"
+                 oninput="searchBarang(this, ${itemCounter})" required>
+          <div class="barang-dropdown d-none" id="dropdown-name-${itemCounter}"></div>
+        </div></div>
+      <div class="col-md-3">
+        <label class="form-label">Kondisi <span class="text-danger">*</span></label>
+        <select class="form-select form-select-sm" name="items[${itemCounter}][return_category]" required>
+          <option value="">-- Select Kondisi --</option>
+          <option value="baik">Baik</option>
+          <option value="kurang_part">Kurang Part</option>
+          <option value="packaging_rusak">Packaging Rusak</option>
+          <option value="pecah">Pecah</option>
+        </select>
+      </div>
+      <div class="col-md-2"><label class="form-label">Qty</label>
+        <input type="number" class="form-control form-control-sm item-quantity" name="items[${itemCounter}][quantity]"
+               value="1" min="1" required onchange="recalcTotals()"></div>
+
+      <div class="col-md-12"><label class="form-label">Photos</label>
+        <div id="photo-preview-${itemCounter}" class="d-flex flex-wrap gap-1 mb-1"></div>
+        <input type="file" class="form-control form-control-sm" name="items[${itemCounter}][photos][]" multiple
+               accept="image/jpeg,image/png,image/gif,image/webp" onchange="previewPhotos(this, ${itemCounter})">
+        <div class="form-text">Optional. Select multiple. Max 5 MB each (jpg, png, gif, webp).</div>
+      </div>
+    </div>`;
+    container.appendChild(div);
+    recalcTotals();
+  }
+
+  function removeItem(idx) {
+    const el = document.getElementById('item-' + idx);
+    if (el) el.remove();
+    recalcTotals();
+  }
+
+  function recalcTotals() {
+    let items = 0, value = 0;
+    document.querySelectorAll('.item-row').forEach(row => {
+      items++;
+      const qty = parseFloat(row.querySelector('.item-quantity')?.value) || 0;
+      const price = parseFloat(row.querySelector('.item-price')?.value) || 0;
+      value += qty * price;
+    });
+    document.getElementById('totalItemsDisplay').textContent = items;
+    document.getElementById('totalValueDisplay').textContent = 'Rp\u00a0' + value.toLocaleString('id-ID');
+  }
+
+  function previewPhotos(input, idx) {
+    const container = document.getElementById('photo-preview-' + idx);
+    if (!container) return;
+    container.innerHTML = '';
+    Array.from(input.files).forEach(file => {
+      const reader = new FileReader();
+      reader.onload = e => {
+        const img = document.createElement('img');
+        img.src = e.target.result;
+        img.className = 'rounded';
+        img.style.cssText = 'width:72px;height:72px;object-fit:cover;';
+        container.appendChild(img);
+      };
+      reader.readAsDataURL(file);
+    });
+  }
+
+  // ── Master Barang Autocomplete ────────────────────────────────────────────────
+  var _barangCache = {};
+  var _barangTimer = null;
+
+  function searchBarang(input, idx) {
+    clearTimeout(_barangTimer);
+    var q = input.value.trim();
+    var isCode = input.classList.contains('item-code-input');
+    var dropId = isCode ? 'dropdown-code-' + idx : 'dropdown-name-' + idx;
+    var drop = document.getElementById(dropId);
+    if (!drop) return;
+
+    if (q.length < 2) { drop.classList.add('d-none'); drop.innerHTML = ''; return; }
+
+    _barangTimer = setTimeout(function () {
+      var cacheKey = q.toLowerCase();
+      if (_barangCache[cacheKey]) { renderBarangDrop(drop, _barangCache[cacheKey], idx); return; }
+
+      fetch('/master-barang/api/search?q=' + encodeURIComponent(q))
+        .then(function (r) { return r.json(); })
+        .then(function (data) {
+          _barangCache[cacheKey] = data;
+          renderBarangDrop(drop, data, idx);
+        })
+        .catch(function () { drop.classList.add('d-none'); });
+    }, 220);
+  }
+
+  function renderBarangDrop(drop, items, idx) {
+    if (!items.length) { drop.classList.add('d-none'); drop.innerHTML = ''; return; }
+    drop.innerHTML = items.map(function (b) {
+      return '<div class="barang-drop-item" onmousedown="fillBarang(event,' + idx + ')"' +
+        ' data-kode="' + escAttr(b.kode_barang) + '"' +
+        ' data-nama="' + escAttr(b.nama_barang) + '"' +
+        ' data-satuan="' + escAttr(b.satuan || '') + '"' +
+        ' data-harga="' + (parseFloat(b.harga_jual) || 0) + '">' +
+        '<span class="fw-semibold text-primary">' + esc(b.kode_barang) + '</span> &mdash; ' + esc(b.nama_barang) +
+        (b.satuan ? ' <small class="text-muted">(' + esc(b.satuan) + ')</small>' : '') +
+        '</div>';
+    }).join('');
+    drop.classList.remove('d-none');
+  }
+
+  function fillBarang(e, idx) {
+    e.preventDefault();
+    var item = e.currentTarget;
+    var row = document.getElementById('item-' + idx);
+    if (!row) return;
+    row.querySelector('.item-code-input').value = item.dataset.kode;
+    row.querySelector('.item-name-input').value = item.dataset.nama;
+    var priceInput = row.querySelector('.item-price');
+    if (priceInput && parseFloat(item.dataset.harga) > 0) priceInput.value = item.dataset.harga;
+    ['dropdown-code-' + idx, 'dropdown-name-' + idx].forEach(function (id) {
+      var d = document.getElementById(id);
+      if (d) { d.classList.add('d-none'); d.innerHTML = ''; }
+    });
+    recalcTotals();
+  }
+
+  function esc(s) { var d = document.createElement('div'); d.textContent = String(s); return d.innerHTML; }
+  function escAttr(s) { return String(s).replace(/"/g, '&quot;').replace(/'/g, '&#39;'); }
+
+  document.addEventListener('click', function (e) {
+    if (!e.target.closest('.position-relative')) {
+      document.querySelectorAll('.barang-dropdown').forEach(function (d) {
+        d.classList.add('d-none'); d.innerHTML = '';
+      });
+    }
+  });
+
+  function removeExistingPhoto(itemIdx, src) {
+    const container = document.getElementById('existing-photos-' + itemIdx);
+    if (container) {
+      container.querySelectorAll('img').forEach(img => {
+        if (img.dataset.src === src) img.closest('.existing-photo-thumb').remove();
+      });
+    }
+    const hidden = document.getElementById('kept-photos-' + itemIdx);
+    if (!hidden) return;
+    let kept = [];
+    try { kept = JSON.parse(hidden.value); } catch { }
+    hidden.value = JSON.stringify(kept.filter(p => p !== src));
+  }
+
+  // Show/hide other courier input based on selection
+  document.getElementById('courierSelect')?.addEventListener('change', function () {
+    const otherCol = document.getElementById('otherCourierCol');
+    if (otherCol) {
+      if (this.value === 'other') {
+        otherCol.classList.remove('d-none');
+        otherCol.querySelector('input')?.setAttribute('required', 'true');
+      } else {
+        otherCol.classList.add('d-none');
+        otherCol.querySelector('input')?.removeAttribute('required');
+      }
+    }
+  });
+
+  // Source Type change handler: hide customer/contact/pesanan/resi fields and disable Courier if Internal QC
+  const sourceSelect = document.querySelector('select[name="source_type"]');
+  const courierSelect = document.getElementById('courierSelect');
+  const otherCourierCol = document.getElementById('otherCourierCol');
+  const fieldsToHide = [
+    document.getElementById('col_customer_name'),
+    document.getElementById('col_customer_contact'),
+    document.getElementById('col_no_pesanan'),
+    document.getElementById('col_resi_number')
+  ];
+
+  function updateFieldsBySourceType() {
+    if (!sourceSelect) return;
+    const val = sourceSelect.value;
+    const isInternal = (val === 'retur_internal_qc' || val === 'retur_penjualan_grosir');
+
+    if (isInternal) {
+      // Disable courier field
+      if (courierSelect) {
+        courierSelect.value = "";
+        courierSelect.disabled = true;
+      }
+      if (otherCourierCol) {
+        otherCourierCol.classList.add('d-none');
+        const otherInput = otherCourierCol.querySelector('input');
+        if (otherInput) {
+          otherInput.value = "";
+          otherInput.removeAttribute('required');
+        }
+      }
+
+      // Hide and clear other fields
+      fieldsToHide.forEach(el => {
+        if (el) {
+          el.classList.add('d-none');
+          const input = el.querySelector('input');
+          if (input) input.value = "";
+        }
+      });
+    } else {
+      // Enable courier field
+      if (courierSelect) {
+        courierSelect.disabled = false;
+      }
+
+      // Show fields
+      fieldsToHide.forEach(el => {
+        if (el) {
+          el.classList.remove('d-none');
+        }
+      });
+    }
+  }
+
+  if (sourceSelect) {
+    sourceSelect.addEventListener('change', updateFieldsBySourceType);
+    // Initialize state on edit page load
+    updateFieldsBySourceType();
+  }
+</script>

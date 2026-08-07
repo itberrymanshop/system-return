@@ -1,0 +1,68 @@
+<div class="container mt-5 pt-4">
+  <div class="row justify-content-center">
+    <div class="col-lg-6">
+
+      <div class="d-flex justify-content-between align-items-center mb-3">
+        <h2>
+          <i class="bi bi-box-arrow-up text-primary"></i>
+          <%= item ? 'Edit Paket Terkirim' : 'Tambah Paket Terkirim Baru' %>
+        </h2>
+        <a href="/master-paket-terkirim" class="btn btn-sm btn-outline-secondary">
+          <i class="bi bi-arrow-left"></i> Kembali
+        </a>
+      </div>
+
+      <div class="card">
+        <div class="card-header">
+          <h6 class="mb-0">Informasi Paket Terkirim</h6>
+        </div>
+        <div class="card-body">
+          <form action="<%= action %>" method="POST">
+
+            <%# Bulan %>
+            <div class="mb-3">
+              <label class="form-label fw-semibold">Bulan <span class="text-danger">*</span></label>
+              <select name="bulan" class="form-select" required>
+                <% monthsList.forEach(m => { %>
+                  <option value="<%= m.value %>" <%= defaultMonth === m.value ? 'selected' : '' %>><%= m.name %></option>
+                <% }) %>
+              </select>
+              <div class="form-text">Pilih bulan laporan.</div>
+            </div>
+
+            <%# Tahun %>
+            <div class="mb-3">
+              <label class="form-label fw-semibold">Tahun <span class="text-danger">*</span></label>
+              <select name="tahun" class="form-select" required>
+                <% yearsList.forEach(y => { %>
+                  <option value="<%= y %>" <%= defaultYear === y ? 'selected' : '' %>><%= y %></option>
+                <% }) %>
+              </select>
+              <div class="form-text">Pilih tahun laporan berjalan.</div>
+            </div>
+
+            <%# Total Paket Terkirim %>
+            <div class="mb-3">
+              <label class="form-label fw-semibold">Total Paket Terkirim <span class="text-danger">*</span></label>
+              <input type="number" name="total_terkirim" class="form-control"
+                     value="<%= item ? item.total_terkirim : '' %>"
+                     placeholder="Contoh: 140960"
+                     min="0" required autofocus>
+              <div class="form-text">Masukkan jumlah total paket yang dikirim pada periode ini.</div>
+            </div>
+
+            <div class="d-flex gap-2 justify-content-end mt-4">
+              <a href="/master-paket-terkirim" class="btn btn-secondary">Batal</a>
+              <button type="submit" class="btn btn-primary">
+                <i class="bi bi-check-circle"></i>
+                <%= item ? 'Simpan Perubahan' : 'Tambah Data' %>
+              </button>
+            </div>
+
+          </form>
+        </div>
+      </div>
+
+    </div>
+  </div>
+</div>

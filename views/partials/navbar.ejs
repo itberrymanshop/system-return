@@ -1,0 +1,423 @@
+<!-- Mobile Topbar -->
+<div class="sidebar-topbar d-lg-none">
+  <button class="btn btn-link text-white" id="sidebarToggle">
+    <i class="bi bi-list fs-4"></i>
+  </button>
+  <a class="topbar-brand" href="/dashboard">
+    <i class="bi bi-arrow-return-left"></i>
+    <%= appName %>
+  </a>
+</div>
+
+<!-- Sidebar Backdrop -->
+<div class="sidebar-backdrop" id="sidebarBackdrop"></div>
+
+<!-- Sidebar -->
+<nav class="sidebar" id="sidebar">
+  <div class="sidebar-header">
+    <a class="sidebar-brand" href="/dashboard">
+      <i class="bi bi-arrow-return-left"></i> <span>
+        <%= appName %>
+      </span>
+    </a>
+    <button class="btn btn-link text-white d-lg-none p-0" id="sidebarClose">
+      <i class="bi bi-x-lg"></i>
+    </button>
+  </div>
+
+  <div class="sidebar-menu">
+    <ul class="nav flex-column">
+
+      <li class="nav-item">
+        <a class="sidebar-link" href="/dashboard">
+          <i class="bi bi-speedometer2"></i> <span>
+            <%= __('Dashboard') %>
+          </span>
+        </a>
+      </li>
+
+      <%# ── Returns ──────────────────────────────────────────────────────── %>
+        <% if (canAccess('returns')) { %>
+          <li class="nav-item">
+            <a class="sidebar-link sidebar-dropdown-toggle collapsed" data-bs-toggle="collapse" href="#navReturns"
+              role="button">
+              <i class="bi bi-box-seam"></i> <span>
+                <%= __('Returns') %>
+              </span>
+              <i class="bi bi-chevron-down sidebar-chevron"></i>
+            </a>
+            <div class="collapse" id="navReturns">
+              <ul class="sidebar-submenu">
+                <% if (canAccess('returns_create')) { %>
+                  <li><a href="/returns/create"><i class="bi bi-plus-circle"></i>
+                      <%= __('New Return') %>
+                    </a></li>
+                  <li><a href="/returns/manifests"><i class="bi bi-file-earmark-excel"></i>
+                      <%= __('Return Manifests') %>
+                    </a></li>
+                  <% } %>
+                    <% if (canAccess('returns_inbound')) { %>
+                      <li><a href="/returns/pending"><i class="bi bi-box-arrow-in-down"></i>
+                          <%= __('Inbound Returns') %>
+                        </a></li>
+                      <% } %>
+              </ul>
+            </div>
+          </li>
+
+          <li class="nav-item">
+            <a class="sidebar-link" href="/returns">
+              <i class="bi bi-list-ul"></i> <span>
+                <%= __('All Returns') %>
+              </span>
+            </a>
+          </li>
+          <% } %>
+
+            <%# ── Sorting ───────────────────────────────────────────────────────── %>
+              <% if (canAccess('sorting')) { %>
+                <li class="nav-item">
+                  <a class="sidebar-link sidebar-dropdown-toggle collapsed" data-bs-toggle="collapse" href="#navSorting"
+                    role="button">
+                    <i class="bi bi-upc-scan"></i> <span>
+                      <%= __('Sorting') %>
+                    </span>
+                    <i class="bi bi-chevron-down sidebar-chevron"></i>
+                  </a>
+                  <div class="collapse" id="navSorting">
+                    <ul class="sidebar-submenu">
+                      <li><a href="/sorting"><i class="bi bi-list-check"></i>
+                          <%= __('Antrian Sorting') %>
+                        </a></li>
+                    </ul>
+                  </div>
+                </li>
+                <% } %>
+
+                  <%# ── Perbaikan ─────────────────────────────────────────────────────── %>
+                    <% if (canAccess('perbaikan')) { %>
+                      <li class="nav-item">
+                        <a class="sidebar-link sidebar-dropdown-toggle collapsed" data-bs-toggle="collapse"
+                          href="#navPerbaikan" role="button">
+                          <i class="bi bi-tools"></i> <span>
+                            <%= __('Proses') %>
+                          </span>
+                          <i class="bi bi-chevron-down sidebar-chevron"></i>
+                        </a>
+                        <div class="collapse" id="navPerbaikan">
+                          <ul class="sidebar-submenu">
+                            <% if (canAccess('perbaikan_proses')) { %>
+                              <li><a href="/perbaikan?type=rekondisi"><i class="bi bi-tools"></i>
+                                  <%= __('Rekondisi') %>
+                                </a></li>
+                              <li><a href="/perbaikan?type=refurbish"><i class="bi bi-wrench"></i>
+                                  <%= __('Refurbish') %>
+                                </a></li>
+                              <li><a href="/perbaikan?type=write_off"><i class="bi bi-x-circle"></i>
+                                  <%= __('Write Off') %>
+                                </a></li>
+                              <% } %>
+                          </ul>
+                        </div>
+                      </li>
+                      <% } %>
+
+                        <%# ── Recovery (Hidden) ──────────────────────────────────────────────── %>
+                          <% if (false && canAccess('recovery')) { %>
+                            <li class="nav-item">
+                              <a class="sidebar-link sidebar-dropdown-toggle collapsed" data-bs-toggle="collapse"
+                                href="#navRecovery" role="button">
+                                <i class="bi bi-recycle"></i> <span>
+                                  <%= __('Recovery') %>
+                                </span>
+                                <i class="bi bi-chevron-down sidebar-chevron"></i>
+                              </a>
+                              <div class="collapse" id="navRecovery">
+                                <ul class="sidebar-submenu">
+                                  <li><a href="/recovery?type=refurbish"><i class="bi bi-arrow-repeat"></i>
+                                      <%= __('Refurbish') %>
+                                    </a></li>
+                                  <li><a href="/recovery?type=write_off"><i class="bi bi-trash3"></i>
+                                      <%= __('Write Off') %>
+                                    </a></li>
+                                </ul>
+                              </div>
+                            </li>
+                            <% } %>
+
+
+
+                              <%# ── Inventory ─────────────────────────────────────────────────────── %>
+                                <% if (canAccess('inventory')) { %>
+                                  <li class="nav-item">
+                                    <a class="sidebar-link sidebar-dropdown-toggle collapsed" data-bs-toggle="collapse"
+                                      href="#navInventory" role="button">
+                                      <i class="bi bi-boxes"></i> <span>
+                                        <%= __('Inventory') %>
+                                      </span>
+                                      <i class="bi bi-chevron-down sidebar-chevron"></i>
+                                    </a>
+                                    <div class="collapse" id="navInventory">
+                                      <ul class="sidebar-submenu">
+                                        <li><a href="/inventory"><i class="bi bi-grid"></i>
+                                            <%= __('Dashboard Stok') %>
+                                          </a></li>
+                                        <li><a href="/inventory/category/rekondisi"><i class="bi bi-tools"></i>
+                                            <%= __('Stok Rekondisi') %>
+                                          </a></li>
+                                        <li><a href="/inventory/category/refurbish"><i class="bi bi-stars"></i>
+                                            <%= __('Stok Refurbish') %>
+                                          </a></li>
+                                        <li><a href="/inventory/category/write_off"><i class="bi bi-trash3"></i>
+                                            <%= __('Stok Write-Off') %>
+                                          </a></li>
+                                        <li><a href="/inventory/category/return_to_supplier"><i class="bi bi-truck"></i>
+                                            <%= __('Stok Supplier Lokal') %>
+                                          </a></li>
+                                        <!-- <li><a href="/inventory/sales-report"><i class="bi bi-receipt"></i>
+                                            <%= __('Laporan Penjualan') %>
+                                          </a></li> -->
+                                      </ul>
+                                    </div>
+                                  </li>
+                                  <% } %>
+
+                                    <%# ── Master Data ─────────────────────────────────────────────────── %>
+                                      <% if (canAccess('master_barang') || canAccess('master_expedisi') ||
+                                        canAccess('master_supplier') || canAccess('paket_terkirim')) { %>
+                                        <li class="nav-item">
+                                          <a class="sidebar-link sidebar-dropdown-toggle collapsed"
+                                            data-bs-toggle="collapse" href="#navMaster" role="button">
+                                            <i class="bi bi-database"></i> <span>
+                                              <%= __('Master Data') %>
+                                            </span>
+                                            <i class="bi bi-chevron-down sidebar-chevron"></i>
+                                          </a>
+                                          <div class="collapse" id="navMaster">
+                                            <ul class="sidebar-submenu">
+                                              <% if (canAccess('master_barang')) { %>
+                                                <li><a href="/master-barang"><i class="bi bi-box-seam-fill"></i>
+                                                    <%= __('Master Barang') %>
+                                                  </a></li>
+                                                <% } %>
+                                                  <% if (canAccess('master_expedisi')) { %>
+                                                    <li><a href="/master-expedisi"><i class="bi bi-truck"></i>
+                                                        <%= __('Master Expedisi') %>
+                                                      </a></li>
+                                                    <% } %>
+                                                      <% if (canAccess('master_supplier')) { %>
+                                                        <li><a href="/master-supplier"><i class="bi bi-building"></i>
+                                                            <%= __('Master Supplier') %>
+                                                          </a></li>
+                                                        <% } %>
+                                                          <% if (canAccess('paket_terkirim')) { %>
+                                                            <li><a href="/master-paket-terkirim"><i
+                                                                  class="bi bi-box-arrow-up"></i>
+                                                                <%= __('Master Paket Terkirim') %>
+                                                              </a></li>
+                                                            <% } %>
+                                            </ul>
+                                          </div>
+                                        </li>
+                                        <% } %>
+
+                                          <%# ── Berita Acara ────────────────────────────────────────────────── %>
+                                            <% if (canAccess('ba')) { %>
+                                              <li class="nav-item">
+                                                <a class="sidebar-link sidebar-dropdown-toggle collapsed"
+                                                  data-bs-toggle="collapse" href="#navBA" role="button">
+                                                  <i class="bi bi-file-earmark-text"></i> <span>
+                                                    <%= __('Berita Acara') %>
+                                                  </span>
+                                                  <i class="bi bi-chevron-down sidebar-chevron"></i>
+                                                </a>
+                                                <div class="collapse" id="navBA">
+                                                  <ul class="sidebar-submenu">
+                                                    <li><a href="/ba"><i class="bi bi-list-ul"></i>
+                                                        <%= __('Semua BA') %>
+                                                      </a></li>
+                                                    <!-- <li><a href="/ba/vendors"><i class="bi bi-building"></i>
+                                                        <%= __('Manajemen Vendor') %>
+                                                      </a></li> -->
+                                                  </ul>
+                                                </div>
+                                              </li>
+                                              <% } %>
+
+                                                <%# ── Approvals ───────────────────────────────────────────────────────
+                                                  %>
+                                                  <% if (canAccess('approvals')) { %>
+                                                    <li class="nav-item">
+                                                      <a class="sidebar-link sidebar-dropdown-toggle collapsed"
+                                                        data-bs-toggle="collapse" href="#navApprovals" role="button">
+                                                        <i class="bi bi-check-circle"></i> <span>
+                                                          <%= __('Approvals') %>
+                                                        </span>
+                                                        <i class="bi bi-chevron-down sidebar-chevron"></i>
+                                                      </a>
+                                                      <div class="collapse" id="navApprovals">
+                                                        <ul class="sidebar-submenu">
+                                                          <li><a href="/approvals/pending"><i
+                                                                class="bi bi-hourglass-split"></i>
+                                                              <%= __('Pending Approval') %>
+                                                            </a></li>
+                                                          <% if (canAccess('approvals_matrix')) { %>
+                                                            <li><a href="/approvals/matrix"><i
+                                                                  class="bi bi-diagram-3"></i>
+                                                                <%= __('Approval Matrix') %>
+                                                              </a></li>
+                                                            <li><a href="/approvals/decision-tree"><i
+                                                                  class="bi bi-diagram-2"></i>
+                                                                <%= __('Decision Tree') %>
+                                                              </a></li>
+                                                            <% } %>
+                                                        </ul>
+                                                      </div>
+                                                    </li>
+                                                    <% } %>
+
+                                                      <%# ── Reports
+                                                        ───────────────────────────────────────────────────────── %>
+                                                        <% if (canAccess('reports')) { %>
+                                                          <li class="nav-item">
+                                                            <a class="sidebar-link sidebar-dropdown-toggle collapsed"
+                                                              data-bs-toggle="collapse" href="#navReports"
+                                                              role="button">
+                                                              <i class="bi bi-graph-up"></i> <span>
+                                                                <%= __('Reports') %>
+                                                              </span>
+                                                              <i class="bi bi-chevron-down sidebar-chevron"></i>
+                                                            </a>
+                                                            <div class="collapse" id="navReports">
+                                                              <ul class="sidebar-submenu">
+                                                                <li><a href="/reports/summary"><i
+                                                                      class="bi bi-file-earmark-bar-graph"></i>
+                                                                    <%= __('Summary Report') %>
+                                                                  </a></li>
+                                                                <li><a href="/reports/analysis"><i
+                                                                      class="bi bi-graph-up"></i>
+                                                                    <%= __('Analisis Retur') %>
+                                                                  </a></li>
+                                                                <li><a href="/reports/aging"><i
+                                                                      class="bi bi-calendar-event"></i>
+                                                                    <%= __('Aging Report') %>
+                                                                  </a></li>
+                                                                <li><a href="/reports/value-impact"><i
+                                                                      class="bi bi-currency-dollar"></i>
+                                                                    <%= __('Value Impact') %>
+                                                                  </a></li>
+                                                              </ul>
+                                                            </div>
+                                                          </li>
+                                                          <% } %>
+
+                                                            <%# ── Admin
+                                                              ───────────────────────────────────────────────────────────
+                                                              %>
+                                                              <% if (canAccess('admin_panel')) { %>
+                                                                <li class="nav-item">
+                                                                  <a class="sidebar-link sidebar-dropdown-toggle collapsed"
+                                                                    data-bs-toggle="collapse" href="#navAdmin"
+                                                                    role="button">
+                                                                    <i class="bi bi-gear"></i> <span>
+                                                                      <%= __('Admin') %>
+                                                                    </span>
+                                                                    <i class="bi bi-chevron-down sidebar-chevron"></i>
+                                                                  </a>
+                                                                  <div class="collapse" id="navAdmin">
+                                                                    <ul class="sidebar-submenu">
+                                                                      <li><a href="/admin/users"><i
+                                                                            class="bi bi-people"></i>
+                                                                          <%= __('Users') %>
+                                                                        </a></li>
+                                                                      <li><a href="/admin/logs"><i
+                                                                            class="bi bi-journal-text"></i>
+                                                                          <%= __('Activity Logs') %>
+                                                                        </a>
+                                                                      </li>
+                                                                      <% if (canAccess('admin_rbac')) { %>
+                                                                        <li><a href="/admin/rbac"><i
+                                                                              class="bi bi-shield-lock"></i>
+                                                                            <%= __('Hak Akses (RBAC)') %>
+                                                                          </a></li>
+                                                                        <% } %>
+                                                                          <% if (canAccess('admin_sla')) { %>
+                                                                            <li><a href="/sla"><i
+                                                                                  class="bi bi-stopwatch"></i>
+                                                                                <%= __('SLA Configs') %>
+                                                                              </a></li>
+                                                                            <% } %>
+                                                                    </ul>
+                                                                  </div>
+                                                                </li>
+                                                                <% } %>
+
+                                                                  <%# ── Price Approval (FAT) ── %>
+                                                                    <% if (canAccess('recovery_fat')) { %>
+                                                                      <li class="nav-item">
+                                                                        <a class="sidebar-link"
+                                                                          href="/recovery/fat-approvals">
+                                                                          <i class="bi bi-patch-check"></i> <span>
+                                                                            <%= __('Approval Harga (FAT)') %>
+                                                                          </span>
+                                                                        </a>
+                                                                      </li>
+                                                                      <% } %>
+
+    </ul>
+  </div>
+
+  <div class="sidebar-footer">
+    <div
+      class="d-flex align-items-center justify-content-between px-3 py-2 border-bottom border-secondary border-opacity-25 mb-2">
+      <span class="text-white-50 small"><i class="bi bi-translate"></i> Bahasa:</span>
+      <div>
+        <a href="/change-lang/id"
+          class="badge <%= currentLang === 'id' ? 'bg-primary' : 'bg-dark border border-secondary text-white-50' %> text-decoration-none me-1">ID</a>
+        <a href="/change-lang/en"
+          class="badge <%= currentLang === 'en' ? 'bg-primary' : 'bg-dark border border-secondary text-white-50' %> text-decoration-none">EN</a>
+      </div>
+    </div>
+    <a class="sidebar-link sidebar-dropdown-toggle collapsed" data-bs-toggle="collapse" href="#navUser" role="button">
+      <i class="bi bi-person-circle"></i> <span>
+        <%= user ? user.fullName : '' %>
+      </span>
+      <i class="bi bi-chevron-down sidebar-chevron"></i>
+    </a>
+    <div class="collapse" id="navUser">
+      <ul class="sidebar-submenu">
+        <li><a href="/profile"><i class="bi bi-person"></i>
+            <%= __('My Profile') %>
+          </a></li>
+        <li><a href="/auth/logout"><i class="bi bi-box-arrow-right"></i>
+            <%= __('Logout') %>
+          </a></li>
+      </ul>
+    </div>
+  </div>
+</nav>
+
+<script>
+  (function () {
+    const sidebar = document.getElementById('sidebar');
+    const backdrop = document.getElementById('sidebarBackdrop');
+    const toggleBtn = document.getElementById('sidebarToggle');
+    const closeBtn = document.getElementById('sidebarClose');
+
+    function openSidebar() { sidebar.classList.add('show'); backdrop.classList.add('show'); document.body.classList.add('sidebar-open'); }
+    function closeSidebar() { sidebar.classList.remove('show'); backdrop.classList.remove('show'); document.body.classList.remove('sidebar-open'); }
+
+    if (toggleBtn) toggleBtn.addEventListener('click', openSidebar);
+    if (closeBtn) closeBtn.addEventListener('click', closeSidebar);
+    if (backdrop) backdrop.addEventListener('click', closeSidebar);
+
+    // Rotate chevron on collapse toggle
+    document.querySelectorAll('.sidebar-dropdown-toggle').forEach(function (el) {
+      var targetId = el.getAttribute('href');
+      var target = document.querySelector(targetId);
+      if (!target) return;
+      target.addEventListener('show.bs.collapse', function () { el.classList.remove('collapsed'); });
+      target.addEventListener('hide.bs.collapse', function () { el.classList.add('collapsed'); });
+    });
+  })();
+</script>

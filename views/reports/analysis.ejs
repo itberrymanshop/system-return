@@ -1,0 +1,254 @@
+<div class="container-fluid mt-5 pt-4">
+  <!-- Header & Filters -->
+  <div class="row align-items-center mb-4">
+    <div class="col-md-6 col-12 mb-3 mb-md-0">
+      <h2 class="h3 mb-1"><i class="bi bi-graph-up-arrow text-primary me-2"></i>Analisis Retur</h2>
+      <p class="text-muted mb-0 small">Analisis sumber retur dan kategori produk dalam rentang waktu yang dipilih.</p>
+    </div>
+    <div class="col-md-6 col-12">
+      <form class="d-flex flex-wrap gap-2 justify-content-md-end align-items-end" method="GET"
+        action="/reports/analysis">
+        <div style="min-width: 140px;">
+          <label class="form-label mb-1 small fw-semibold text-muted">Tanggal Mulai</label>
+          <input type="date" class="form-control form-control-sm border-secondary-subtle" name="date_from"
+            value="<%= dateFrom %>">
+        </div>
+        <div style="min-width: 140px;">
+          <label class="form-label mb-1 small fw-semibold text-muted">Tanggal Selesai</label>
+          <input type="date" class="form-control form-control-sm border-secondary-subtle" name="date_to"
+            value="<%= dateTo %>">
+        </div>
+        <div class="d-flex gap-1 mt-3 mt-sm-0">
+          <button class="btn btn-primary btn-sm px-3"><i class="bi bi-filter me-1"></i>Filter</button>
+          <a href="/reports/analysis" class="btn btn-outline-secondary btn-sm px-3">Reset</a>
+        </div>
+      </form>
+    </div>
+  </div>
+
+  <% /* ── Sumber Retur ── */ const sourceLabels={ retur_penjualan_mp: 'Retur Penjualan MP' ,
+    retur_penjualan_grosir:'Retur Penjualan Grosir', retur_internal_qc: 'Retur Internal (QC)' }; const sourceColors={
+    retur_penjualan_mp: { badge: '#0d6efd' }, retur_penjualan_grosir:{ badge: '#198754' }, retur_internal_qc: {
+    badge: '#ffc107' } }; const totalQtyAll=sourceItemsTotal.total_qty || 0; /* ── Kategori Product ── */ const
+    catColors={ 'Elektronik' : { badge: '#6f42c1' }, 'Non Elektronik' :{ badge: '#fd7e14' } }; const
+    totalCatQty=itemCategoryTotal.total_qty || 0; /* ── Alasan Retur ── */ const reasonLabels={
+    packing_rusak: 'Packing Rusak', pecah: 'Pecah', kurang_part: 'Kurang Part', rekondisi_baik: 'Rekondisi / Baik'
+    }; /* ── Kategori Sorting ── */ const sortingLabels={ return_to_supplier: 'Bisa Retur Supplier',
+    rekondisi: 'Rekondisi', refurbish: 'Refurbish', write_off: 'Write Off' }; const sortingColors={
+    return_to_supplier: { badge: '#6c757d' }, rekondisi: { badge: '#0d6efd' }, refurbish: { badge: '#198754' },
+    write_off: { badge: '#dc3545' } }; const totalSortingItems=sortingCategoryTotal.total_items || 0; %>
+
+    <!-- Dashboard Row: Sumber Retur + Kategori Product + Alasan Retur -->
+    <div class="row g-4 mb-4">
+
+      <!-- Tabel Sumber Retur -->
+      <div class="col-12 col-xl-4">
+        <div class="card border-0 shadow-sm h-100">
+          <div class="card-header border-0 bg-transparent py-3 d-flex align-items-center gap-2">
+            <span class="rounded-circle bg-primary d-inline-flex align-items-center justify-content-center"
+              style="width:32px;height:32px;">
+              <i class="bi bi-box-arrow-in-left text-white" style="font-size:0.9rem;"></i>
+            </span>
+            <h5 class="card-title mb-0 fw-semibold text-dark">Sumber Retur</h5>
+          </div>
+          <div class="card-body p-0">
+            <table class="table table-bordered mb-0" id="sourceReturnTable" style="border-color:#dee2e6;">
+              <thead>
+                <tr style="background:#f8f9fa;">
+                  <th class="ps-4 py-3 fw-bold text-dark" style="border-color:#dee2e6;">Sumber</th>
+                  <th class="text-end pe-4 py-3 fw-bold text-dark" style="border-color:#dee2e6;">Total Unit</th>
+                </tr>
+              </thead>
+              <tbody>
+                <% bySourceItemsList.forEach(function(row) { const key=row.source_type; const label=sourceLabels[key] ||
+                  key; const sc=sourceColors[key] || { badge: '#6c757d' }; const pct=totalQtyAll> 0 ?
+                  Math.round((row.total_qty / totalQtyAll) * 100) : 0;
+                  %>
+                  <tr class="align-middle">
+                    <td class="ps-4 py-3">
+                      <div class="d-flex align-items-center gap-2">
+                        <span class="d-inline-block rounded-circle"
+                          style="width:10px;height:10px;background:<%= sc.badge %>;flex-shrink:0;"></span>
+                        <span class="fw-semibold">
+                          <%= label %>
+                        </span>
+                      </div>
+                      <div class="mt-1" style="height:5px;border-radius:3px;background:#f0f0f0;overflow:hidden;">
+                        <div
+                          style="height:100%;width:<%= pct %>%;background:<%= sc.badge %>;border-radius:3px;transition:width .4s;">
+                        </div>
+                      </div>
+                    </td>
+                    <td class="text-end pe-4 py-3 fw-bold" style="font-size:1.05rem;">
+                      <%= Number(row.total_qty).toLocaleString('id-ID') %>
+                    </td>
+                  </tr>
+                  <% }); %>
+              </tbody>
+              <tfoot>
+                <tr style="background:#f8f9fa;border-top:2px solid #dee2e6;">
+                  <td class="ps-4 py-3 fw-bold text-dark">Total</td>
+                  <td class="text-end pe-4 py-3 fw-bold text-dark" style="font-size:1.1rem;">
+                    <%= Number(sourceItemsTotal.total_qty).toLocaleString('id-ID') %>
+                  </td>
+                </tr>
+              </tfoot>
+            </table>
+          </div>
+        </div>
+      </div>
+
+      <!-- Tabel Kategori Product -->
+      <div class="col-12 col-xl-4">
+        <div class="card border-0 shadow-sm h-100">
+          <div class="card-header border-0 bg-transparent py-3 d-flex align-items-center gap-2">
+            <span class="rounded-circle bg-purple d-inline-flex align-items-center justify-content-center"
+              style="width:32px;height:32px;background:#6f42c1;">
+              <i class="bi bi-tags text-white" style="font-size:0.9rem;"></i>
+            </span>
+            <h5 class="card-title mb-0 fw-semibold text-dark">Kategori Product</h5>
+          </div>
+          <div class="card-body p-0">
+            <table class="table table-bordered mb-0" id="categoryProductTable" style="border-color:#dee2e6;">
+              <thead>
+                <tr style="background:#f8f9fa;">
+                  <th class="ps-4 py-3 fw-bold text-dark" style="border-color:#dee2e6;">Kategori</th>
+                  <th class="text-end pe-4 py-3 fw-bold text-dark" style="border-color:#dee2e6;">Total Unit</th>
+                </tr>
+              </thead>
+              <tbody>
+                <% byItemCategoryList.forEach(function(row) { const key=row.item_category; const cc=catColors[key] || {
+                  badge: '#6c757d' }; const pct=totalCatQty> 0 ? Math.round((row.total_qty / totalCatQty) * 100) : 0;
+                  %>
+                  <tr class="align-middle">
+                    <td class="ps-4 py-3">
+                      <div class="d-flex align-items-center gap-2">
+                        <span class="d-inline-block rounded-circle"
+                          style="width:10px;height:10px;background:<%= cc.badge %>;flex-shrink:0;"></span>
+                        <span class="fw-semibold">
+                          <%= key %>
+                        </span>
+                      </div>
+                      <div class="mt-1" style="height:5px;border-radius:3px;background:#f0f0f0;overflow:hidden;">
+                        <div
+                          style="height:100%;width:<%= pct %>%;background:<%= cc.badge %>;border-radius:3px;transition:width .4s;">
+                        </div>
+                      </div>
+                    </td>
+                    <td class="text-end pe-4 py-3 fw-bold" style="font-size:1.05rem;font-variant-numeric:tabular-nums;">
+                      <%= Number(row.total_qty).toLocaleString('id-ID') %>
+                    </td>
+                  </tr>
+                  <% }); %>
+              </tbody>
+              <tfoot>
+                <tr style="background:#f8f9fa;border-top:2px solid #dee2e6;">
+                  <td class="ps-4 py-3 fw-bold text-dark">Total</td>
+                  <td class="text-end pe-4 py-3 fw-bold text-dark" style="font-size:1.1rem;font-variant-numeric:tabular-nums;">
+                    <%= Number(itemCategoryTotal.total_qty).toLocaleString('id-ID') %>
+                  </td>
+                </tr>
+              </tfoot>
+            </table>
+          </div>
+        </div>
+      </div>
+
+      <!-- Tabel Alasan Retur -->
+      <div class="col-12 col-xl-4">
+        <div class="card border-0 shadow-sm h-100">
+          <div class="card-header border-0 bg-transparent py-3 d-flex align-items-center gap-2">
+            <span class="rounded-circle d-inline-flex align-items-center justify-content-center"
+              style="width:32px;height:32px;background:#0d6efd;">
+              <i class="bi bi-exclamation-circle text-white" style="font-size:0.9rem;"></i>
+            </span>
+            <h5 class="card-title mb-0 fw-semibold text-dark">Alasan Retur</h5>
+          </div>
+          <div class="card-body p-0">
+            <table class="table table-bordered mb-0" id="returnReasonTable" style="border-color:#dee2e6;">
+              <thead>
+                <tr style="background:#f8f9fa;">
+                  <th class="ps-4 py-3 fw-bold text-dark" style="border-color:#dee2e6;">Alasan Retur</th>
+                  <th class="text-end pe-4 py-3 fw-bold text-dark" style="border-color:#dee2e6;">Total Unit</th>
+                </tr>
+              </thead>
+              <tbody>
+                <% byReturnReasonList.forEach(function(row) { const key=row.reason_key; const label=reasonLabels[key] || key; %>
+                  <tr class="align-middle">
+                    <td class="ps-4 py-3 fw-semibold"><%= label %></td>
+                    <td class="text-end pe-4 py-3 fw-bold" style="font-size:1.05rem;">
+                      <%= Number(row.total_qty).toLocaleString('id-ID') %>
+                    </td>
+                  </tr>
+                <% }); %>
+              </tbody>
+              <tfoot>
+                <tr style="background:#f8f9fa;border-top:2px solid #dee2e6;">
+                  <td class="ps-4 py-3 fw-bold text-dark">Total</td>
+                  <td class="text-end pe-4 py-3 fw-bold text-dark" style="font-size:1.1rem;">
+                    <%= Number(returnReasonTotal.total_qty || 0).toLocaleString('id-ID') %>
+                  </td>
+                </tr>
+              </tfoot>
+            </table>
+          </div>
+        </div>
+      </div>
+
+    </div><!-- /row -->
+
+    <!-- Dashboard Row: Kategori Sorting -->
+    <div class="row g-4 mb-4">
+      <div class="col-12 col-xl-4">
+        <div class="card border-0 shadow-sm h-100">
+          <div class="card-header border-0 bg-transparent py-3 d-flex align-items-center gap-2">
+            <span class="rounded-circle d-inline-flex align-items-center justify-content-center"
+              style="width:32px;height:32px;background:#6c757d;">
+              <i class="bi bi-sort-down text-white" style="font-size:0.9rem;"></i>
+            </span>
+            <h5 class="card-title mb-0 fw-semibold text-dark">Kategori Sorting</h5>
+          </div>
+          <div class="card-body p-0">
+            <table class="table table-bordered mb-0" id="sortingCategoryTable" style="border-color:#dee2e6;">
+              <thead>
+                <tr style="background:#f8f9fa;">
+                  <th class="ps-4 py-3 fw-bold text-dark" style="border-color:#dee2e6;">Sorting</th>
+                  <th class="text-end pe-4 py-3 fw-bold text-dark" style="border-color:#dee2e6;">Total Unit</th>
+                </tr>
+              </thead>
+              <tbody>
+                <% bySortingCategoryList.forEach(function(row) { const key=row.sorting_key; const label=sortingLabels[key] || key; const sc=sortingColors[key] || { badge: '#6c757d' }; const pct=totalSortingItems> 0 ? Math.round((row.total_items / totalSortingItems) * 100) : 0; %>
+                  <tr class="align-middle">
+                    <td class="ps-4 py-3">
+                      <div class="d-flex align-items-center gap-2">
+                        <span class="d-inline-block rounded-circle"
+                          style="width:10px;height:10px;background:<%= sc.badge %>;flex-shrink:0;"></span>
+                        <span class="fw-semibold"><%= label %></span>
+                      </div>
+                      <div class="mt-1" style="height:5px;border-radius:3px;background:#f0f0f0;overflow:hidden;">
+                        <div
+                          style="height:100%;width:<%= pct %>%;background:<%= sc.badge %>;border-radius:3px;transition:width .4s;">
+                        </div>
+                      </div>
+                    </td>
+                    <td class="text-end pe-4 py-3 fw-bold" style="font-size:1.05rem;">
+                      <%= Number(row.total_items).toLocaleString('id-ID') %>
+                    </td>
+                  </tr>
+                <% }); %>
+              </tbody>
+              <tfoot>
+                <tr style="background:#f8f9fa;border-top:2px solid #dee2e6;">
+                  <td class="ps-4 py-3 fw-bold text-dark">Total</td>
+                  <td class="text-end pe-4 py-3 fw-bold text-dark" style="font-size:1.1rem;">
+                    <%= Number(sortingCategoryTotal.total_items || 0).toLocaleString('id-ID') %>
+                  </td>
+                </tr>
+              </tfoot>
+            </table>
+          </div>
+        </div>
+      </div>
+    </div>
+
+</div>

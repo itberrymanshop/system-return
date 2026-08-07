@@ -1,0 +1,251 @@
+<div class="container-fluid mt-5 pt-4">
+  <div class="row mb-3">
+    <div class="col">
+      <h2><i class="bi bi-diagram-2"></i> Decision Tree</h2>
+      <nav aria-label="breadcrumb">
+        <ol class="breadcrumb">
+          <li class="breadcrumb-item"><a href="/dashboard">Dashboard</a></li>
+          <li class="breadcrumb-item active">Decision Tree</li>
+        </ol>
+      </nav>
+    </div>
+    <% if (hasRole('admin')) { %>
+    <div class="col-auto">
+      <button class="btn btn-primary btn-sm" data-bs-toggle="modal" data-bs-target="#addRuleModal">
+        <i class="bi bi-plus-circle"></i> Add Rule
+      </button>
+    </div>
+    <% } %>
+  </div>
+
+  <div class="card">
+    <div class="table-responsive">
+      <table class="table table-hover datatable mb-0">
+        <thead class="table-light">
+          <tr>
+            <th>#</th><th>Rule Name</th><th>Condition</th><th>Action</th>
+            <th>Priority</th><th>Status</th>
+            <% if (hasRole('admin')) { %><th>Actions</th><% } %>
+          </tr>
+        </thead>
+        <tbody>
+          <% if (!rules.length) { %>
+            <tr><td colspan="7" class="text-center text-muted py-4">No decision rules defined</td></tr>
+          <% } %>
+          <% rules.forEach((rule, i) => { %>
+          <tr>
+            <td><%= i+1 %></td>
+            <td><strong><%= rule.rule_name %></strong></td>
+            <td>
+              <code><%= rule.condition_field %> <%= rule.condition_operator %> <%= rule.condition_value %></code>
+              <small class="text-muted d-block text-capitalize"><%= rule.condition_type %></small>
+            </td>
+            <td>
+              <span class="badge bg-info text-capitalize"><%= rule.action_type.replace('_',' ') %></span>
+              <small class="d-block text-muted"><%= rule.action_value %></small>
+            </td>
+            <td><span class="badge bg-secondary">P<%= rule.priority_order %></span></td>
+            <td>
+              <span class="badge bg-<%= rule.is_active ? 'success' : 'secondary' %>">
+                <%= rule.is_active ? 'Active' : 'Inactive' %>
+              </span>
+            </td>
+            <% if (hasRole('admin')) { %>
+            <td>
+              <div class="btn-group btn-group-sm">
+                <button class="btn btn-outline-warning" data-bs-toggle="modal" data-bs-target="#editRuleModal"
+                  data-id="<%= rule.decision_id %>"
+                  data-name="<%= rule.rule_name %>"
+                  data-ctype="<%= rule.condition_type %>"
+                  data-cfield="<%= rule.condition_field %>"
+                  data-cope="<%= rule.condition_operator %>"
+                  data-cval="<%= rule.condition_value %>"
+                  data-atype="<%= rule.action_type %>"
+                  data-aval="<%= rule.action_value %>"
+                  data-prio="<%= rule.priority_order %>"
+                  data-active="<%= rule.is_active %>">
+                  <i class="bi bi-pencil"></i>
+                </button>
+                <form method="POST" action="/approvals/decision-tree/<%= rule.decision_id %>/delete" class="d-inline">
+                  <button type="submit" class="btn btn-outline-danger confirm-delete" title="Delete">
+                    <i class="bi bi-trash"></i>
+                  </button>
+                </form>
+              </div>
+            </td>
+            <% } %>
+          </tr>
+          <% }) %>
+        </tbody>
+      </table>
+    </div>
+  </div>
+</div>
+
+<% if (hasRole('admin')) { %>
+<!-- Add Rule Modal -->
+<div class="modal fade" id="addRuleModal" tabindex="-1">
+  <div class="modal-dialog">
+    <div class="modal-content">
+      <form method="POST" action="/approvals/decision-tree/create">
+        <div class="modal-header"><h5 class="modal-title">Add Decision Rule</h5>
+          <button type="button" class="btn-close" data-bs-dismiss="modal"></button></div>
+        <div class="modal-body">
+          <div class="mb-3">
+            <label class="form-label">Rule Name <span class="text-danger">*</span></label>
+            <input type="text" class="form-control" name="rule_name" required>
+          </div>
+          <hr><small class="text-muted fw-bold">CONDITION</small>
+          <div class="row g-2 mt-1">
+            <div class="col-md-4">
+              <label class="form-label">Type</label>
+              <select class="form-select" name="condition_type">
+                <% ['value_check', 'category_check', 'priority_check', 'source_check', 'status_check', 'value', 'category', 'source', 'status'].forEach(t => { %>
+                  <option value="<%= t %>"><%= t.replace('_', ' ') %></option>
+                <% }) %>
+              </select>
+            </div>
+            <div class="col-md-4">
+              <label class="form-label">Field</label>
+              <input type="text" class="form-control" name="condition_field" required placeholder="e.g. total_value">
+            </div>
+            <div class="col-md-4">
+              <label class="form-label">Operator</label>
+              <select class="form-select" name="condition_operator">
+                <% ['=', '!=', '>', '<', '>=', '<=', 'IN', 'LIKE'].forEach(o => { %>
+                  <option value="<%= o %>"><%= o %></option>
+                <% }) %>
+              </select>
+            </div>
+            <div class="col-12">
+              <label class="form-label">Value</label>
+              <input type="text" class="form-control" name="condition_value" required placeholder="e.g. 1000000">
+            </div>
+          </div>
+          <hr><small class="text-muted fw-bold">ACTION</small>
+          <div class="row g-2 mt-1">
+            <div class="col-md-6">
+              <label class="form-label">Action Type</label>
+              <select class="form-select" name="action_type">
+                <% ['set_status','require_approval','assign_role','send_notification'].forEach(a => { %>
+                  <option value="<%= a %>"><%= a.replace('_',' ') %></option>
+                <% }) %>
+              </select>
+            </div>
+            <div class="col-md-6">
+              <label class="form-label">Action Value</label>
+              <input type="text" class="form-control" name="action_value" required placeholder="e.g. high">
+            </div>
+            <div class="col-md-6">
+              <label class="form-label">Priority Order</label>
+              <input type="number" class="form-control" name="priority_order" value="1" min="1">
+            </div>
+            <div class="col-md-6">
+              <label class="form-label">Status</label>
+              <select class="form-select" name="is_active">
+                <option value="1">Active</option>
+                <option value="0">Inactive</option>
+              </select>
+            </div>
+          </div>
+        </div>
+        <div class="modal-footer">
+          <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Cancel</button>
+          <button type="submit" class="btn btn-primary">Create Rule</button>
+        </div>
+      </form>
+    </div>
+  </div>
+</div>
+
+<!-- Edit Rule Modal -->
+<div class="modal fade" id="editRuleModal" tabindex="-1">
+  <div class="modal-dialog">
+    <div class="modal-content">
+      <form method="POST" id="editRuleForm">
+        <div class="modal-header"><h5 class="modal-title">Edit Decision Rule</h5>
+          <button type="button" class="btn-close" data-bs-dismiss="modal"></button></div>
+        <div class="modal-body">
+          <div class="mb-3">
+            <label class="form-label">Rule Name</label>
+            <input type="text" class="form-control" name="rule_name" id="eName" required>
+          </div>
+          <hr><small class="text-muted fw-bold">CONDITION</small>
+          <div class="row g-2 mt-1">
+            <div class="col-md-4">
+              <label class="form-label">Type</label>
+              <select class="form-select" name="condition_type" id="eCtype">
+                <% ['value_check', 'category_check', 'priority_check', 'source_check', 'status_check', 'value', 'category', 'source', 'status'].forEach(t => { %>
+                  <option value="<%= t %>"><%= t.replace('_', ' ') %></option>
+                <% }) %>
+              </select>
+            </div>
+            <div class="col-md-4">
+              <label class="form-label">Field</label>
+              <input type="text" class="form-control" name="condition_field" id="eCfield">
+            </div>
+            <div class="col-md-4">
+              <label class="form-label">Operator</label>
+              <select class="form-select" name="condition_operator" id="eCope">
+                <% ['=', '!=', '>', '<', '>=', '<=', 'IN', 'LIKE'].forEach(o => { %>
+                  <option value="<%= o %>"><%= o %></option>
+                <% }) %>
+              </select>
+            </div>
+            <div class="col-12">
+              <label class="form-label">Value</label>
+              <input type="text" class="form-control" name="condition_value" id="eCval">
+            </div>
+          </div>
+          <hr><small class="text-muted fw-bold">ACTION</small>
+          <div class="row g-2 mt-1">
+            <div class="col-md-6">
+              <label class="form-label">Action Type</label>
+              <select class="form-select" name="action_type" id="eAtype">
+                <% ['set_status','require_approval','assign_role','send_notification'].forEach(a => { %>
+                  <option value="<%= a %>"><%= a.replace('_',' ') %></option>
+                <% }) %>
+              </select>
+            </div>
+            <div class="col-md-6">
+              <label class="form-label">Action Value</label>
+              <input type="text" class="form-control" name="action_value" id="eAval">
+            </div>
+            <div class="col-md-6">
+              <label class="form-label">Priority Order</label>
+              <input type="number" class="form-control" name="priority_order" id="ePrio">
+            </div>
+            <div class="col-md-6">
+              <label class="form-label">Status</label>
+              <select class="form-select" name="is_active" id="eActive">
+                <option value="1">Active</option>
+                <option value="0">Inactive</option>
+              </select>
+            </div>
+          </div>
+        </div>
+        <div class="modal-footer">
+          <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Cancel</button>
+          <button type="submit" class="btn btn-warning">Save Changes</button>
+        </div>
+      </form>
+    </div>
+  </div>
+</div>
+
+<script>
+document.getElementById('editRuleModal').addEventListener('show.bs.modal', function(e) {
+  const b = e.relatedTarget;
+  document.getElementById('editRuleForm').action = '/approvals/decision-tree/' + b.dataset.id + '/update';
+  document.getElementById('eName').value   = b.dataset.name;
+  document.getElementById('eCtype').value  = b.dataset.ctype;
+  document.getElementById('eCfield').value = b.dataset.cfield;
+  document.getElementById('eCope').value   = b.dataset.cope;
+  document.getElementById('eCval').value   = b.dataset.cval;
+  document.getElementById('eAtype').value  = b.dataset.atype;
+  document.getElementById('eAval').value   = b.dataset.aval;
+  document.getElementById('ePrio').value   = b.dataset.prio;
+  document.getElementById('eActive').value = b.dataset.active;
+});
+</script>
+<% } %>

@@ -1,0 +1,183 @@
+<div class="container-fluid mt-5 pt-4">
+  <div class="row mb-3">
+    <div class="col">
+      <h2><i class="bi bi-tools"></i> Proses Perbaikan</h2>
+      <p class="text-muted">Daftar item retur dengan status perbaikan pending yang perlu diproses.</p>
+    </div>
+  </div>
+
+  <ul class="nav nav-tabs mb-3">
+    <li class="nav-item">
+      <a class="nav-link <%= type === 'rekondisi' ? 'active fw-bold' : '' %>" href="/perbaikan?type=rekondisi">
+        <i class="bi bi-tools"></i> Rekondisi
+      </a>
+    </li>
+    <li class="nav-item">
+      <a class="nav-link <%= type === 'refurbish' ? 'active fw-bold' : '' %>" href="/perbaikan?type=refurbish">
+        <i class="bi bi-wrench"></i> Refurbish
+      </a>
+    </li>
+    <li class="nav-item">
+      <a class="nav-link <%= type === 'write_off' ? 'active fw-bold' : '' %>" href="/perbaikan?type=write_off">
+        <i class="bi bi-x-circle"></i> Write Off
+      </a>
+    </li>
+  </ul>
+
+  <%# SLA Alerts %>
+  <% if (slaAlerts && slaAlerts.length > 0) { %>
+    <div class="alert alert-danger mb-3">
+      <i class="bi bi-exclamation-triangle-fill"></i>
+      <strong>
+        <%= slaAlerts.length %> return
+      </strong> mendekati atau melewati batas SLA.
+    </div>
+  <% } %>
+
+  <form id="bulkPerbaikanForm" method="POST" action="/perbaikan/bulk?type=<%= type %>">
+    <input type="hidden" name="action" value="<%= type === 'write_off' ? 'recovery' : 'rekondisi' %>">
+    <div class="card">
+      <div class="card-header d-flex justify-content-between align-items-center">
+        <h6 class="mb-0"><i class="bi bi-tools"></i> SKU dalam Perbaikan</h6>
+        <div class="d-flex align-items-center gap-2">
+          <button type="submit" id="btnBulkProcess" class="btn btn-sm btn-primary" style="display: none;">
+            <i class="bi bi-check-circle"></i> Proses Terpilih
+          </button>
+          <span class="badge bg-secondary">
+            <%= perbaikanItems.length %> item
+          </span>
+        </div>
+      </div>
+    <div class="table-responsive">
+      <table class="table table-hover datatable mb-0">
+        <thead class="table-light">
+          <tr>
+            <th>#</th>
+            <th>No Resi</th>
+            <th>Tgl Inbound</th>
+            <th>SKU</th>
+            <th>Nama Barang</th>
+            <th>Qty</th>
+            <th>Status QC</th>
+            <th>Kategori Produk</th>
+            <th>SLA</th>
+            <th style="width: 80px;" class="text-center">
+              <input type="checkbox" id="selectAllItems" class="form-check-input">
+            </th>
+          </tr>
+        </thead>
+        <tbody>
+          <% if (perbaikanItems.length === 0) { %>
+            <tr>
+              <td colspan="10" class="text-center text-muted py-4">Tidak ada SKU dalam perbaikan</td>
+            </tr>
+          <% } %>
+          <% perbaikanItems.forEach((item, i) => { %>
+            <tr class="<%= item.slaAlert ? 'table-danger' : '' %>">
+              <td>
+                <%= i + 1 %>
+              </td>
+              <td>
+                <% if (item.resi_number) { %>
+                  <small class="text-muted"><i class="bi bi-truck"></i>
+                    <%= item.resi_number %>
+                  </small>
+                <% } else { %>
+                  <span class="text-muted">-</span>
+                <% } %>
+              </td>
+              <td>
+                <% if (item.inbound_date) { %>
+                  <small class="text-success"><i class="bi bi-check-circle"></i>
+                    <%= formatDate(item.inbound_date) %>
+                  </small>
+                <% } else { %>
+                  <small>
+                    <%= formatDate(item.return_date) %>
+                  </small>
+                <% } %>
+              </td>
+              <td><a href="/sorting/<%= item.return_id %>"
+                  class="fw-bold text-decoration-none"><code><%= item.sku %></code></a></td>
+              <td><strong>
+                  <%= item.item_name %>
+                </strong></td>
+              <td>
+                <%= item.quantity %>
+              </td>
+              <td class="text-capitalize">
+                <span class="badge bg-info">
+                  <%= item.disposition %>
+                </span>
+              </td>
+              <td>
+                <% if (item.item_category) { %>
+                  <span class="badge bg-light text-dark border font-monospace" style="font-size: 0.75rem;">
+                    <%= item.item_category %>
+                  </span>
+                <% } else { %>
+                  <span class="text-muted">-</span>
+                <% } %>
+              </td>
+              <td>
+                <% if (item.sla_deadline) { %>
+                  <span class="badge bg-<%= item.slaInfo.color %> text-nowrap">
+                    <i class="bi bi-clock"></i>
+                    <%= item.slaInfo.label %>
+                  </span>
+                  <br><small class="text-muted">
+                    <%= formatDate(item.sla_deadline) %>
+                  </small>
+                <% } else { %><span class="text-muted">-</span>
+                <% } %>
+              </td>
+              <td class="text-center">
+                <input type="checkbox" class="form-check-input item-checkbox" name="item_ids" value="<%= item.item_id %>">
+              </td>
+            </tr>
+          <% }) %>
+        </tbody>
+      </table>
+    </div>
+  </div>
+</form>
+</div>
+
+<script>
+  document.addEventListener('DOMContentLoaded', function () {
+    const selectAllCheckbox = document.getElementById('selectAllItems');
+    const itemCheckboxes = document.querySelectorAll('.item-checkbox');
+    const btnBulkProcess = document.getElementById('btnBulkProcess');
+
+    function toggleBulkButton() {
+      const checkedCount = document.querySelectorAll('.item-checkbox:checked').length;
+      if (btnBulkProcess) {
+        if (checkedCount > 0) {
+          btnBulkProcess.style.display = 'inline-block';
+        } else {
+          btnBulkProcess.style.display = 'none';
+        }
+      }
+    }
+
+    if (selectAllCheckbox) {
+      selectAllCheckbox.addEventListener('change', function () {
+        itemCheckboxes.forEach(cb => {
+          if (!cb.disabled) {
+            cb.checked = this.checked;
+          }
+        });
+        toggleBulkButton();
+      });
+    }
+
+    itemCheckboxes.forEach(cb => {
+      cb.addEventListener('change', function () {
+        if (!this.checked && selectAllCheckbox) {
+          selectAllCheckbox.checked = false;
+        }
+        toggleBulkButton();
+      });
+    });
+  });
+</script>

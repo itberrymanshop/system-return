@@ -1,0 +1,112 @@
+<div class="container-fluid mt-5 pt-4">
+  <div class="row mb-3">
+    <div class="col">
+      <h2><i class="bi bi-patch-check"></i> Persetujuan Harga Jual – FAT / Purchasing</h2>
+      <p class="text-muted">Tinjau dan setujui pengajuan harga jual dari Staff Recover.</p>
+    </div>
+  </div>
+
+  <!-- Pending Submissions -->
+  <div class="card mb-4">
+    <div class="card-header bg-warning text-dark d-flex justify-content-between align-items-center">
+      <h6 class="mb-0"><i class="bi bi-hourglass-split"></i> Menunggu Persetujuan</h6>
+      <span class="badge bg-dark"><%= submissions.length %></span>
+    </div>
+    <div class="card-body p-0">
+      <% if (submissions.length === 0) { %>
+        <div class="text-center text-muted py-4">Tidak ada pengajuan yang menunggu persetujuan.</div>
+      <% } %>
+      <% submissions.forEach(s => { %>
+      <div class="p-3 border-bottom">
+        <div class="row align-items-start g-2">
+          <div class="col-md-5">
+            <% if (s.resi_number) { %>
+              <small class="text-muted"><i class="bi bi-truck"></i> Resi: <%= s.resi_number %></small>
+            <% } %>
+            <span class="text-muted ms-2"><%= s.customer_name || '-' %></span>
+            <br>
+            <a href="/recovery/item/<%= s.item_id %>" class="badge bg-light text-dark border font-monospace text-decoration-none" style="font-size: 0.75rem;"><%= s.item_code || '-' %></a>
+            <strong class="text-dark ms-1"><%= s.item_name || '-' %></strong>
+            <br>
+            <small class="text-muted">Diajukan oleh: <strong><%= s.submitted_by_name %></strong> – <%= formatDateTime(s.submission_date) %></small>
+            <% if (s.notes) { %>
+              <br><small class="text-muted fst-italic">"<%= s.notes %>"</small>
+            <% } %>
+          </div>
+          <div class="col-md-2 text-center">
+            <span class="badge bg-secondary text-capitalize"><%= s.product_category %></span>
+            <br><strong class="d-block mt-1"><%- formatCurrency(s.proposed_price) %></strong>
+            <small class="text-muted">harga diajukan</small>
+          </div>
+          <div class="col-md-5">
+            <form method="POST" action="/recovery/fat-review" class="d-flex gap-2 align-items-end flex-wrap">
+              <input type="hidden" name="submission_id" value="<%= s.submission_id %>">
+              <div class="flex-grow-1">
+                <label class="form-label form-label-sm">Harga Final (Rp)</label>
+                <input type="number" step="0.01" class="form-control form-control-sm" name="final_price"
+                  value="<%= s.proposed_price %>" min="0">
+              </div>
+              <div class="flex-grow-1">
+                <label class="form-label form-label-sm">Catatan</label>
+                <input type="text" class="form-control form-control-sm" name="review_notes" placeholder="Alasan / catatan">
+              </div>
+              <div class="d-flex gap-1">
+                <button type="submit" name="action" value="approve" class="btn btn-sm btn-success">
+                  <i class="bi bi-check-circle"></i> Setuju
+                </button>
+                <button type="submit" name="action" value="reject"
+                  class="btn btn-sm btn-danger"
+                  onclick="return confirm('Tolak pengajuan ini?')">
+                  <i class="bi bi-x-circle"></i> Tolak
+                </button>
+              </div>
+            </form>
+          </div>
+        </div>
+      </div>
+      <% }) %>
+    </div>
+  </div>
+
+  <!-- All Submission History -->
+  <div class="card">
+    <div class="card-header">
+      <h6 class="mb-0"><i class="bi bi-clock-history"></i> Riwayat Semua Pengajuan</h6>
+    </div>
+    <div class="table-responsive">
+      <table class="table table-sm table-hover datatable mb-0">
+        <thead class="table-light">
+          <tr>
+            <th>No Resi</th><th>Customer</th><th>SKU</th><th>Nama Barang</th><th>Kategori</th><th>Diajukan</th>
+            <th>Harga Ajuan</th><th>Status</th><th>Harga Final</th><th>Direview oleh</th>
+          </tr>
+        </thead>
+        <tbody>
+          <% allSubmissions.forEach(s => { %>
+          <tr>
+            <td>
+              <% if (s.resi_number) { %>
+                <small class="text-muted"><i class="bi bi-truck"></i> <%= s.resi_number %></small>
+              <% } else { %>
+                <span class="text-muted">-</span>
+              <% } %>
+            </td>
+            <td><%= s.customer_name || '-' %></td>
+            <td><a href="/recovery/item/<%= s.item_id %>" class="fw-bold text-decoration-none"><code><%= s.item_code || '-' %></code></a></td>
+            <td><strong><%= s.item_name || '-' %></strong></td>
+            <td><span class="badge bg-secondary text-capitalize"><%= s.product_category %></span></td>
+            <td><small><%= formatDateTime(s.submission_date) %></small></td>
+            <td><%- formatCurrency(s.proposed_price) %></td>
+            <td>
+              <% const sc = {pending:'warning',approved:'success',rejected:'danger'}; %>
+              <span class="badge bg-<%= sc[s.status]||'secondary' %>"><%= s.status %></span>
+            </td>
+            <td><%= s.final_price ? formatCurrency(s.final_price) : '-' %></td>
+            <td><small><%= s.reviewed_by_name || '-' %></small></td>
+          </tr>
+          <% }) %>
+        </tbody>
+      </table>
+    </div>
+  </div>
+</div>

@@ -1,0 +1,83 @@
+<style>
+  #signature-pad-canvas {
+    border: 2px dashed #ccc;
+    border-radius: 8px;
+    cursor: crosshair;
+    background: #fff;
+    width: 100%;
+    touch-action: none;
+  }
+</style>
+<script src="https://cdn.jsdelivr.net/npm/signature_pad@4.1.7/dist/signature_pad.umd.min.js"></script>
+
+<div class="container mt-5 pt-4" style="max-width:650px">
+  <div class="card">
+    <div class="card-header">
+      <h5 class="mb-0"><i class="bi bi-pen"></i> Tanda Tangan Digital</h5>
+      <small class="text-muted">
+        <%
+          const sigLabels = {staff_recover:'Staff Recover', fat:'FAT / Purchasing', admin:'Admin / Manager'};
+          const sigLabel = sigLabels[sigField] || sigField;
+        %>
+        BA: <code><%= ba.ba_number %></code> &mdash; <%= sigLabel %>
+      </small>
+    </div>
+    <div class="card-body">
+      <p class="text-muted small">Tanda tangani di area bawah ini menggunakan mouse atau sentuhan.</p>
+
+      <canvas id="signature-pad-canvas" height="200"></canvas>
+
+      <div class="d-flex gap-2 mt-3">
+        <button type="button" id="btn-clear" class="btn btn-outline-secondary btn-sm">
+          <i class="bi bi-eraser"></i> Bersihkan
+        </button>
+        <button type="button" id="btn-save" class="btn btn-success btn-sm ms-auto">
+          <i class="bi bi-save"></i> Simpan Tanda Tangan
+        </button>
+        <a href="/ba/<%= ba.ba_id %>" class="btn btn-outline-secondary btn-sm">Batal</a>
+      </div>
+    </div>
+  </div>
+</div>
+
+<form id="sign-form" method="POST" action="/ba/<%= ba.ba_id %>/sign" style="display:none">
+  <input type="hidden" name="sig_field" value="<%= sigField %>">
+  <input type="hidden" name="signature_data" id="signature-data-input">
+</form>
+
+<script>
+  const canvas = document.getElementById('signature-pad-canvas');
+  // Match display width
+  const ratio = Math.max(window.devicePixelRatio || 1, 1);
+  canvas.width  = canvas.offsetWidth * ratio;
+  canvas.height = 200 * ratio;
+  canvas.getContext('2d').scale(ratio, ratio);
+
+  const signaturePad = new SignaturePad(canvas, {
+    backgroundColor: 'rgb(255,255,255)',
+    penColor: 'rgb(0,0,0)'
+  });
+
+  document.getElementById('btn-clear').addEventListener('click', () => {
+    signaturePad.clear();
+  });
+
+  document.getElementById('btn-save').addEventListener('click', () => {
+    if (signaturePad.isEmpty()) {
+      alert('Area tanda tangan masih kosong. Silakan buat tanda tangan terlebih dahulu.');
+      return;
+    }
+    document.getElementById('signature-data-input').value = signaturePad.toDataURL('image/png');
+    document.getElementById('sign-form').submit();
+  });
+
+  // Resize handler
+  window.addEventListener('resize', () => {
+    const data = signaturePad.toData();
+    canvas.width  = canvas.offsetWidth * ratio;
+    canvas.height = 200 * ratio;
+    canvas.getContext('2d').scale(ratio, ratio);
+    signaturePad.clear();
+    signaturePad.fromData(data);
+  });
+</script>

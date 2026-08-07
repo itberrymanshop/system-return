@@ -1,0 +1,331 @@
+<div class="container-fluid mt-5 pt-4">
+
+  <!-- Header -->
+  <div class="row mb-3 align-items-center">
+    <div class="col">
+      <h2><i class="bi bi-recycle"></i> Recovery – <code><%= ret.return_number %></code></h2>
+      <p class="mb-0">
+        <!-- <%- getStatusBadge(ret.current_status) %> -->
+        <% if (ret.product_category) { %>
+          <% const catColors={rekondisi:'primary',refurbish:'warning',write_off:'danger'}; %>
+            <span class="badge bg-<%= catColors[ret.product_category]||'secondary' %> ms-1">
+              <%= ret.product_category.replace('_','-').toUpperCase() %>
+            </span>
+            <% } %>
+              <% if (slaInfo && ret.sla_deadline) { %>
+                <span class="badge bg-<%= slaInfo.color %> ms-2"><i class="bi bi-clock"></i> SLA: <%= slaInfo.label %>
+                </span>
+                <% } %>
+      </p>
+    </div>
+    <div class="col-auto d-flex gap-2">
+      <a href="/ba/create?return_id=<%= ret.return_id %>" class="btn btn-sm btn-outline-info">
+        <i class="bi bi-file-earmark-plus"></i> Buat BA
+      </a>
+      <a href="/returns/<%= ret.return_id %>" class="btn btn-sm btn-outline-secondary">
+        <i class="bi bi-eye"></i> Detail Return
+      </a>
+      <a href="/recovery?type=<%= ret.product_category === 'write_off' ? 'write_off' : 'refurbish' %>"
+        class="btn btn-sm btn-outline-dark">
+        <i class="bi bi-arrow-left"></i> Kembali
+      </a>
+    </div>
+  </div>
+
+  <div class="row g-4">
+    <div class="col-lg-7">
+
+      <!-- Items & Locations -->
+      <div class="card mb-4">
+        <div class="card-header bg-primary text-white d-flex justify-content-between align-items-center">
+          <h6 class="mb-0 text-white"><i class="bi bi-box-seam"></i> Daftar SKU & Qty yang Diproses</h6>
+        </div>
+        <div class="table-responsive">
+          <table class="table align-middle table-hover mb-0">
+            <thead class="table-light text-uppercase fs-7 text-muted">
+              <tr>
+                <th class="ps-3" style="width: 25%;">SKU</th>
+                <th style="width: 35%;">Nama Barang</th>
+                <th class="text-center" style="width: 15%;">QTY</th>
+                <th style="width: 25%;">Lokasi Fisik & QC</th>
+              </tr>
+            </thead>
+            <tbody>
+              <% ret.items.forEach(item=> { %>
+                <% const stockItem=stockItems.find(s=> s.item_id === item.item_id); %>
+                  <tr>
+                    <td class="ps-3">
+                      <span class="badge bg-dark text-white font-monospace py-1.5 px-2.5 fs-7">
+                        <i class="bi bi-upc"></i>
+                        <%= item.sku || item.item_code || '-' %>
+                      </span>
+                      <% if (item.item_category) { %>
+                        <div class="mt-1">
+                          <span class="badge bg-info text-white">
+                            <%= item.item_category %>
+                          </span>
+                        </div>
+                        <% } %>
+                          <% if (item.sticker_tag) { %>
+                            <div class="mt-1">
+                              <span class="badge bg-warning text-dark"><i class="bi bi-tag"></i>
+                                <%= item.sticker_tag %>
+                              </span>
+                            </div>
+                            <% } %>
+                    </td>
+                    <td>
+                      <div class="fw-semibold text-dark">
+                        <%= item.item_name %>
+                      </div>
+                      <div class="text-muted small">
+                        Kondisi: <span class="badge bg-light text-secondary border text-capitalize">
+                          <%= item.current_status ? item.current_status.replace(/_/g, ' ') : '' %>
+                        </span>
+                      </div>
+                    </td>
+                    <td class="text-center">
+                      <span class="badge bg-primary px-3 py-2 fs-6 fw-bold">
+                        <%= item.quantity %>
+                      </span>
+                    </td>
+                    <td>
+                      <div class="mb-1 text-muted small">
+                        QC: <strong
+                          class="text-<%= item.qc_status==='lulus'?'success':(item.qc_status==='tidak_lulus'?'danger':'secondary') %>">
+                          <%= ({belum_cek:`Belum Di-cek`,lulus:`Lulus QC`,tidak_lulus:`Tidak
+                            Lulus`})[item.qc_status]||'-' %>
+                        </strong>
+                      </div>
+                      <form method="POST" action="/recovery/<%= ret.return_id %>/update-location" class="d-flex gap-1">
+                        <input type="hidden" name="stock_id" value="<%= stockItem ? stockItem.stock_id : '' %>">
+                        <input type="hidden" name="item_id" value="<%= item.item_id %>">
+                        <input type="text" class="form-control form-control-sm" name="location"
+                          placeholder="Lokasi fisik"
+                          value="<%= item.physical_location || (stockItem && stockItem.location) || '' %>">
+                        <button type="submit" class="btn btn-sm btn-outline-primary py-0 px-2" title="Simpan Lokasi">
+                          <i class="bi bi-check-lg"></i>
+                        </button>
+                      </form>
+                    </td>
+                  </tr>
+                  <% }) %>
+            </tbody>
+          </table>
+        </div>
+      </div>
+
+      <!-- Pricing History -->
+      <div class="card">
+        <div class="card-header d-flex justify-content-between align-items-center">
+          <h6 class="mb-0"><i class="bi bi-currency-dollar"></i> Riwayat Pengajuan Harga</h6>
+          <% 
+            let canSubmitPricing = false;
+            let latestSub = null;
+            if (locals.targetItemId) {
+              latestSub = priceHistory.find(p => p.item_id === targetItemId);
+              const isSold = stockItems.length && stockItems[0].status === 'terjual';
+              canSubmitPricing = (!latestSub || latestSub.status === 'rejected') && !isSold;
+            } else {
+              canSubmitPricing = !['Pricing','Recovery','Completed'].includes(ret.current_status);
+            }
+          %>
+          <% if (canSubmitPricing) { %>
+            <button class="btn btn-sm btn-primary" data-bs-toggle="modal" data-bs-target="#pricingModal">
+              <i class="bi bi-send"></i> Ajukan Harga ke FAT
+            </button>
+          <% } else if (latestSub && latestSub.status === 'pending') { %>
+            <span class="badge bg-warning text-dark"><i class="bi bi-hourglass-split"></i> Menunggu Persetujuan FAT</span>
+          <% } else if (latestSub && latestSub.status === 'approved') { %>
+            <span class="badge bg-success"><i class="bi bi-check-circle"></i> Harga Disetujui</span>
+          <% } %>
+        </div>
+        <div class="table-responsive">
+          <table class="table table-sm mb-0">
+            <thead class="table-light">
+              <tr>
+                <th>Tanggal</th>
+                <th>Oleh</th>
+                <th>Kategori</th>
+                <th>Harga Diajukan</th>
+                <th>Status</th>
+                <th>Harga Final</th>
+              </tr>
+            </thead>
+            <tbody>
+              <% if (priceHistory.length===0) { %>
+                <tr>
+                  <td colspan="6" class="text-center text-muted py-3">Belum ada pengajuan</td>
+                </tr>
+                <% } %>
+                  <% priceHistory.forEach(p=> { %>
+                    <tr>
+                      <td><small>
+                          <%= formatDateTime(p.submission_date) %>
+                        </small></td>
+                      <td><small>
+                          <%= p.submitted_by_name %>
+                        </small></td>
+                      <td><span class="badge bg-secondary text-capitalize">
+                          <%= p.product_category %>
+                        </span></td>
+                      <td><%- formatCurrency(p.proposed_price) %></td>
+                      <td>
+                        <% const sc={pending:'warning',approved:'success',rejected:'danger'}; %>
+                          <span class="badge bg-<%= sc[p.status]||'secondary' %>">
+                            <%= p.status %>
+                          </span>
+                      </td>
+                      <td>
+                        <%= p.final_price ? formatCurrency(p.final_price) : '-' %>
+                      </td>
+                    </tr>
+                    <% }) %>
+            </tbody>
+          </table>
+        </div>
+      </div>
+
+    </div>
+    <div class="col-lg-5">
+
+      <!-- Return Summary -->
+      <div class="card mb-4">
+        <div class="card-header bg-light">
+          <h6 class="mb-0">Ringkasan</h6>
+        </div>
+        <div class="card-body">
+          <table class="table table-sm table-borderless mb-0">
+            <tr>
+              <td class="text-muted">Customer</td>
+              <td><strong>
+                  <%= ret.customer_name || '-' %>
+                </strong></td>
+            </tr>
+            <tr>
+              <td class="text-muted">Tanggal Retur</td>
+              <td>
+                <%= formatDate(ret.return_date) %>
+              </td>
+            </tr>
+            <tr>
+              <td class="text-muted">Total Value</td>
+              <td><%- formatCurrency(ret.total_value) %></td>
+            </tr>
+            <tr>
+              <td class="text-muted">Harga Approved</td>
+              <td><%- ret.recovery_price ? formatCurrency(ret.recovery_price) : '<span class="text-muted">-</span>' %>
+              </td>
+            </tr>
+            <tr>
+              <td class="text-muted">SLA Deadline</td>
+              <td>
+                <%= ret.sla_deadline ? formatDate(ret.sla_deadline) : '-' %>
+              </td>
+            </tr>
+          </table>
+        </div>
+      </div>
+
+      <!-- Record Sale (only when Recovery status) -->
+      <% 
+        let canRecordSale = false;
+        if (locals.targetItemId) {
+          canRecordSale = latestSub && latestSub.status === 'approved' && (!stockItems.length || stockItems[0].status === 'tersedia');
+        } else {
+          canRecordSale = ret.current_status === 'Recovery';
+        }
+      %>
+      <% if (canRecordSale) { %>
+        <div class="card border-success">
+          <div class="card-header bg-success text-white">
+            <h6 class="mb-0"><i class="bi bi-cart-check"></i> Catat Penjualan Recovery</h6>
+          </div>
+          <div class="card-body">
+            <form method="POST" action="/recovery/<%= ret.return_id %>/record-sale">
+              <% if (locals.targetItemId) { %>
+                <input type="hidden" name="item_id" value="<%= targetItemId %>">
+                <% } %>
+                  <div class="mb-3">
+                    <label class="form-label">Harga Jual Final <span class="text-danger">*</span></label>
+                    <input type="number" step="0.01" class="form-control" name="recovery_sale_price"
+                      value="<%= (locals.targetItemId && latestSub) ? latestSub.final_price : (ret.recovery_price || '') %>" required>
+                  </div>
+                  <div class="mb-3">
+                    <label class="form-label">Vendor / Pembeli</label>
+                    <select class="form-select" name="vendor_id">
+                      <option value="">Pilih Vendor</option>
+                      <% vendors.forEach(v=> { %>
+                        <option value="<%= v.vendor_id %>" <%=ret.vendor_id==v.vendor_id?'selected':'' %>>
+                          <%= v.vendor_name %>
+                        </option>
+                        <% }) %>
+                    </select>
+                  </div>
+                  <div class="mb-3">
+                    <label class="form-label">Tanggal Penjualan</label>
+                    <input type="date" class="form-control" name="sale_date"
+                      value="<%= formatDateInput(new Date()) %>">
+                  </div>
+                  <div class="mb-3">
+                    <label class="form-label">Catatan Closing</label>
+                    <textarea class="form-control" name="closing_notes" rows="2"
+                      placeholder="Catatan penutupan kasus..."></textarea>
+                  </div>
+                  <button type="submit" class="btn btn-success w-100"
+                    onclick="return confirm('Catat penjualan dan tutup kasus ini?')">
+                    <i class="bi bi-check-circle"></i> Catat Penjualan & Tutup Kasus
+                  </button>
+            </form>
+          </div>
+        </div>
+        <% } %>
+
+    </div>
+  </div>
+</div>
+
+<!-- Pricing Modal -->
+<% if (canSubmitPricing) { %>
+  <div class="modal fade" id="pricingModal" tabindex="-1">
+    <div class="modal-dialog">
+      <div class="modal-content">
+        <form method="POST" action="/recovery/<%= ret.return_id %>/submit-pricing">
+          <% if (locals.targetItemId) { %>
+            <input type="hidden" name="item_id" value="<%= targetItemId %>">
+            <% } %>
+              <div class="modal-header">
+                <h5 class="modal-title"><i class="bi bi-send"></i> Ajukan Harga ke FAT</h5>
+                <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+              </div>
+              <div class="modal-body">
+                <div class="mb-3">
+                  <label class="form-label">Kategori Produk</label>
+                  <select class="form-select" name="product_category" required>
+                    <option value="<%= ret.product_category || 'rekondisi' %>">
+                      <%= (ret.product_category||'rekondisi').replace('_','-').toUpperCase() %>
+                    </option>
+                  </select>
+                </div>
+                <div class="mb-3">
+                  <label class="form-label">Harga Jual yang Diajukan <span class="text-danger">*</span></label>
+                  <div class="input-group">
+                    <span class="input-group-text">Rp</span>
+                    <input type="number" step="0.01" class="form-control" name="proposed_price" required min="0">
+                  </div>
+                </div>
+                <div class="mb-3">
+                  <label class="form-label">Catatan / Justifikasi</label>
+                  <textarea class="form-control" name="notes" rows="3"
+                    placeholder="Jelaskan dasar penetapan harga..."></textarea>
+                </div>
+              </div>
+              <div class="modal-footer">
+                <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Batal</button>
+                <button type="submit" class="btn btn-primary"><i class="bi bi-send"></i> Kirim ke FAT</button>
+              </div>
+        </form>
+      </div>
+    </div>
+  </div>
+  <% } %>

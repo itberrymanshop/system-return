@@ -1,0 +1,16 @@
+node_modules/
+dist/
+build/
+coverage/
+.env
+.DS_Store
+*.log
+*.lock
+.vscode/
+.idea/
+.eslintcache
+.prettiercache
+.nyc_output
+.cache
+.babelrc
+.eslintrc
