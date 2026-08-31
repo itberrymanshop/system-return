@@ -72,3 +72,69 @@ exports.salesReport = async (req, res, next) => {
     });
   } catch (err) { next(err); }
 };
+
+// ─── Change Stock Category (e.g. Rekondisi -> Refurbish / Write Off) ─────────
+exports.changeCategory = async (req, res, next) => {
+  try {
+    const { stockId } = req.params;
+    const { target_category } = req.body;
+    const userId = req.session.userId;
+    const redirectUrl = req.get('Referrer') || '/inventory';
+
+    const validTargets = ['rekondisi', 'refurbish', 'write_off'];
+    if (!validTargets.includes(target_category)) {
+      req.flash('error', 'Kategori tujuan tidak valid.');
+      return res.redirect(redirectUrl);
+    }
+
+    const updated = await inventoryService.changeStockCategory(stockId, target_category, userId, req.ip, req.headers['user-agent']);
+    if (!updated) {
+      req.flash('error', 'Item stok tidak ditemukan atau tidak dapat diubah.');
+      return res.redirect(redirectUrl);
+    }
+
+    const catLabels = { rekondisi: 'Rekondisi', refurbish: 'Refurbish', write_off: 'Write Off' };
+    req.flash('success', `Status stok berhasil diubah menjadi ${catLabels[target_category]}.`);
+    return res.redirect(redirectUrl);
+  } catch (err) {
+    next(err);
+  }
+};
+
+// ─── Bulk Change Stock Category ─────────────────────────────────────────────
+exports.bulkChangeCategory = async (req, res, next) => {
+  try {
+    let { stock_ids, target_category } = req.body;
+    const userId = req.session.userId;
+    const redirectUrl = req.get('Referrer') || '/inventory';
+
+    const validTargets = ['rekondisi', 'refurbish', 'write_off'];
+    if (!validTargets.includes(target_category)) {
+      req.flash('error', 'Kategori tujuan tidak valid.');
+      return res.redirect(redirectUrl);
+    }
+
+    if (!stock_ids) {
+      req.flash('error', 'Pilih minimal satu item stok.');
+      return res.redirect(redirectUrl);
+    }
+
+    if (typeof stock_ids === 'string') {
+      stock_ids = stock_ids.split(',').map(s => s.trim()).filter(Boolean);
+    }
+
+    if (!Array.isArray(stock_ids) || stock_ids.length === 0) {
+      req.flash('error', 'Pilih minimal satu item stok.');
+      return res.redirect(redirectUrl);
+    }
+
+    const count = await inventoryService.bulkChangeStockCategory(stock_ids, target_category, userId, req.ip, req.headers['user-agent']);
+    const catLabels = { rekondisi: 'Rekondisi', refurbish: 'Refurbish', write_off: 'Write Off' };
+    req.flash('success', `Berhasil mengubah ${count} item stok menjadi ${catLabels[target_category]}.`);
+    return res.redirect(redirectUrl);
+  } catch (err) {
+    next(err);
+  }
+};
+
+

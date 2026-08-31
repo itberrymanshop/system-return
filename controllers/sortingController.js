@@ -20,6 +20,8 @@ exports.queue = async (req, res, next) => {
              ri.disposition,
              ri.return_category,
              ri.item_category,
+             ri.ikut,
+             ri.ikut_wo,
              r.return_id,
              r.return_number,
              r.return_date,
@@ -185,12 +187,16 @@ exports.bulkProcess = async (req, res, next) => {
       if (isNaN(itemId)) continue;
 
       const itemCategory = req.body['category_' + itemId] || null;
+      const itemIkut = req.body['ikut_' + itemId] || null;
+      const itemIkutWo = req.body['ikut_wo_' + itemId] || null;
 
       // 1. Update item QC
       await returnService.updateItemQC(itemId, {
         disposition,
         physical_location,
         item_category: itemCategory,
+        ikut: itemIkut,
+        ikut_wo: (itemIkut === 'Plastik') ? itemIkutWo : null,
         vendor_id: vendorIdParsed,
         userId: userId
       });

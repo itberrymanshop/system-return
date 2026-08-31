@@ -34,6 +34,39 @@
     font-size: 0.75rem;
   }
 
+  /* Autocomplete Dropdown for Master Barang */
+  .barang-dropdown {
+    position: absolute;
+    top: 100%;
+    left: 0;
+    right: 0;
+    z-index: 1060;
+    background: #fff;
+    border: 1px solid #ced4da;
+    border-radius: 0.375rem;
+    box-shadow: 0 8px 24px rgba(0, 0, 0, 0.12);
+    max-height: 220px;
+    overflow-y: auto;
+  }
+
+  .barang-drop-item {
+    padding: 7px 12px;
+    cursor: pointer;
+    font-size: 0.82rem;
+    border-bottom: 1px solid #f0f0f0;
+    text-align: left;
+    transition: background-color 0.15s ease;
+  }
+
+  .barang-drop-item:last-child {
+    border-bottom: none;
+  }
+
+  .barang-drop-item:hover,
+  .barang-drop-item:focus {
+    background-color: #f0f4ff;
+  }
+
   /* Premium Responsive Pagination styling */
   .responsive-pagination .page-item .page-link {
     border: 1px solid #e2e8f0;
@@ -135,6 +168,56 @@
   .table-success-tint {
     background-color: rgba(25, 135, 84, 0.08) !important;
   }
+  .table-warning-tint {
+    background-color: rgba(255, 193, 7, 0.08) !important;
+  }
+  .pic-check-cell {
+    vertical-align: middle !important;
+    padding: 6px 6px !important;
+  }
+  .pic-check-cell .form-check-input {
+    cursor: pointer;
+    width: 2em;
+    height: 1.1em;
+  }
+  .pic-badge-container {
+    min-height: 18px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+  }
+
+  /* The <form> wrapping header/body/footer breaks modal-dialog-scrollable's flex
+     chain (it can't shrink below its content), so the modal body never scrolls
+     and just gets clipped. Turn the form into the flex container instead. */
+  .modal-dialog-scrollable .modal-content {
+    height: 100%;
+  }
+
+  .modal-dialog-scrollable .modal-content>form {
+    display: flex;
+    flex-direction: column;
+    min-height: 0;
+    overflow: hidden;
+  }
+
+  /* Select2 Styling in Modals */
+  .select2-container--bootstrap-5 .select2-results__option {
+    white-space: normal;
+    word-break: break-word;
+    font-size: 0.85rem;
+    line-height: 1.35;
+    padding: 0.45rem 0.65rem;
+  }
+  .select2-container--bootstrap-5 .select2-selection--single {
+    font-size: 0.85rem;
+    height: calc(1.5em + 0.5rem + 2px);
+    padding: 0.25rem 0.5rem;
+  }
+  .select2-container--bootstrap-5 .select2-selection--single .select2-selection__rendered {
+    line-height: 1.5;
+    padding-left: 0;
+  }
 </style>
 
 <div class="container-fluid mt-5 pt-4">
@@ -152,13 +235,19 @@
     </div>
     <div
       class="col-12 col-md-6 text-md-end mt-2 mt-md-0 d-flex flex-wrap gap-2 justify-content-md-end align-items-center">
+      <button type="button" class="btn btn-warning text-dark fw-semibold" data-bs-toggle="modal" data-bs-target="#addBandingMPModal">
+        <i class="bi bi-shield-plus"></i> Tambah Data Banding MP
+      </button>
+      <button type="button" class="btn btn-primary" data-bs-toggle="modal" data-bs-target="#addManifestModal">
+        <i class="bi bi-plus-lg"></i> Tambah Data Manifest
+      </button>
       <% if (stats.pendingManifests> 0) { %>
         <button type="button" class="btn btn-outline-danger" id="deleteAllPendingBtn">
           <i class="bi bi-trash-fill"></i> Hapus Semua Pending
         </button>
         <% } %>
-          <a href="/returns/manifests/export" class="btn btn-outline-success">
-            <i class="bi bi-file-earmark-excel"></i> Export Excel Manifest
+          <a href="/returns/manifests/export?tab=<%= activeTab %><%= pagination.search ? '&search=' + encodeURIComponent(pagination.search) : '' %><%= startDate ? '&startDate=' + startDate : '' %><%= endDate ? '&endDate=' + endDate : '' %>" class="btn btn-outline-success">
+            <i class="bi bi-file-earmark-excel"></i> Export Excel <%= activeTab === 'manual' ? 'Data By Manual' : (activeTab === 'banding' ? 'Data Banding MP' : 'Data By Scan') %>
           </a>
     </div>
   </div>
@@ -223,50 +312,75 @@
       <!-- Left Column: Manifests List Table -->
       <div class="col-lg-8 mb-4">
         <div class="card manifest-card p-4">
-          <h5 class="card-title mb-3">Daftar Data Return Manifest</h5>
+          <div class="d-flex flex-wrap justify-content-between align-items-center mb-3 gap-2">
+            <h5 class="card-title mb-0">Daftar Data Return Manifest</h5>
+            <a href="/returns/manifests/export?tab=<%= activeTab %><%= pagination.search ? '&search=' + encodeURIComponent(pagination.search) : '' %><%= startDate ? '&startDate=' + startDate : '' %><%= endDate ? '&endDate=' + endDate : '' %>"
+              class="btn btn-sm btn-success d-flex align-items-center gap-1 shadow-sm"
+              title="Export <%= activeTab === 'manual' ? 'Data By Manual' : (activeTab === 'banding' ? 'Data Banding MP' : 'Data By Scan') %> ke Excel">
+              <i class="bi bi-file-earmark-excel"></i> Export Excel (<%= activeTab === 'manual' ? 'Data By Manual' : (activeTab === 'banding' ? 'Data Banding MP' : 'Data By Scan') %>)
+            </a>
+          </div>
+
+          <!-- Navigation Tabs: Data By Scan, Data By Manual & Data Banding MP -->
+          <ul class="nav nav-pills mb-3 gap-2 border-bottom pb-3" id="manifestTabs" role="tablist">
+            <li class="nav-item" role="presentation">
+              <a class="nav-link <%= activeTab === 'scan' ? 'active' : 'bg-light text-dark' %> fw-semibold d-flex align-items-center py-2 px-3 rounded-3 shadow-none border"
+                href="/returns/manifests?tab=scan<%= pagination.search ? '&search=' + encodeURIComponent(pagination.search) : '' %><%= startDate ? '&startDate=' + startDate : '' %><%= endDate ? '&endDate=' + endDate : '' %>&limit=<%= pagination.limit %>">
+                <i class="bi bi-upc-scan me-2"></i> Data By Scan
+                <span
+                  class="badge <%= activeTab === 'scan' ? 'bg-white text-primary' : 'bg-secondary' %> rounded-pill ms-2">
+                  <%= tabCounts.scan %>
+                </span>
+              </a>
+            </li>
+            <li class="nav-item" role="presentation">
+              <a class="nav-link <%= activeTab === 'manual' ? 'active' : 'bg-light text-dark' %> fw-semibold d-flex align-items-center py-2 px-3 rounded-3 shadow-none border"
+                href="/returns/manifests?tab=manual<%= pagination.search ? '&search=' + encodeURIComponent(pagination.search) : '' %><%= startDate ? '&startDate=' + startDate : '' %><%= endDate ? '&endDate=' + endDate : '' %>&limit=<%= pagination.limit %>">
+                <i class="bi bi-pencil-square me-2"></i> Data By Manual
+                <span
+                  class="badge <%= activeTab === 'manual' ? 'bg-white text-primary' : 'bg-secondary' %> rounded-pill ms-2">
+                  <%= tabCounts.manual %>
+                </span>
+              </a>
+            </li>
+            <li class="nav-item" role="presentation">
+              <a class="nav-link <%= activeTab === 'banding' ? 'active' : 'bg-light text-dark' %> fw-semibold d-flex align-items-center py-2 px-3 rounded-3 shadow-none border"
+                href="/returns/manifests?tab=banding<%= pagination.search ? '&search=' + encodeURIComponent(pagination.search) : '' %><%= startDate ? '&startDate=' + startDate : '' %><%= endDate ? '&endDate=' + endDate : '' %>&limit=<%= pagination.limit %>">
+                <i class="bi bi-shield-exclamation me-2"></i> Data Banding MP
+                <span
+                  class="badge <%= activeTab === 'banding' ? 'bg-white text-primary' : 'bg-secondary' %> rounded-pill ms-2">
+                  <%= tabCounts.banding || 0 %>
+                </span>
+              </a>
+            </li>
+          </ul>
 
           <!-- Search & Pagination Header -->
           <div class="d-flex flex-wrap justify-content-between align-items-center gap-3 mb-3">
             <form method="GET" action="/returns/manifests" class="d-flex align-items-center flex-wrap gap-2"
               id="searchFilterForm">
-              <div class="input-group input-group-sm" style="max-width: 250px;">
-                <input type="text" name="search" class="form-control" placeholder="Cari Resi / No Pesanan..."
+              <input type="hidden" name="tab" value="<%= activeTab %>">
+              <div class="input-group input-group-sm" style="max-width: 270px;">
+                <input type="text" name="search" class="form-control" placeholder="<%= activeTab === 'banding' ? 'Cari Invoice / Toko / Status...' : 'Cari Resi / No Pesanan...' %>"
                   value="<%= pagination.search %>">
                 <button type="submit" class="btn btn-primary px-3"><i class="bi bi-search"></i> Cari</button>
               </div>
-              <% if (pagination.search) { %>
-                <a href="/returns/manifests?limit=<%= pagination.limit %>&month=<%= month %>&year=<%= year %>"
+              <% if (pagination.search || startDate || endDate) { %>
+                <a href="/returns/manifests?tab=<%= activeTab %>&limit=<%= pagination.limit %>"
                   class="btn btn-outline-secondary btn-sm px-3 d-flex align-items-center text-decoration-none"
                   style="height: 31px;">Reset</a>
                 <% } %>
 
                   <div class="d-flex align-items-center gap-1 ms-md-2">
-                    <span class="text-muted small text-nowrap">Bulan:</span>
-                    <select name="month" class="form-select form-select-sm" style="width: 120px;"
-                      onchange="this.form.submit()">
-                      <option value="">Semua Bulan</option>
-                      <% const monthNames=[ "Januari" , "Februari" , "Maret" , "April" , "Mei" , "Juni" , "Juli"
-                        , "Agustus" , "September" , "Oktober" , "November" , "Desember" ]; monthNames.forEach((mName,
-                        idx)=> {
-                        const mVal = String(idx + 1).padStart(2, '0');
-                        %>
-                        <option value="<%= mVal %>" <%=month===mVal ? 'selected' : '' %>><%= mName %>
-                        </option>
-                        <% }) %>
-                    </select>
+                    <span class="text-muted small text-nowrap">Dari:</span>
+                    <input type="date" name="startDate" class="form-control form-control-sm" style="width: 135px;"
+                      value="<%= startDate %>" onchange="this.form.submit()">
                   </div>
 
                   <div class="d-flex align-items-center gap-1 ms-md-2">
-                    <span class="text-muted small text-nowrap">Tahun:</span>
-                    <select name="year" class="form-select form-select-sm" style="width: 110px;"
-                      onchange="this.form.submit()">
-                      <option value="">Semua Tahun</option>
-                      <% const currentYear=new Date().getFullYear(); for (let y=currentYear - 3; y <=currentYear + 1;
-                        y++) { %>
-                        <option value="<%= y %>" <%=year===String(y) ? 'selected' : '' %>><%= y %>
-                        </option>
-                        <% } %>
-                    </select>
+                    <span class="text-muted small text-nowrap">Sampai:</span>
+                    <input type="date" name="endDate" class="form-control form-control-sm" style="width: 135px;"
+                      value="<%= endDate %>" onchange="this.form.submit()">
                   </div>
 
                   <button type="button" class="btn btn-outline-danger btn-sm px-3 d-flex align-items-center d-none"
@@ -303,107 +417,520 @@
           <div class="table-responsive">
             <table class="table table-hover align-middle small" id="manifestsTable" style="width: 100%;">
               <thead class="table-light">
-                <tr>
-                  <th style="width: 30px;"></th>
-                  <th>Resi / Order No</th>
-                  <th>Customer</th>
-                  <th>Pengirim</th>
-                  <th>Kategori</th>
-                  <th>Jml Barang</th>
-                  <th>Status</th>
-                  <th>Tgl Upload</th>
-                  <th style="width: 70px;" class="text-center">Aksi</th>
-                </tr>
+                <% if (activeTab === 'banding') { %>
+                  <tr>
+                    <th style="width: 40px;" class="text-center">No</th>
+                    <th style="min-width: 110px;">Tgl</th>
+                    <th style="min-width: 130px;">Kode Toko</th>
+                    <th style="min-width: 140px;">Nomer Invoice</th>
+                    <th style="min-width: 250px;">Keterangan</th>
+                    <th style="min-width: 170px;" class="text-center">Status Banding</th>
+                    <th class="text-center" style="min-width: 100px;">
+                      <span class="badge bg-primary-subtle text-primary border border-primary-subtle px-2 py-1"><i class="bi bi-person-badge me-1"></i>PIC SALES</span>
+                    </th>
+                    <th class="text-center" style="min-width: 100px;">
+                      <span class="badge bg-warning-subtle text-warning-emphasis border border-warning-subtle px-2 py-1"><i class="bi bi-wallet2 me-1"></i>PIC FAT</span>
+                    </th>
+                    <th style="width: 90px;" class="text-center">Aksi</th>
+                  </tr>
+                <% } else if (activeTab==='manual' ) { %>
+                  <tr>
+                    <th style="width: 30px;"></th>
+                    <th>Tgl</th>
+                    <th>Nama Customer</th>
+                    <th>Kota</th>
+                    <th>Exspedisi</th>
+                    <th>Toko</th>
+                    <th>No Pesanan</th>
+                    <th>Nomor Resi</th>
+                    <th>Status</th>
+                    <th>Jml Barang</th>
+                    <th class="text-center" style="min-width: 100px;">
+                      <span class="badge bg-primary-subtle text-primary border border-primary-subtle px-2 py-1"><i class="bi bi-person-badge me-1"></i>PIC SALES</span>
+                    </th>
+                    <th class="text-center" style="min-width: 100px;">
+                      <span class="badge bg-warning-subtle text-warning-emphasis border border-warning-subtle px-2 py-1"><i class="bi bi-wallet2 me-1"></i>PIC FAT</span>
+                    </th>
+                    <th class="text-center" style="min-width: 100px;">
+                      <span class="badge bg-info-subtle text-info-emphasis border border-info-subtle px-2 py-1"><i class="bi bi-gear-wide-connected me-1"></i>PIC OPS</span>
+                    </th>
+                    <th style="width: 80px;" class="text-center">Aksi</th>
+                  </tr>
+                  <% } else { %>
+                    <tr>
+                      <th style="width: 30px;"></th>
+                      <th>Resi / Order No</th>
+                      <th>Customer</th>
+                      <th>Pengirim</th>
+                      <th>Kategori</th>
+                      <th>Jml Barang</th>
+                      <th>Status</th>
+                      <th>Tgl Upload</th>
+                      <th class="text-center" style="min-width: 100px;">
+                        <span class="badge bg-primary-subtle text-primary border border-primary-subtle px-2 py-1"><i class="bi bi-person-badge me-1"></i>PIC SALES</span>
+                      </th>
+                      <th class="text-center" style="min-width: 100px;">
+                        <span class="badge bg-warning-subtle text-warning-emphasis border border-warning-subtle px-2 py-1"><i class="bi bi-wallet2 me-1"></i>PIC FAT</span>
+                      </th>
+                      <th class="text-center" style="min-width: 100px;">
+                        <span class="badge bg-info-subtle text-info-emphasis border border-info-subtle px-2 py-1"><i class="bi bi-gear-wide-connected me-1"></i>PIC OPS</span>
+                      </th>
+                      <th style="width: 70px;" class="text-center">Aksi</th>
+                    </tr>
+                    <% } %>
               </thead>
               <tbody>
-                <% if (manifests.length===0) { %>
-                  <tr>
-                    <td colspan="9" class="text-center text-muted py-4">
-                      <% if (pagination.search) { %>
-                        <i class="bi bi-exclamation-circle fs-3 d-block mb-2 text-danger"></i>
-                        Tidak ada data manifest ditemukan untuk pencarian "<strong>
-                          <%= pagination.search %>
-                        </strong>".
+                <% if (activeTab === 'banding') { %>
+                  <% if (!bandingList || bandingList.length === 0) { %>
+                    <tr>
+                      <td colspan="9" class="text-center text-muted py-4">
+                        <% if (pagination.search) { %>
+                          <i class="bi bi-exclamation-circle fs-3 d-block mb-2 text-danger"></i>
+                          Tidak ada data Banding MP ditemukan untuk pencarian "<strong><%= pagination.search %></strong>".
                         <% } else { %>
-                          <i class="bi bi-upc-scan fs-3 d-block mb-2 text-muted"></i>
-                          Belum ada data manifest yang di-scan. Silakan lakukan scan barcode atau cari data manifest
-                          pada
-                          halaman <strong><a href="/returns/create" class="text-decoration-none text-primary">Create New
-                              Return</a></strong> untuk menampilkan data.
-                          <% } %>
-                    </td>
-                  </tr>
-                  <% } %>
-                    <% manifests.forEach(m=> { %>
-                      <tr id="manifest-row-<%= m.manifest_id %>" data-resi="<%= m.resi_number %>"
-                        data-pesanan="<%= m.no_pesanan %>" class="<%= m.is_checked === 1 ? 'table-success-tint' : '' %>">
+                          <i class="bi bi-shield-slash fs-3 d-block mb-2 text-muted"></i>
+                          Belum ada data Banding MP. Klik tombol <strong>Tambah Data Banding MP</strong> di atas untuk menambahkan data baru.
+                        <% } %>
+                      </td>
+                    </tr>
+                  <% } else { %>
+                    <% bandingList.forEach((bmp, idx) => { %>
+                      <%
+                        const isBmpAllChecked = (bmp.check_sales === 1 && bmp.check_fat === 1);
+                        const hasBmpAnyChecked = (bmp.check_sales === 1 || bmp.check_fat === 1);
+                        let statusBadgeClass = 'bg-secondary';
+                        let statusIcon = 'bi-info-circle';
+                        if (bmp.status_banding === 'Dana Dicairkan Ke Penjual') {
+                          statusBadgeClass = 'bg-success text-white';
+                          statusIcon = 'bi-check-circle-fill';
+                        } else if (bmp.status_banding === 'Banding Ditolak') {
+                          statusBadgeClass = 'bg-danger text-white';
+                          statusIcon = 'bi-x-circle-fill';
+                        } else if (bmp.status_banding === 'Dana Dikembalikan Ke Pembeli') {
+                          statusBadgeClass = 'bg-warning text-dark';
+                          statusIcon = 'bi-arrow-counterclockwise';
+                        }
+                        const formattedBmpDate = bmp.tgl ? new Date(bmp.tgl).toLocaleDateString('id-ID', { year: 'numeric', month: 'short', day: 'numeric' }) : '-';
+                        const rawDate = bmp.tgl ? new Date(bmp.tgl).toISOString().split('T')[0] : '';
+                        const canCheckPicBmp = hasRole(['admin', 'manager', 'purchasing', 'sales', 'admin_retur', 'admin_sorting', 'staff_recover', 'warehouse', 'inspector']);
+                      %>
+                      <tr id="banding-row-<%= bmp.id %>" class="align-middle <%= isBmpAllChecked ? 'table-success-tint' : (hasBmpAnyChecked ? 'table-warning-tint' : '') %>">
+                        <td class="text-center text-muted fw-semibold"><%= (pagination.page - 1) * pagination.limit + idx + 1 %></td>
                         <td>
-                          <button class="btn btn-sm btn-outline-info toggle-items" data-id="<%= m.manifest_id %>"
-                            title="Tampilkan detail barang">
-                            <i class="bi bi-chevron-down"></i>
-                          </button>
+                          <span class="text-nowrap"><i class="bi bi-calendar3 me-1 text-muted"></i><%= formattedBmpDate %></span>
                         </td>
                         <td>
-                          <div class="fw-bold text-dark">
-                            <%= m.resi_number %>
-                          </div>
-                          <small class="text-muted font-monospace">
-                            <%= m.no_pesanan %>
-                          </small>
+                          <span class="badge bg-light text-dark border px-2 py-1"><i class="bi bi-shop me-1 text-primary"></i><%= bmp.kode_toko %></span>
                         </td>
                         <td>
-                          <div>
-                            <%= m.customer_name || '-' %>
-                          </div>
-                          <small class="text-muted">
-                            <%= m.customer_contact || '' %>
-                          </small>
+                          <span class="fw-bold font-monospace text-primary"><%= bmp.no_invoice %></span>
                         </td>
                         <td>
-                          <%= formatSourceType(m.source_type) %>
-                        </td>
-                        <td class="text-capitalize">
-                          <%= formatCategory(m.return_category) %>
-                        </td>
-                        <td>
-                          <%= m.total_items %> SKU (<%= m.total_quantity %> pcs)
-                        </td>
-                        <td>
-                          <% if (m.is_processed===1) { %>
-                            <span class="badge bg-success"><i class="bi bi-check-circle"></i> Processed</span>
-                            <% } else { %>
-                              <span class="badge bg-warning text-dark"><i class="bi bi-clock"></i> Pending</span>
-                              <% } %>
-                        </td>
-                        <td>
-                          <%= new Date(m.created_at).toLocaleString('id-ID', { dateStyle: 'short' , timeStyle: 'short'
-                            }) %>
+                          <span class="text-secondary small"><%= bmp.keterangan %></span>
                         </td>
                         <td class="text-center">
-                          <div class="d-flex align-items-center justify-content-center gap-2">
-                            <% const canCheckManifest = hasRole(['admin', 'purchasing', 'sales']); %>
-                            <input type="checkbox" class="form-check-input manifest-row-checkbox" 
-                                   data-id="<%= m.manifest_id %>" 
-                                   <%= m.is_checked === 1 ? 'checked' : '' %> 
-                                   <%= canCheckManifest ? '' : 'disabled' %>
-                                   title="<%= m.is_checked === 1 ? `Checked by: ${m.checked_by} (${new Date(m.checked_at).toLocaleString('id-ID', { dateStyle: 'short', timeStyle: 'short' })})` : 'Tandai sudah diperiksa' %>">
-                            
-                            <% if (m.is_processed===0) { %>
-                              <button class="btn btn-sm btn-outline-danger delete-manifest" data-id="<%= m.manifest_id %>"
-                                data-resi="<%= m.resi_number %>" title="Hapus Manifest">
+                          <span class="badge <%= statusBadgeClass %> px-2 py-1 rounded-pill">
+                            <i class="bi <%= statusIcon %> me-1"></i><%= bmp.status_banding %>
+                          </span>
+                        </td>
+
+                        <!-- PIC SALES Checkbox for Banding MP -->
+                        <td class="text-center pic-check-cell" data-banding-id="<%= bmp.id %>" data-pic="sales">
+                          <div class="d-flex flex-column align-items-center justify-content-center">
+                            <div class="form-check form-switch mb-1">
+                              <input type="checkbox" class="form-check-input banding-pic-checkbox"
+                                data-id="<%= bmp.id %>"
+                                data-pic="sales"
+                                <%= bmp.check_sales === 1 ? 'checked' : '' %>
+                                <%= canCheckPicBmp ? '' : 'disabled' %>
+                                title="<%= bmp.check_sales === 1 ? `Diperiksa oleh: ${bmp.checked_sales_by} (${bmp.checked_sales_at ? new Date(bmp.checked_sales_at).toLocaleString('id-ID', { dateStyle: 'short', timeStyle: 'short' }) : ''})` : 'Pengecekan PIC SALES' %>"
+                                id="banding-check-sales-<%= bmp.id %>">
+                            </div>
+                            <div class="pic-badge-container">
+                              <% if (bmp.check_sales === 1) { %>
+                                <span class="badge bg-success-subtle text-success border border-success-subtle d-inline-flex align-items-center gap-1" style="font-size: 0.68rem;" title="Diperiksa oleh: <%= bmp.checked_sales_by %> (<%= bmp.checked_sales_at ? new Date(bmp.checked_sales_at).toLocaleString('id-ID', { dateStyle: 'short', timeStyle: 'short' }) : '' %>)">
+                                  <i class="bi bi-check-circle-fill"></i> <%= bmp.checked_sales_by || 'Checked' %>
+                                </span>
+                              <% } else { %>
+                                <span class="badge bg-light text-muted border" style="font-size: 0.65rem;">Belum</span>
+                              <% } %>
+                            </div>
+                          </div>
+                        </td>
+
+                        <!-- PIC FAT Checkbox for Banding MP -->
+                        <td class="text-center pic-check-cell" data-banding-id="<%= bmp.id %>" data-pic="fat">
+                          <div class="d-flex flex-column align-items-center justify-content-center">
+                            <div class="form-check form-switch mb-1">
+                              <input type="checkbox" class="form-check-input banding-pic-checkbox"
+                                data-id="<%= bmp.id %>"
+                                data-pic="fat"
+                                <%= bmp.check_fat === 1 ? 'checked' : '' %>
+                                <%= canCheckPicBmp ? '' : 'disabled' %>
+                                title="<%= bmp.check_fat === 1 ? `Diperiksa oleh: ${bmp.checked_fat_by} (${bmp.checked_fat_at ? new Date(bmp.checked_fat_at).toLocaleString('id-ID', { dateStyle: 'short', timeStyle: 'short' }) : ''})` : 'Pengecekan PIC FAT' %>"
+                                id="banding-check-fat-<%= bmp.id %>">
+                            </div>
+                            <div class="pic-badge-container">
+                              <% if (bmp.check_fat === 1) { %>
+                                <span class="badge bg-success-subtle text-success border border-success-subtle d-inline-flex align-items-center gap-1" style="font-size: 0.68rem;" title="Diperiksa oleh: <%= bmp.checked_fat_by %> (<%= bmp.checked_fat_at ? new Date(bmp.checked_fat_at).toLocaleString('id-ID', { dateStyle: 'short', timeStyle: 'short' }) : '' %>)">
+                                  <i class="bi bi-check-circle-fill"></i> <%= bmp.checked_fat_by || 'Checked' %>
+                                </span>
+                              <% } else { %>
+                                <span class="badge bg-light text-muted border" style="font-size: 0.65rem;">Belum</span>
+                              <% } %>
+                            </div>
+                          </div>
+                        </td>
+
+                        <td class="text-center">
+                          <div class="d-flex justify-content-center gap-1">
+                            <button type="button" class="btn btn-outline-primary btn-sm px-2 py-1 btn-edit-banding"
+                              data-id="<%= bmp.id %>"
+                              data-tgl="<%= rawDate %>"
+                              data-kode-toko="<%= bmp.kode_toko %>"
+                              data-no-invoice="<%= bmp.no_invoice %>"
+                              data-keterangan="<%= bmp.keterangan %>"
+                              data-status-banding="<%= bmp.status_banding %>"
+                              title="Edit Banding MP">
+                              <i class="bi bi-pencil"></i>
+                            </button>
+                            <form method="POST" action="/returns/manifests/banding/<%= bmp.id %>/delete" class="d-inline"
+                              onsubmit="return confirm('Apakah Anda yakin ingin menghapus data Banding MP untuk invoice <%= bmp.no_invoice %>?');">
+                              <button type="submit" class="btn btn-outline-danger btn-sm px-2 py-1" title="Hapus Banding MP">
                                 <i class="bi bi-trash"></i>
                               </button>
-                              <% } else { %>
-                                <button class="btn btn-sm btn-outline-secondary" disabled title="Manifest sudah diproses">
-                                  <i class="bi bi-trash"></i>
-                                </button>
-                                <% } %>
+                            </form>
                           </div>
                         </td>
                       </tr>
-                      <% }) %>
+                    <% }) %>
+                  <% } %>
+                <% } else { %>
+                <% if (manifests.length===0) { %>
+                  <tr>
+                    <td colspan="<%= activeTab === 'manual' ? 14 : 12 %>" class="text-center text-muted py-4">
+                      <% if (pagination.search) { %>
+                        <i class="bi bi-exclamation-circle fs-3 d-block mb-2 text-danger"></i>
+                        Tidak ada data manifest <%= activeTab==='manual' ? 'manual' : 'scan' %> ditemukan untuk
+                          pencarian "<strong>
+                            <%= pagination.search %>
+                          </strong>".
+                          <% } else if (activeTab==='manual' ) { %>
+                            <i class="bi bi-pencil-square fs-3 d-block mb-2 text-muted"></i>
+                            Belum ada data return manifest manual. Klik tombol <strong>Tambah Data Manifest</strong> di
+                            atas untuk menambahkan data baru.
+                            <% } else { %>
+                              <i class="bi bi-upc-scan fs-3 d-block mb-2 text-muted"></i>
+                              Belum ada data manifest yang di-scan. Silakan lakukan scan barcode atau cari data manifest
+                              pada halaman <strong><a href="/returns/create"
+                                  class="text-decoration-none text-primary">Create New Return</a></strong> untuk
+                              menampilkan data.
+                              <% } %>
+                    </td>
+                  </tr>
+                  <% } %>
+
+                    <% if (activeTab==='manual' ) { %>
+                      <% manifests.forEach(m=> { %>
+                        <% const isAllPicChecked = (m.check_sales === 1 && m.check_fat === 1 && m.check_ops === 1); %>
+                        <% const hasAnyPicChecked = (m.check_sales === 1 || m.check_fat === 1 || m.check_ops === 1); %>
+                        <tr id="manifest-row-<%= m.manifest_id %>" data-resi="<%= m.resi_number %>"
+                          data-pesanan="<%= m.no_pesanan %>"
+                          class="<%= isAllPicChecked ? 'table-success-tint' : (hasAnyPicChecked ? 'table-warning-tint' : '') %>">
+                          <td>
+                            <button class="btn btn-sm btn-outline-info toggle-items" data-id="<%= m.manifest_id %>"
+                              title="Tampilkan detail barang">
+                              <i class="bi bi-chevron-down"></i>
+                            </button>
+                          </td>
+                          <td class="text-nowrap">
+                            <%= m.tgl ? new Date(m.tgl).toLocaleDateString('id-ID') : (m.created_at ? new
+                              Date(m.created_at).toLocaleDateString('id-ID') : '-' ) %>
+                          </td>
+                          <td>
+                            <div class="fw-semibold text-dark">
+                              <%= m.customer_name || m.penerima || '-' %>
+                            </div>
+                            <% if (m.customer_contact) { %>
+                              <small class="text-muted">
+                                <%= m.customer_contact %>
+                              </small>
+                              <% } %>
+                          </td>
+                          <td>
+                            <%= m.kota || '-' %>
+                          </td>
+                          <td>
+                            <span class="badge bg-light text-dark border">
+                              <%= m.expedisi || m.metode_pengiriman || '-' %>
+                            </span>
+                          </td>
+                          <td>
+                            <%= m.nama_toko || '-' %>
+                          </td>
+                          <td>
+                            <span class="font-monospace fw-semibold">
+                              <%= m.no_pesanan %>
+                            </span>
+                          </td>
+                          <td>
+                            <span class="font-monospace fw-bold text-dark">
+                              <%= m.resi_number %>
+                            </span>
+                          </td>
+                          <td>
+                            <span
+                              class="badge <%= m.status === 'Rusak' ? 'bg-danger' : (m.status === 'Retur Manual' ? 'bg-warning text-dark' : 'bg-primary') %>">
+                              <%= m.status || 'Pending' %>
+                            </span>
+                          </td>
+                          <td class="text-nowrap">
+                            <%= m.total_items %> SKU (<%= m.total_quantity %> pcs)
+                          </td>
+
+                          <!-- PIC SALES Checkbox -->
+                          <td class="text-center pic-check-cell" data-manifest-id="<%= m.manifest_id %>" data-pic="sales">
+                            <% const canCheckPic = hasRole(['admin', 'manager', 'purchasing', 'sales', 'admin_retur', 'admin_sorting', 'staff_recover', 'warehouse', 'inspector']); %>
+                            <div class="d-flex flex-column align-items-center justify-content-center">
+                              <div class="form-check form-switch mb-1">
+                                <input type="checkbox" class="form-check-input manifest-pic-checkbox"
+                                  data-id="<%= m.manifest_id %>"
+                                  data-pic="sales"
+                                  <%= m.check_sales === 1 ? 'checked' : '' %>
+                                  <%= canCheckPic ? '' : 'disabled' %>
+                                  title="<%= m.check_sales === 1 ? `Diperiksa oleh: ${m.checked_sales_by} (${m.checked_sales_at ? new Date(m.checked_sales_at).toLocaleString('id-ID', { dateStyle: 'short', timeStyle: 'short' }) : ''})` : 'Pengecekan PIC SALES' %>"
+                                  id="check-sales-<%= m.manifest_id %>">
+                              </div>
+                              <div class="pic-badge-container">
+                                <% if (m.check_sales === 1) { %>
+                                  <span class="badge bg-success-subtle text-success border border-success-subtle d-inline-flex align-items-center gap-1" style="font-size: 0.68rem;" title="Diperiksa oleh: <%= m.checked_sales_by %> (<%= m.checked_sales_at ? new Date(m.checked_sales_at).toLocaleString('id-ID', { dateStyle: 'short', timeStyle: 'short' }) : '' %>)">
+                                    <i class="bi bi-check-circle-fill"></i> <%= m.checked_sales_by || 'Checked' %>
+                                  </span>
+                                <% } else { %>
+                                  <span class="badge bg-light text-muted border" style="font-size: 0.65rem;">Belum</span>
+                                <% } %>
+                              </div>
+                            </div>
+                          </td>
+
+                          <!-- PIC FAT Checkbox -->
+                          <td class="text-center pic-check-cell" data-manifest-id="<%= m.manifest_id %>" data-pic="fat">
+                            <div class="d-flex flex-column align-items-center justify-content-center">
+                              <div class="form-check form-switch mb-1">
+                                <input type="checkbox" class="form-check-input manifest-pic-checkbox"
+                                  data-id="<%= m.manifest_id %>"
+                                  data-pic="fat"
+                                  <%= m.check_fat === 1 ? 'checked' : '' %>
+                                  <%= canCheckPic ? '' : 'disabled' %>
+                                  title="<%= m.check_fat === 1 ? `Diperiksa oleh: ${m.checked_fat_by} (${m.checked_fat_at ? new Date(m.checked_fat_at).toLocaleString('id-ID', { dateStyle: 'short', timeStyle: 'short' }) : ''})` : 'Pengecekan PIC FAT' %>"
+                                  id="check-fat-<%= m.manifest_id %>">
+                              </div>
+                              <div class="pic-badge-container">
+                                <% if (m.check_fat === 1) { %>
+                                  <span class="badge bg-success-subtle text-success border border-success-subtle d-inline-flex align-items-center gap-1" style="font-size: 0.68rem;" title="Diperiksa oleh: <%= m.checked_fat_by %> (<%= m.checked_fat_at ? new Date(m.checked_fat_at).toLocaleString('id-ID', { dateStyle: 'short', timeStyle: 'short' }) : '' %>)">
+                                    <i class="bi bi-check-circle-fill"></i> <%= m.checked_fat_by || 'Checked' %>
+                                  </span>
+                                <% } else { %>
+                                  <span class="badge bg-light text-muted border" style="font-size: 0.65rem;">Belum</span>
+                                <% } %>
+                              </div>
+                            </div>
+                          </td>
+
+                          <!-- PIC OPS Checkbox -->
+                          <td class="text-center pic-check-cell" data-manifest-id="<%= m.manifest_id %>" data-pic="ops">
+                            <div class="d-flex flex-column align-items-center justify-content-center">
+                              <div class="form-check form-switch mb-1">
+                                <input type="checkbox" class="form-check-input manifest-pic-checkbox"
+                                  data-id="<%= m.manifest_id %>"
+                                  data-pic="ops"
+                                  <%= m.check_ops === 1 ? 'checked' : '' %>
+                                  <%= canCheckPic ? '' : 'disabled' %>
+                                  title="<%= m.check_ops === 1 ? `Diperiksa oleh: ${m.checked_ops_by} (${m.checked_ops_at ? new Date(m.checked_ops_at).toLocaleString('id-ID', { dateStyle: 'short', timeStyle: 'short' }) : ''})` : 'Pengecekan PIC OPS' %>"
+                                  id="check-ops-<%= m.manifest_id %>">
+                              </div>
+                              <div class="pic-badge-container">
+                                <% if (m.check_ops === 1) { %>
+                                  <span class="badge bg-success-subtle text-success border border-success-subtle d-inline-flex align-items-center gap-1" style="font-size: 0.68rem;" title="Diperiksa oleh: <%= m.checked_ops_by %> (<%= m.checked_ops_at ? new Date(m.checked_ops_at).toLocaleString('id-ID', { dateStyle: 'short', timeStyle: 'short' }) : '' %>)">
+                                    <i class="bi bi-check-circle-fill"></i> <%= m.checked_ops_by || 'Checked' %>
+                                  </span>
+                                <% } else { %>
+                                  <span class="badge bg-light text-muted border" style="font-size: 0.65rem;">Belum</span>
+                                <% } %>
+                              </div>
+                            </div>
+                          </td>
+
+                          <td class="text-center">
+                            <div class="d-flex align-items-center justify-content-center gap-1">
+                              <button class="btn btn-sm btn-outline-primary edit-manifest"
+                                data-id="<%= m.manifest_id %>"
+                                title="Edit Manifest">
+                                <i class="bi bi-pencil"></i>
+                              </button>
+
+                              <% if (m.is_processed===0) { %>
+                                <button class="btn btn-sm btn-outline-danger delete-manifest"
+                                  data-id="<%= m.manifest_id %>" data-resi="<%= m.resi_number %>"
+                                  title="Hapus Manifest">
+                                  <i class="bi bi-trash"></i>
+                                </button>
+                              <% } else { %>
+                                <button class="btn btn-sm btn-outline-secondary" disabled
+                                  title="Manifest sudah diproses">
+                                  <i class="bi bi-trash"></i>
+                                </button>
+                              <% } %>
+                            </div>
+                          </td>
+                        </tr>
+                        <% }) %>
+                          <% } else { %>
+                            <% manifests.forEach(m=> { %>
+                              <% const isAllPicChecked = (m.check_sales === 1 && m.check_fat === 1 && m.check_ops === 1); %>
+                              <% const hasAnyPicChecked = (m.check_sales === 1 || m.check_fat === 1 || m.check_ops === 1); %>
+                              <tr id="manifest-row-<%= m.manifest_id %>" data-resi="<%= m.resi_number %>"
+                                data-pesanan="<%= m.no_pesanan %>"
+                                class="<%= isAllPicChecked ? 'table-success-tint' : (hasAnyPicChecked ? 'table-warning-tint' : '') %>">
+                                <td>
+                                  <button class="btn btn-sm btn-outline-info toggle-items"
+                                    data-id="<%= m.manifest_id %>" title="Tampilkan detail barang">
+                                    <i class="bi bi-chevron-down"></i>
+                                  </button>
+                                </td>
+                                <td>
+                                  <div class="fw-bold text-dark">
+                                    <%= m.resi_number %>
+                                  </div>
+                                  <small class="text-muted font-monospace">
+                                    <%= m.no_pesanan %>
+                                  </small>
+                                </td>
+                                <td>
+                                  <div>
+                                    <%= m.customer_name || '-' %>
+                                  </div>
+                                  <small class="text-muted">
+                                    <%= m.customer_contact || '' %>
+                                  </small>
+                                </td>
+                                <td>
+                                  <%= formatSourceType(m.source_type) %>
+                                </td>
+                                <td class="text-capitalize">
+                                  <%= formatCategory(m.return_category) %>
+                                </td>
+                                <td>
+                                  <%= m.total_items %> SKU (<%= m.total_quantity %> pcs)
+                                </td>
+                                <td>
+                                  <% if (m.is_processed===1) { %>
+                                    <span class="badge bg-success"><i class="bi bi-check-circle"></i> Processed</span>
+                                    <% } else { %>
+                                      <span class="badge bg-warning text-dark"><i class="bi bi-clock"></i>
+                                        Pending</span>
+                                      <% } %>
+                                </td>
+                                <td>
+                                  <%= new Date(m.created_at).toLocaleString('id-ID', { dateStyle: 'short' ,
+                                    timeStyle: 'short' }) %>
+                                </td>
+
+                                <!-- PIC SALES Checkbox for Scan Tab -->
+                                <td class="text-center pic-check-cell" data-manifest-id="<%= m.manifest_id %>" data-pic="sales">
+                                  <% const canCheckPicScan = hasRole(['admin', 'manager', 'purchasing', 'sales', 'admin_retur', 'admin_sorting', 'staff_recover', 'warehouse', 'inspector']); %>
+                                  <div class="d-flex flex-column align-items-center justify-content-center">
+                                    <div class="form-check form-switch mb-1">
+                                      <input type="checkbox" class="form-check-input manifest-pic-checkbox"
+                                        data-id="<%= m.manifest_id %>"
+                                        data-pic="sales"
+                                        <%= m.check_sales === 1 ? 'checked' : '' %>
+                                        <%= canCheckPicScan ? '' : 'disabled' %>
+                                        title="<%= m.check_sales === 1 ? `Diperiksa oleh: ${m.checked_sales_by} (${m.checked_sales_at ? new Date(m.checked_sales_at).toLocaleString('id-ID', { dateStyle: 'short', timeStyle: 'short' }) : ''})` : 'Pengecekan PIC SALES' %>"
+                                        id="check-sales-<%= m.manifest_id %>">
+                                    </div>
+                                    <div class="pic-badge-container">
+                                      <% if (m.check_sales === 1) { %>
+                                        <span class="badge bg-success-subtle text-success border border-success-subtle d-inline-flex align-items-center gap-1" style="font-size: 0.68rem;" title="Diperiksa oleh: <%= m.checked_sales_by %> (<%= m.checked_sales_at ? new Date(m.checked_sales_at).toLocaleString('id-ID', { dateStyle: 'short', timeStyle: 'short' }) : '' %>)">
+                                          <i class="bi bi-check-circle-fill"></i> <%= m.checked_sales_by || 'Checked' %>
+                                        </span>
+                                      <% } else { %>
+                                        <span class="badge bg-light text-muted border" style="font-size: 0.65rem;">Belum</span>
+                                      <% } %>
+                                    </div>
+                                  </div>
+                                </td>
+
+                                <!-- PIC FAT Checkbox for Scan Tab -->
+                                <td class="text-center pic-check-cell" data-manifest-id="<%= m.manifest_id %>" data-pic="fat">
+                                  <div class="d-flex flex-column align-items-center justify-content-center">
+                                    <div class="form-check form-switch mb-1">
+                                      <input type="checkbox" class="form-check-input manifest-pic-checkbox"
+                                        data-id="<%= m.manifest_id %>"
+                                        data-pic="fat"
+                                        <%= m.check_fat === 1 ? 'checked' : '' %>
+                                        <%= canCheckPicScan ? '' : 'disabled' %>
+                                        title="<%= m.check_fat === 1 ? `Diperiksa oleh: ${m.checked_fat_by} (${m.checked_fat_at ? new Date(m.checked_fat_at).toLocaleString('id-ID', { dateStyle: 'short', timeStyle: 'short' }) : ''})` : 'Pengecekan PIC FAT' %>"
+                                        id="check-fat-<%= m.manifest_id %>">
+                                    </div>
+                                    <div class="pic-badge-container">
+                                      <% if (m.check_fat === 1) { %>
+                                        <span class="badge bg-success-subtle text-success border border-success-subtle d-inline-flex align-items-center gap-1" style="font-size: 0.68rem;" title="Diperiksa oleh: <%= m.checked_fat_by %> (<%= m.checked_fat_at ? new Date(m.checked_fat_at).toLocaleString('id-ID', { dateStyle: 'short', timeStyle: 'short' }) : '' %>)">
+                                          <i class="bi bi-check-circle-fill"></i> <%= m.checked_fat_by || 'Checked' %>
+                                        </span>
+                                      <% } else { %>
+                                        <span class="badge bg-light text-muted border" style="font-size: 0.65rem;">Belum</span>
+                                      <% } %>
+                                    </div>
+                                  </div>
+                                </td>
+
+                                <!-- PIC OPS Checkbox for Scan Tab -->
+                                <td class="text-center pic-check-cell" data-manifest-id="<%= m.manifest_id %>" data-pic="ops">
+                                  <div class="d-flex flex-column align-items-center justify-content-center">
+                                    <div class="form-check form-switch mb-1">
+                                      <input type="checkbox" class="form-check-input manifest-pic-checkbox"
+                                        data-id="<%= m.manifest_id %>"
+                                        data-pic="ops"
+                                        <%= m.check_ops === 1 ? 'checked' : '' %>
+                                        <%= canCheckPicScan ? '' : 'disabled' %>
+                                        title="<%= m.check_ops === 1 ? `Diperiksa oleh: ${m.checked_ops_by} (${m.checked_ops_at ? new Date(m.checked_ops_at).toLocaleString('id-ID', { dateStyle: 'short', timeStyle: 'short' }) : ''})` : 'Pengecekan PIC OPS' %>"
+                                        id="check-ops-<%= m.manifest_id %>">
+                                    </div>
+                                    <div class="pic-badge-container">
+                                      <% if (m.check_ops === 1) { %>
+                                        <span class="badge bg-success-subtle text-success border border-success-subtle d-inline-flex align-items-center gap-1" style="font-size: 0.68rem;" title="Diperiksa oleh: <%= m.checked_ops_by %> (<%= m.checked_ops_at ? new Date(m.checked_ops_at).toLocaleString('id-ID', { dateStyle: 'short', timeStyle: 'short' }) : '' %>)">
+                                          <i class="bi bi-check-circle-fill"></i> <%= m.checked_ops_by || 'Checked' %>
+                                        </span>
+                                      <% } else { %>
+                                        <span class="badge bg-light text-muted border" style="font-size: 0.65rem;">Belum</span>
+                                      <% } %>
+                                    </div>
+                                  </div>
+                                </td>
+
+                                <td class="text-center">
+                                  <div class="d-flex align-items-center justify-content-center gap-2">
+                                    <% if (m.is_processed===0) { %>
+                                      <button class="btn btn-sm btn-outline-danger delete-manifest"
+                                        data-id="<%= m.manifest_id %>" data-resi="<%= m.resi_number %>"
+                                        title="Hapus Manifest">
+                                        <i class="bi bi-trash"></i>
+                                      </button>
+                                    <% } else { %>
+                                      <button class="btn btn-sm btn-outline-secondary" disabled
+                                        title="Manifest sudah diproses">
+                                        <i class="bi bi-trash"></i>
+                                      </button>
+                                    <% } %>
+                                  </div>
+                                </td>
+                              </tr>
+                               <% }) %>
+                                <% } %>
+                              <% } %>
               </tbody>
-            </table>
+              </table>
           </div>
 
           <%# Premium Pagination %>
@@ -412,7 +939,7 @@
                 <ul class="pagination justify-content-center responsive-pagination mb-0">
                   <li class="page-item <%= pagination.page <= 1 ? 'disabled' : '' %>">
                     <a class="page-link"
-                      href="/returns/manifests?page=<%= pagination.page - 1 %>&limit=<%= pagination.limit %>&search=<%= pagination.search %>&month=<%= month %>&year=<%= year %>"
+                      href="/returns/manifests?tab=<%= activeTab %>&page=<%= pagination.page - 1 %>&limit=<%= pagination.limit %>&search=<%= pagination.search %>&startDate=<%= startDate %>&endDate=<%= endDate %>"
                       aria-label="Previous">
                       <span aria-hidden="true">&laquo;</span>
                     </a>
@@ -420,14 +947,14 @@
                   <% for(let p=1; p <=pagination.totalPages; p++) { %>
                     <li class="page-item <%= pagination.page === p ? 'active' : '' %>">
                       <a class="page-link"
-                        href="/returns/manifests?page=<%= p %>&limit=<%= pagination.limit %>&search=<%= pagination.search %>&month=<%= month %>&year=<%= year %>">
+                        href="/returns/manifests?tab=<%= activeTab %>&page=<%= p %>&limit=<%= pagination.limit %>&search=<%= pagination.search %>&startDate=<%= startDate %>&endDate=<%= endDate %>">
                         <%= p %>
                       </a>
                     </li>
                     <% } %>
                       <li class="page-item <%= pagination.page >= pagination.totalPages ? 'disabled' : '' %>">
                         <a class="page-link"
-                          href="/returns/manifests?page=<%= pagination.page + 1 %>&limit=<%= pagination.limit %>&search=<%= pagination.search %>&month=<%= month %>&year=<%= year %>"
+                          href="/returns/manifests?tab=<%= activeTab %>&page=<%= pagination.page + 1 %>&limit=<%= pagination.limit %>&search=<%= pagination.search %>&startDate=<%= startDate %>&endDate=<%= endDate %>"
                           aria-label="Next">
                           <span aria-hidden="true">&raquo;</span>
                         </a>
@@ -525,11 +1052,724 @@
         </div>
       </div>
     </div>
+
+    <!-- Modal: Tambah Data Manifest -->
+    <div class="modal fade" id="addManifestModal" tabindex="-1" aria-labelledby="addManifestModalLabel"
+      aria-hidden="true">
+      <div class="modal-dialog modal-xl modal-dialog-scrollable modal-fullscreen-sm-down">
+        <div class="modal-content">
+          <form method="POST" action="/returns/manifests/create" id="addManifestForm">
+            <div class="modal-header bg-primary text-white">
+              <h5 class="modal-title" id="addManifestModalLabel"><i class="bi bi-plus-circle me-2"></i> Tambah Data
+                Return Manifest</h5>
+              <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal"
+                aria-label="Close"></button>
+            </div>
+            <div class="modal-body p-4">
+              <div class="border rounded p-3 mb-4 bg-light shadow-sm">
+                <h6 class="text-primary fw-bold mb-3 d-flex align-items-center">
+                  <i class="bi bi-card-checklist me-2 fs-5"></i> Informasi Data Manifest
+                </h6>
+                <div class="row g-3">
+                  <!-- 1. Tgl -->
+                  <div class="col-12 col-sm-6 col-lg-3">
+                    <label class="form-label small fw-semibold mb-1">1. Tgl <span class="text-danger">*</span></label>
+                    <input type="date" class="form-control form-control-sm" name="tgl"
+                      value="<%= new Date().toISOString().split('T')[0] %>" required>
+                  </div>
+                  <!-- 2. Nama Customer -->
+                  <div class="col-12 col-sm-6 col-lg-3">
+                    <label class="form-label small fw-semibold mb-1">2. Nama Customer</label>
+                    <input type="text" class="form-control form-control-sm" name="customer_name"
+                      placeholder="Nama Customer">
+                  </div>
+                  <!-- 3. Kota -->
+                  <div class="col-12 col-sm-6 col-lg-3">
+                    <label class="form-label small fw-semibold mb-1">3. Kota <span class="text-danger">*</span></label>
+                    <input type="text" class="form-control form-control-sm" name="kota" placeholder="Kota / Wilayah"
+                      required>
+                  </div>
+                  <!-- 4. Exspedisi -->
+                  <div class="col-12 col-sm-6 col-lg-3">
+                    <label class="form-label small fw-semibold mb-1">4. Exspedisi <span
+                        class="text-danger">*</span></label>
+                    <div class="input-group input-group-sm">
+                      <input list="expedisiOptions" class="form-control form-control-sm" name="expedisi"
+                        id="expedisiInput" placeholder="Pilih atau ketik expedisi..." required>
+                      <datalist id="expedisiOptions">
+                        <% if (typeof expedisiList !=='undefined' && expedisiList.length> 0) { %>
+                          <% expedisiList.forEach(exp=> { %>
+                            <option value="<%= exp.nama_expedisi %>"></option>
+                            <% }) %>
+                              <% } else { %>
+                                <option value="Shopee X"></option>
+                                <option value="JNT"></option>
+                                <option value="JNT Cargo"></option>
+                                <option value="LEX ID"></option>
+                                <option value="JNE"></option>
+                                <option value="JTR"></option>
+                                <option value="Ninja"></option>
+                                <option value="Indopaket"></option>
+                                <option value="GTL"></option>
+                                <option value="Anteraja"></option>
+                                <% } %>
+                      </datalist>
+                    </div>
+                  </div>
+                  <!-- 5. Toko -->
+                  <div class="col-12 col-sm-6 col-lg-3">
+                    <label class="form-label small fw-semibold mb-1">5. Toko</label>
+                    <input type="text" class="form-control form-control-sm" name="nama_toko"
+                      placeholder="Nama Toko (cth: Shopee Official)">
+                  </div>
+                  <!-- 6. No Pesanan -->
+                  <div class="col-12 col-sm-6 col-lg-3">
+                    <label class="form-label small fw-semibold mb-1">6. No Pesanan </label>
+                    <input type="text" class="form-control form-control-sm" name="no_pesanan"
+                      placeholder="Nomor Pesanan">
+                  </div>
+                  <!-- 7. Nomor Resi -->
+                  <div class="col-12 col-sm-6 col-lg-3">
+                    <label class="form-label small fw-semibold mb-1">7. Nomor Resi <span
+                        class="text-danger">*</span></label>
+                    <input type="text" class="form-control form-control-sm" name="resi_number"
+                      placeholder="Nomor Resi / Pengiriman" required>
+                  </div>
+                  <!-- 8. Status -->
+                  <div class="col-12 col-sm-6 col-lg-3">
+                    <label class="form-label small fw-semibold mb-1">8. Status <span
+                        class="text-danger">*</span></label>
+                    <select class="form-select form-select-sm" name="status" required>
+                      <option value="Salah Barang">Salah Barang</option>
+                      <option value="Kurang Barang">Kurang Barang</option>
+                      <option value="Lebih Barang">Lebih Barang</option>
+                      <option value="DFOD">DFOD</option>
+                    </select>
+                  </div>
+                  <!-- 9. Keterangan -->
+                  <div class="col-12 col-sm-6 col-lg-12">
+                    <label class="form-label small fw-semibold mb-1">9. Keterangan</label>
+                    <textarea class="form-control form-control-sm" name="notes" placeholder="Keterangan / Catatan"
+                      rows="3"></textarea>
+                  </div>
+                </div>
+              </div>
+
+              <div class="border rounded p-3 bg-white shadow-sm">
+                <div class="d-flex flex-wrap justify-content-between align-items-center gap-2 mb-3">
+                  <h6 class="text-success fw-bold mb-0 d-flex align-items-center">
+                    <i class="bi bi-box-seam me-2 fs-5"></i> Daftar Barang <span class="text-danger ms-1">*</span>
+                  </h6>
+                  <button type="button" class="btn btn-success btn-sm" onclick="addManifestItemRow()">
+                    <i class="bi bi-plus-lg"></i> Tambah Barang
+                  </button>
+                </div>
+
+                <div id="manifestItemsContainer"></div>
+              </div>
+            </div>
+            <div class="modal-footer bg-light flex-wrap">
+              <button type="button" class="btn btn-secondary btn-sm" data-bs-dismiss="modal">Batal</button>
+              <button type="submit" class="btn btn-primary btn-sm px-3"><i class="bi bi-save me-1"></i> Simpan
+                Manifest</button>
+            </div>
+          </form>
+        </div>
+      </div>
+    </div>
+
+    <!-- Modal: Edit Data Manifest -->
+    <div class="modal fade" id="editManifestModal" tabindex="-1" aria-labelledby="editManifestModalLabel"
+      aria-hidden="true">
+      <div class="modal-dialog modal-xl modal-dialog-scrollable modal-fullscreen-sm-down">
+        <div class="modal-content">
+          <form method="POST" action="" id="editManifestForm">
+            <div class="modal-header bg-primary text-white">
+              <h5 class="modal-title" id="editManifestModalLabel"><i class="bi bi-pencil-square me-2"></i> Edit Data
+                Return Manifest</h5>
+              <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal"
+                aria-label="Close"></button>
+            </div>
+            <div class="modal-body p-4">
+              <div class="border rounded p-3 mb-4 bg-light shadow-sm">
+                <h6 class="text-primary fw-bold mb-3 d-flex align-items-center">
+                  <i class="bi bi-card-checklist me-2 fs-5"></i> Informasi Data Manifest
+                </h6>
+                <div class="row g-3">
+                  <!-- 1. Tgl -->
+                  <div class="col-12 col-sm-6 col-lg-3">
+                    <label class="form-label small fw-semibold mb-1">1. Tgl <span class="text-danger">*</span></label>
+                    <input type="date" class="form-control form-control-sm" name="tgl" id="edit_manifest_tgl" required>
+                  </div>
+                  <!-- 2. Nama Customer -->
+                  <div class="col-12 col-sm-6 col-lg-3">
+                    <label class="form-label small fw-semibold mb-1">2. Nama Customer</label>
+                    <input type="text" class="form-control form-control-sm" name="customer_name" id="edit_manifest_customer_name"
+                      placeholder="Nama Customer">
+                  </div>
+                  <!-- 3. Kota -->
+                  <div class="col-12 col-sm-6 col-lg-3">
+                    <label class="form-label small fw-semibold mb-1">3. Kota <span class="text-danger">*</span></label>
+                    <input type="text" class="form-control form-control-sm" name="kota" id="edit_manifest_kota" placeholder="Kota / Wilayah"
+                      required>
+                  </div>
+                  <!-- 4. Exspedisi -->
+                  <div class="col-12 col-sm-6 col-lg-3">
+                    <label class="form-label small fw-semibold mb-1">4. Exspedisi <span
+                        class="text-danger">*</span></label>
+                    <div class="input-group input-group-sm">
+                      <input list="expedisiOptionsEdit" class="form-control form-control-sm" name="expedisi"
+                        id="edit_manifest_expedisi" placeholder="Pilih atau ketik expedisi..." required>
+                      <datalist id="expedisiOptionsEdit">
+                        <% if (typeof expedisiList !=='undefined' && expedisiList.length> 0) { %>
+                          <% expedisiList.forEach(exp=> { %>
+                            <option value="<%= exp.nama_expedisi %>"></option>
+                            <% }) %>
+                              <% } else { %>
+                                <option value="Shopee X"></option>
+                                <option value="JNT"></option>
+                                <option value="JNT Cargo"></option>
+                                <option value="LEX ID"></option>
+                                <option value="JNE"></option>
+                                <option value="JTR"></option>
+                                <option value="Ninja"></option>
+                                <option value="Indopaket"></option>
+                                <option value="GTL"></option>
+                                <option value="Anteraja"></option>
+                                <% } %>
+                      </datalist>
+                    </div>
+                  </div>
+                  <!-- 5. Toko -->
+                  <div class="col-12 col-sm-6 col-lg-3">
+                    <label class="form-label small fw-semibold mb-1">5. Toko</label>
+                    <input type="text" class="form-control form-control-sm" name="nama_toko" id="edit_manifest_nama_toko"
+                      placeholder="Nama Toko (cth: Shopee Official)">
+                  </div>
+                  <!-- 6. No Pesanan -->
+                  <div class="col-12 col-sm-6 col-lg-3">
+                    <label class="form-label small fw-semibold mb-1">6. No Pesanan <span class="text-danger">*</span></label>
+                    <input type="text" class="form-control form-control-sm" name="no_pesanan" id="edit_manifest_no_pesanan"
+                      placeholder="Nomor Pesanan" required>
+                  </div>
+                  <!-- 7. Nomor Resi -->
+                  <div class="col-12 col-sm-6 col-lg-3">
+                    <label class="form-label small fw-semibold mb-1">7. Nomor Resi <span
+                        class="text-danger">*</span></label>
+                    <input type="text" class="form-control form-control-sm" name="resi_number" id="edit_manifest_resi_number"
+                      placeholder="Nomor Resi / Pengiriman" required>
+                  </div>
+                  <!-- 8. Status -->
+                  <div class="col-12 col-sm-6 col-lg-3">
+                    <label class="form-label small fw-semibold mb-1">8. Status <span
+                        class="text-danger">*</span></label>
+                    <select class="form-select form-select-sm" name="status" id="edit_manifest_status" required>
+                      <option value="Salah Barang">Salah Barang</option>
+                      <option value="Kurang Barang">Kurang Barang</option>
+                      <option value="Lebih Barang">Lebih Barang</option>
+                      <option value="DFOD">DFOD</option>
+                    </select>
+                  </div>
+                  <!-- 9. Keterangan -->
+                  <div class="col-12 col-sm-6 col-lg-12">
+                    <label class="form-label small fw-semibold mb-1">9. Keterangan</label>
+                    <textarea class="form-control form-control-sm" name="notes" id="edit_manifest_notes" placeholder="Keterangan / Catatan"
+                      rows="3"></textarea>
+                  </div>
+                </div>
+              </div>
+
+              <div class="border rounded p-3 bg-white shadow-sm">
+                <div class="d-flex flex-wrap justify-content-between align-items-center gap-2 mb-3">
+                  <h6 class="text-success fw-bold mb-0 d-flex align-items-center">
+                    <i class="bi bi-box-seam me-2 fs-5"></i> Daftar Barang <span class="text-danger ms-1">*</span>
+                  </h6>
+                  <button type="button" class="btn btn-success btn-sm" onclick="addEditManifestItemRow()">
+                    <i class="bi bi-plus-lg"></i> Tambah Barang
+                  </button>
+                </div>
+
+                <div id="editManifestItemsContainer"></div>
+              </div>
+            </div>
+            <div class="modal-footer bg-light flex-wrap">
+              <button type="button" class="btn btn-secondary btn-sm" data-bs-dismiss="modal">Batal</button>
+              <button type="submit" class="btn btn-primary btn-sm px-3"><i class="bi bi-save me-1"></i> Simpan
+                Perubahan</button>
+            </div>
+          </form>
+        </div>
+      </div>
+    </div>
+
+    <!-- Modal: Tambah Data Banding MP -->
+    <div class="modal fade" id="addBandingMPModal" tabindex="-1" aria-labelledby="addBandingMPModalLabel"
+      aria-hidden="true">
+      <div class="modal-dialog modal-lg modal-dialog-centered">
+        <div class="modal-content">
+          <form method="POST" action="/returns/manifests/banding/create" id="addBandingMPForm">
+            <div class="modal-header bg-warning text-dark">
+              <h5 class="modal-title fw-bold" id="addBandingMPModalLabel"><i class="bi bi-shield-plus me-2"></i> Tambah Data Banding MP</h5>
+              <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+            </div>
+            <div class="modal-body p-4">
+              <div class="row g-3">
+                <!-- 1. Tgl -->
+                <div class="col-12 col-md-6">
+                  <label class="form-label small fw-semibold mb-1">1. Tgl <span class="text-danger">*</span></label>
+                  <input type="date" class="form-control form-control-sm" name="tgl"
+                    value="<%= new Date().toISOString().split('T')[0] %>" required>
+                </div>
+                <!-- 2. Kode Toko -->
+                <div class="col-12 col-md-6">
+                  <label class="form-label small fw-semibold mb-1">2. Kode Toko <span class="text-danger">*</span></label>
+                  <select class="form-select form-select-sm select2-searchable" name="kode_toko" id="add_bmp_kode_toko" data-placeholder="-- Cari & Pilih Kode Toko --" required>
+                    <option value=""></option>
+                    <% (typeof kodeTokoOptions !== 'undefined' ? kodeTokoOptions : []).forEach(toko => { %>
+                      <option value="<%= toko %>"><%= toko %></option>
+                    <% }) %>
+                  </select>
+                </div>
+                <!-- 3. Nomer Invoice -->
+                <div class="col-12">
+                  <label class="form-label small fw-semibold mb-1">3. Nomer Invoice <span class="text-danger">*</span></label>
+                  <input type="text" class="form-control form-control-sm" name="no_invoice" placeholder="Contoh: INV/2026/001 atau No Pesanan Marketplace" required>
+                </div>
+                <!-- 4. Keterangan -->
+                <div class="col-12">
+                  <label class="form-label small fw-semibold mb-1">4. Keterangan <span class="text-danger">*</span></label>
+                  <select class="form-select form-select-sm select2-searchable" name="keterangan" id="add_bmp_keterangan" data-placeholder="-- Cari & Pilih Keterangan --" required>
+                    <option value=""></option>
+                    <% (typeof keteranganOptions !== 'undefined' ? keteranganOptions : []).forEach(ket => { %>
+                      <option value="<%= ket %>"><%= ket %></option>
+                    <% }) %>
+                  </select>
+                </div>
+                <!-- 5. Status Banding -->
+                <div class="col-12">
+                  <label class="form-label small fw-semibold mb-1">5. Status Banding <span class="text-danger">*</span></label>
+                  <select class="form-select form-select-sm select2-searchable" name="status_banding" id="add_bmp_status_banding" data-placeholder="-- Cari & Pilih Status Banding --" required>
+                    <option value=""></option>
+                    <% (typeof statusBandingOptions !== 'undefined' ? statusBandingOptions : []).forEach(st => { %>
+                      <option value="<%= st %>"><%= st %></option>
+                    <% }) %>
+                  </select>
+                </div>
+              </div>
+            </div>
+            <div class="modal-footer bg-light">
+              <button type="button" class="btn btn-secondary btn-sm" data-bs-dismiss="modal">Batal</button>
+              <button type="submit" class="btn btn-warning btn-sm text-dark fw-bold px-3">
+                <i class="bi bi-save me-1"></i> Simpan Data Banding MP
+              </button>
+            </div>
+          </form>
+        </div>
+      </div>
+    </div>
+
+    <!-- Modal: Edit Data Banding MP -->
+    <div class="modal fade" id="editBandingMPModal" tabindex="-1" aria-labelledby="editBandingMPModalLabel"
+      aria-hidden="true">
+      <div class="modal-dialog modal-lg modal-dialog-centered">
+        <div class="modal-content">
+          <form method="POST" action="" id="editBandingMPForm">
+            <div class="modal-header bg-primary text-white">
+              <h5 class="modal-title fw-bold" id="editBandingMPModalLabel"><i class="bi bi-pencil-square me-2"></i> Edit Data Banding MP</h5>
+              <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal" aria-label="Close"></button>
+            </div>
+            <div class="modal-body p-4">
+              <div class="row g-3">
+                <!-- 1. Tgl -->
+                <div class="col-12 col-md-6">
+                  <label class="form-label small fw-semibold mb-1">1. Tgl <span class="text-danger">*</span></label>
+                  <input type="date" class="form-control form-control-sm" name="tgl" id="edit_bmp_tgl" required>
+                </div>
+                <!-- 2. Kode Toko -->
+                <div class="col-12 col-md-6">
+                  <label class="form-label small fw-semibold mb-1">2. Kode Toko <span class="text-danger">*</span></label>
+                  <select class="form-select form-select-sm select2-searchable" name="kode_toko" id="edit_bmp_kode_toko" data-placeholder="-- Cari & Pilih Kode Toko --" required>
+                    <option value=""></option>
+                    <% (typeof kodeTokoOptions !== 'undefined' ? kodeTokoOptions : []).forEach(toko => { %>
+                      <option value="<%= toko %>"><%= toko %></option>
+                    <% }) %>
+                  </select>
+                </div>
+                <!-- 3. Nomer Invoice -->
+                <div class="col-12">
+                  <label class="form-label small fw-semibold mb-1">3. Nomer Invoice <span class="text-danger">*</span></label>
+                  <input type="text" class="form-control form-control-sm" name="no_invoice" id="edit_bmp_no_invoice" required>
+                </div>
+                <!-- 4. Keterangan -->
+                <div class="col-12">
+                  <label class="form-label small fw-semibold mb-1">4. Keterangan <span class="text-danger">*</span></label>
+                  <select class="form-select form-select-sm select2-searchable" name="keterangan" id="edit_bmp_keterangan" data-placeholder="-- Cari & Pilih Keterangan --" required>
+                    <option value=""></option>
+                    <% (typeof keteranganOptions !== 'undefined' ? keteranganOptions : []).forEach(ket => { %>
+                      <option value="<%= ket %>"><%= ket %></option>
+                    <% }) %>
+                  </select>
+                </div>
+                <!-- 5. Status Banding -->
+                <div class="col-12">
+                  <label class="form-label small fw-semibold mb-1">5. Status Banding <span class="text-danger">*</span></label>
+                  <select class="form-select form-select-sm select2-searchable" name="status_banding" id="edit_bmp_status_banding" data-placeholder="-- Cari & Pilih Status Banding --" required>
+                    <option value=""></option>
+                    <% (typeof statusBandingOptions !== 'undefined' ? statusBandingOptions : []).forEach(st => { %>
+                      <option value="<%= st %>"><%= st %></option>
+                    <% }) %>
+                  </select>
+                </div>
+              </div>
+            </div>
+            <div class="modal-footer bg-light">
+              <button type="button" class="btn btn-secondary btn-sm" data-bs-dismiss="modal">Batal</button>
+              <button type="submit" class="btn btn-primary btn-sm px-3">
+                <i class="bi bi-save me-1"></i> Simpan Perubahan
+              </button>
+            </div>
+          </form>
+        </div>
+      </div>
+    </div>
 </div>
 
 <script>
+  // ── Tambah Data Manifest: dynamic item rows ─────────────────────────────────
+  var manifestItemCounter = 0;
+  var editManifestItemCounter = 0;
+  var _barangCacheManifest = {};
+  var _barangTimerManifest = null;
+
+  function addManifestItemRow() {
+    manifestItemCounter++;
+    const idx = manifestItemCounter;
+    const container = document.getElementById('manifestItemsContainer');
+    const div = document.createElement('div');
+    div.className = 'item-row border rounded-3 p-3 mb-2 bg-light shadow-sm position-relative';
+    div.id = 'manifest-item-' + idx;
+    div.innerHTML = `
+      <div class="d-flex justify-content-between align-items-center mb-2 pb-1 border-bottom">
+        <h6 class="mb-0 small fw-bold text-secondary"><i class="bi bi-box me-1"></i> Barang #${idx}</h6>
+        <button type="button" class="btn btn-sm btn-outline-danger py-0 px-2" onclick="removeManifestItemRow(${idx})" title="Hapus baris barang">
+          <i class="bi bi-trash me-1"></i> Hapus
+        </button>
+      </div>
+      <div class="row g-2 align-items-end">
+        <!-- 1. Kondisi -->
+        <div class="col-12 col-md-3">
+          <label class="form-label small fw-semibold mb-1">1. Kondisi <span class="text-danger">*</span></label>
+          <select class="form-select form-select-sm" name="items[${idx}][kondisi]" required>
+            <option value="Baik">Baik</option>
+            <option value="Kurang Part">Kurang Part</option>
+            <option value="Packaging Rusak">Packaging Rusak</option>
+            <option value="Pecah">Pecah</option>
+          </select>
+        </div>
+        <!-- 2. SKU -->
+        <div class="col-12 col-md-3">
+          <label class="form-label small fw-semibold mb-1">2. SKU</label>
+          <div class="position-relative">
+            <input type="text" class="form-control form-control-sm item-code-input" name="items[${idx}][item_code]"
+                   placeholder="Cari SKU / Kode..." autocomplete="off"
+                   oninput="searchBarangManifest(this, ${idx})">
+            <div class="barang-dropdown d-none" id="dropdown-code-${idx}"></div>
+          </div>
+        </div>
+        <!-- 3. Produk -->
+        <div class="col-12 col-md-4">
+          <label class="form-label small fw-semibold mb-1">3. Produk <span class="text-danger">*</span></label>
+          <div class="position-relative">
+            <input type="text" class="form-control form-control-sm item-name-input" name="items[${idx}][item_name]"
+                   placeholder="Cari Nama Produk / Barang..." autocomplete="off"
+                   oninput="searchBarangManifest(this, ${idx})" required>
+            <div class="barang-dropdown d-none" id="dropdown-name-${idx}"></div>
+          </div>
+        </div>
+        <!-- 4. Qty -->
+        <div class="col-12 col-md-2">
+          <label class="form-label small fw-semibold mb-1">4. Qty <span class="text-danger">*</span></label>
+          <input type="number" class="form-control form-control-sm text-center" name="items[${idx}][quantity]" value="1" min="1" required>
+        </div>
+      </div>`;
+    container.appendChild(div);
+  }
+
+  function removeManifestItemRow(idx) {
+    const el = document.getElementById('manifest-item-' + idx);
+    const container = document.getElementById('manifestItemsContainer');
+    if (el) {
+      el.remove();
+      if (container && container.children.length === 0) {
+        addManifestItemRow();
+      }
+    }
+  }
+
+  // ── Edit Data Manifest: dynamic item rows ───────────────────────────────────
+  function addEditManifestItemRow(itemData = {}) {
+    editManifestItemCounter++;
+    const idx = editManifestItemCounter;
+    const container = document.getElementById('editManifestItemsContainer');
+    const div = document.createElement('div');
+    div.className = 'item-row border rounded-3 p-3 mb-2 bg-light shadow-sm position-relative';
+    div.id = 'edit-manifest-item-' + idx;
+
+    const kondisiVal = itemData.kondisi || 'Baik';
+    const skuVal = itemData.item_code || '';
+    const nameVal = itemData.item_name || '';
+    const qtyVal = itemData.quantity || 1;
+
+    div.innerHTML = `
+      <div class="d-flex justify-content-between align-items-center mb-2 pb-1 border-bottom">
+        <h6 class="mb-0 small fw-bold text-secondary"><i class="bi bi-box me-1"></i> Barang #${idx}</h6>
+        <button type="button" class="btn btn-sm btn-outline-danger py-0 px-2" onclick="removeEditManifestItemRow(${idx})" title="Hapus baris barang">
+          <i class="bi bi-trash me-1"></i> Hapus
+        </button>
+      </div>
+      <div class="row g-2 align-items-end">
+        <!-- 1. Kondisi -->
+        <div class="col-12 col-md-3">
+          <label class="form-label small fw-semibold mb-1">1. Kondisi <span class="text-danger">*</span></label>
+          <select class="form-select form-select-sm" name="items[${idx}][kondisi]" required>
+            <option value="Baik" ${kondisiVal === 'Baik' ? 'selected' : ''}>Baik</option>
+            <option value="Kurang Part" ${kondisiVal === 'Kurang Part' ? 'selected' : ''}>Kurang Part</option>
+            <option value="Packaging Rusak" ${kondisiVal === 'Packaging Rusak' ? 'selected' : ''}>Packaging Rusak</option>
+            <option value="Pecah" ${kondisiVal === 'Pecah' ? 'selected' : ''}>Pecah</option>
+          </select>
+        </div>
+        <!-- 2. SKU -->
+        <div class="col-12 col-md-3">
+          <label class="form-label small fw-semibold mb-1">2. SKU</label>
+          <div class="position-relative">
+            <input type="text" class="form-control form-control-sm item-code-input" name="items[${idx}][item_code]"
+                   value="${escAttr(skuVal)}"
+                   placeholder="Cari SKU / Kode..." autocomplete="off"
+                   oninput="searchBarangManifest(this, ${idx}, 'edit')">
+            <div class="barang-dropdown d-none" id="dropdown-code-edit-${idx}"></div>
+          </div>
+        </div>
+        <!-- 3. Produk -->
+        <div class="col-12 col-md-4">
+          <label class="form-label small fw-semibold mb-1">3. Produk <span class="text-danger">*</span></label>
+          <div class="position-relative">
+            <input type="text" class="form-control form-control-sm item-name-input" name="items[${idx}][item_name]"
+                   value="${escAttr(nameVal)}"
+                   placeholder="Cari Nama Produk / Barang..." autocomplete="off"
+                   oninput="searchBarangManifest(this, ${idx}, 'edit')" required>
+            <div class="barang-dropdown d-none" id="dropdown-name-edit-${idx}"></div>
+          </div>
+        </div>
+        <!-- 4. Qty -->
+        <div class="col-12 col-md-2">
+          <label class="form-label small fw-semibold mb-1">4. Qty <span class="text-danger">*</span></label>
+          <input type="number" class="form-control form-control-sm text-center" name="items[${idx}][quantity]" value="${qtyVal}" min="1" required>
+        </div>
+      </div>`;
+    container.appendChild(div);
+  }
+
+  function removeEditManifestItemRow(idx) {
+    const el = document.getElementById('edit-manifest-item-' + idx);
+    const container = document.getElementById('editManifestItemsContainer');
+    if (el) {
+      el.remove();
+      if (container && container.children.length === 0) {
+        addEditManifestItemRow();
+      }
+    }
+  }
+
+  function formatDateInput(d) {
+    if (!d) return '';
+    if (typeof d === 'string' && d.includes('T')) {
+      return d.split('T')[0];
+    }
+    if (typeof d === 'string' && /^\d{4}-\d{2}-\d{2}/.test(d)) {
+      return d.substring(0, 10);
+    }
+    const dt = new Date(d);
+    if (isNaN(dt.getTime())) return '';
+    const y = dt.getFullYear();
+    const m = String(dt.getMonth() + 1).padStart(2, '0');
+    const day = String(dt.getDate()).padStart(2, '0');
+    return `${y}-${m}-${day}`;
+  }
+
+  // ── Master Barang Autocomplete for Manifest Items ──────────────────────────
+  function searchBarangManifest(input, idx, prefix = '') {
+    clearTimeout(_barangTimerManifest);
+    var q = input.value.trim();
+    var isCode = input.classList.contains('item-code-input');
+    var dropId = prefix ? (isCode ? 'dropdown-code-' + prefix + '-' + idx : 'dropdown-name-' + prefix + '-' + idx)
+                        : (isCode ? 'dropdown-code-' + idx : 'dropdown-name-' + idx);
+    var drop = document.getElementById(dropId);
+    if (!drop) return;
+
+    if (q.length < 2) {
+      drop.classList.add('d-none');
+      drop.innerHTML = '';
+      return;
+    }
+
+    _barangTimerManifest = setTimeout(function () {
+      var cacheKey = q.toLowerCase();
+      if (_barangCacheManifest[cacheKey]) {
+        renderBarangDropManifest(drop, _barangCacheManifest[cacheKey], idx, prefix);
+        return;
+      }
+
+      fetch('/master-barang/api/search?q=' + encodeURIComponent(q))
+        .then(function (r) { return r.json(); })
+        .then(function (data) {
+          _barangCacheManifest[cacheKey] = data;
+          renderBarangDropManifest(drop, data, idx, prefix);
+        })
+        .catch(function () {
+          drop.classList.add('d-none');
+        });
+    }, 220);
+  }
+
+  function renderBarangDropManifest(drop, items, idx, prefix = '') {
+    if (!items || !items.length) {
+      drop.classList.add('d-none');
+      drop.innerHTML = '';
+      return;
+    }
+    drop.innerHTML = items.map(function (b) {
+      return '<div class="barang-drop-item" onmousedown="fillBarangManifest(event,' + idx + ',\'' + prefix + '\')"' +
+        ' data-kode="' + escAttr(b.kode_barang) + '"' +
+        ' data-nama="' + escAttr(b.nama_barang) + '">' +
+        '<span class="fw-semibold text-primary">' + esc(b.kode_barang) + '</span> &mdash; ' + esc(b.nama_barang) +
+        (b.kategori ? ' <span class="badge bg-light text-secondary border ms-1">' + esc(b.kategori) + '</span>' : '') +
+        '</div>';
+    }).join('');
+    drop.classList.remove('d-none');
+  }
+
+  function fillBarangManifest(e, idx, prefix = '') {
+    e.preventDefault();
+    var item = e.currentTarget;
+    var rowId = prefix ? (prefix + '-manifest-item-' + idx) : ('manifest-item-' + idx);
+    var row = document.getElementById(rowId);
+    if (!row) return;
+    var codeInput = row.querySelector('.item-code-input');
+    var nameInput = row.querySelector('.item-name-input');
+    if (codeInput) codeInput.value = item.dataset.kode;
+    if (nameInput) nameInput.value = item.dataset.nama;
+    // Close all dropdowns for this row
+    var codeDropId = prefix ? ('dropdown-code-' + prefix + '-' + idx) : ('dropdown-code-' + idx);
+    var nameDropId = prefix ? ('dropdown-name-' + prefix + '-' + idx) : ('dropdown-name-' + idx);
+    [codeDropId, nameDropId].forEach(function (id) {
+      var d = document.getElementById(id);
+      if (d) { d.classList.add('d-none'); d.innerHTML = ''; }
+    });
+  }
+
+  function esc(s) {
+    var d = document.createElement('div');
+    d.textContent = String(s || '');
+    return d.innerHTML;
+  }
+
+  function escAttr(s) {
+    return String(s || '').replace(/"/g, '&quot;').replace(/'/g, '&#39;');
+  }
+
+  // Close dropdowns when clicking outside
+  document.addEventListener('click', function (e) {
+    if (!e.target.closest('.position-relative')) {
+      document.querySelectorAll('.barang-dropdown').forEach(function (d) {
+        d.classList.add('d-none');
+        d.innerHTML = '';
+      });
+    }
+  });
+
   document.addEventListener('DOMContentLoaded', function () {
-    const canCheck = <%= (locals.user && ['admin', 'purchasing', 'sales'].includes(locals.user.role)) ? 'true' : 'false' %>;
+    const canCheck = <%= (locals.user && ['admin', 'manager', 'purchasing', 'sales', 'admin_retur', 'admin_sorting', 'staff_recover', 'warehouse', 'inspector'].includes(locals.user.role)) ? 'true' : 'false' %>;
+
+    // Reset & seed the "Tambah Data Manifest" form each time the modal opens
+    const addManifestModalEl = document.getElementById('addManifestModal');
+    if (addManifestModalEl) {
+      addManifestModalEl.addEventListener('show.bs.modal', function () {
+        document.getElementById('addManifestForm').reset();
+        document.getElementById('manifestItemsContainer').innerHTML = '';
+        manifestItemCounter = 0;
+        addManifestItemRow();
+      });
+    }
+
+    // ── Banding MP Select2 Initializer ──────────────────────────────────────────
+    function initBandingSelect2(modalSelector) {
+      if (window.$ && $.fn.select2) {
+        $(modalSelector).find('.select2-searchable').each(function () {
+          const $el = $(this);
+          const ph = $el.data('placeholder') || '-- Pilih --';
+          $el.select2({
+            theme: 'bootstrap-5',
+            dropdownParent: $(modalSelector),
+            placeholder: ph,
+            allowClear: false,
+            width: '100%'
+          });
+        });
+      }
+    }
+
+    // Initialize Select2 on modal shown
+    $('#addBandingMPModal').on('shown.bs.modal', function () {
+      initBandingSelect2('#addBandingMPModal');
+    });
+
+    $('#editBandingMPModal').on('shown.bs.modal', function () {
+      initBandingSelect2('#editBandingMPModal');
+    });
+
+    // Reset "Tambah Data Banding MP" form each time the modal opens
+    const addBandingMPModalEl = document.getElementById('addBandingMPModal');
+    if (addBandingMPModalEl) {
+      addBandingMPModalEl.addEventListener('show.bs.modal', function () {
+        const form = document.getElementById('addBandingMPForm');
+        if (form) {
+          form.reset();
+          const today = new Date().toISOString().split('T')[0];
+          const tglInput = form.querySelector('input[name="tgl"]');
+          if (tglInput) tglInput.value = today;
+          $('#add_bmp_kode_toko').val('').trigger('change');
+          $('#add_bmp_keterangan').val('').trigger('change');
+          $('#add_bmp_status_banding').val('').trigger('change');
+        }
+      });
+    }
+
+    // Banding MP Edit Modal Handler
+    $('#manifestsTable').on('click', '.btn-edit-banding', function () {
+      const btn = $(this);
+      const id = btn.data('id');
+      const tgl = btn.data('tgl');
+      const kodeToko = btn.data('kode-toko');
+      const noInvoice = btn.data('no-invoice');
+      const keterangan = btn.data('keterangan');
+      const statusBanding = btn.data('status-banding');
+
+      const form = document.getElementById('editBandingMPForm');
+      form.action = `/returns/manifests/banding/${id}/update`;
+
+      $('#edit_bmp_tgl').val(tgl || '');
+      $('#edit_bmp_no_invoice').val(noInvoice || '');
+
+      // Initialize Select2 before updating values if not initialized yet
+      initBandingSelect2('#editBandingMPModal');
+
+      $('#edit_bmp_kode_toko').val(kodeToko || '').trigger('change');
+      $('#edit_bmp_keterangan').val(keterangan || '').trigger('change');
+      $('#edit_bmp_status_banding').val(statusBanding || '').trigger('change');
+
+      const modal = new bootstrap.Modal(document.getElementById('editBandingMPModal'));
+      modal.show();
+    });
 
     // Toggle items details
     $('#manifestsTable').on('click', '.toggle-items', function () {
@@ -552,7 +1792,8 @@
         icon.removeClass('bi-chevron-down').addClass('bi-chevron-up');
         btn.removeClass('btn-outline-info').addClass('bi-info');
 
-        const loadingRow = $('<tr class="items-detail-row bg-light"><td colspan="9" class="text-center py-3"><div class="spinner-border spinner-border-sm text-primary" role="status"></div> Mengambil data barang...</td></tr>');
+        const colCount = tr.children('td').length || 14;
+        const loadingRow = $(`<tr class="items-detail-row bg-light"><td colspan="${colCount}" class="text-center py-3"><div class="spinner-border spinner-border-sm text-primary" role="status"></div> Mengambil data barang...</td></tr>`);
         tr.after(loadingRow);
 
         fetch(`/returns/manifests/${manifestId}/items`)
@@ -567,46 +1808,78 @@
             }
 
             let itemsHtml = `
-              <td colspan="9" class="p-3 bg-light border-start border-end">
+              <td colspan="${colCount}" class="p-3 bg-light border-start border-end">
                 <div class="card shadow-sm border-0 mb-3">
-                  <div class="card-header bg-dark text-white py-1 px-3 small fw-bold">
-                    <i class="bi bi-info-circle"></i> Detail Header Manifest
+                  <div class="card-header bg-dark text-white py-1 px-3 small fw-bold d-flex justify-content-between align-items-center">
+                    <span><i class="bi bi-info-circle me-1"></i> Detail Header Manifest</span>
+                    <span class="badge ${manifest.status === 'Rusak' ? 'bg-danger' : (manifest.status === 'Retur Manual' ? 'bg-warning text-dark' : 'bg-primary')}">${manifest.status || 'Pending'}</span>
                   </div>
                   <div class="card-body bg-white py-2 px-3 small">
                     <div class="row g-2">
-                      <div class="col-md-3"><strong>Nomor Daftar:</strong> <span class="text-muted">${manifest.nomor_daftar || '-'}</span></div>
-                      <div class="col-md-3"><strong>No. Pesanan WMS:</strong> <span class="text-muted">${manifest.no_pesanan_wms || '-'}</span></div>
-                      <div class="col-md-3"><strong>No. Pesanan OMS:</strong> <span class="text-muted">${manifest.no_pesanan_oms || '-'}</span></div>
+                      <div class="col-md-3"><strong>Tgl:</strong> <span class="text-muted">${manifest.tgl ? new Date(manifest.tgl).toLocaleDateString('id-ID') : (manifest.created_at ? new Date(manifest.created_at).toLocaleDateString('id-ID') : '-')}</span></div>
+                      <div class="col-md-3"><strong>Nama Customer:</strong> <span class="text-muted">${manifest.customer_name || manifest.penerima || '-'}</span></div>
+                      <div class="col-md-3"><strong>Kota:</strong> <span class="text-muted">${manifest.kota || '-'}</span></div>
+                      <div class="col-md-3"><strong>Exspedisi:</strong> <span class="text-muted">${manifest.expedisi || manifest.metode_pengiriman || '-'}</span></div>
+
+                      <div class="col-md-3"><strong>Toko:</strong> <span class="text-muted">${manifest.nama_toko || '-'}</span></div>
+                      <div class="col-md-3"><strong>No. Pesanan:</strong> <span class="text-muted font-monospace">${manifest.no_pesanan || '-'}</span></div>
+                      <div class="col-md-3"><strong>Nomor Resi:</strong> <span class="text-muted font-monospace">${manifest.resi_number || '-'}</span></div>
                       <div class="col-md-3"><strong>Status:</strong> <span class="text-muted">${manifest.status || '-'}</span></div>
                       
-                      <div class="col-md-3"><strong>Nama Toko:</strong> <span class="text-muted">${manifest.nama_toko || '-'}</span></div>
-                      <div class="col-md-3"><strong>Gudang:</strong> <span class="text-muted">${manifest.gudang || '-'}</span></div>
-                      <div class="col-md-3"><strong>Metode Pengiriman:</strong> <span class="text-muted">${manifest.metode_pengiriman || '-'}</span></div>
-                      <div class="col-md-3"><strong>Jenis Pengiriman:</strong> <span class="text-muted">${manifest.jenis_pengiriman || '-'}</span></div>
-                      
-                      <div class="col-md-3"><strong>Penerima:</strong> <span class="text-muted">${manifest.penerima || '-'}</span></div>
-                      <div class="col-md-3"><strong>Waktu Pesanan:</strong> <span class="text-muted">${manifest.waktu_pesanan || '-'}</span></div>
-                      <div class="col-md-3"><strong>Batas Waktu Kirim:</strong> <span class="text-muted">${manifest.batas_waktu_pengiriman || '-'}</span></div>
-                      <div class="col-md-3"><strong>Waktu Outbound:</strong> <span class="text-muted">${manifest.waktu_outbound || '-'}</span></div>
-                      
-                      <div class="col-md-3"><strong>Waktu Cetak:</strong> <span class="text-muted">${manifest.waktu_cetak || '-'}</span></div>
-                      <div class="col-md-3"><strong>Mata Uang:</strong> <span class="text-muted">${manifest.mata_uang || '-'}</span></div>
-                      <div class="col-md-3"><strong>Total Harga Pesanan:</strong> <span class="text-success fw-bold">Rp ${parseFloat(manifest.total_harga_pesanan || 0).toLocaleString('id-ID')}</span></div>
-                      <div class="col-md-3"><strong>Nama Pemilih:</strong> <span class="text-muted">${manifest.nama_pemilik || '-'}</span></div>
-                      
-                      <div class="col-md-3"><strong>Waktu Picking:</strong> <span class="text-muted">${manifest.waktu_picking || '-'}</span></div>
-                      <div class="col-md-3"><strong>Admin Pengemasan:</strong> <span class="text-muted">${manifest.admin_pengemasan || '-'}</span></div>
-                      <div class="col-md-3"><strong>Waktu Packing:</strong> <span class="text-muted">${manifest.waktu_packing || '-'}</span></div>
-                      <div class="col-md-3"><strong>Catatan:</strong> <span class="text-muted">${manifest.notes || '-'}</span></div>
+                      ${manifest.gudang || manifest.waktu_pesanan || manifest.notes ? `
+                        <div class="col-md-3"><strong>Gudang:</strong> <span class="text-muted">${manifest.gudang || '-'}</span></div>
+                        <div class="col-md-3"><strong>Waktu Pesanan:</strong> <span class="text-muted">${manifest.waktu_pesanan || '-'}</span></div>
+                        <div class="col-md-6"><strong>Catatan:</strong> <span class="text-muted">${manifest.notes || '-'}</span></div>
+                      ` : ''}
 
-                      <div class="col-md-12"><strong>Alamat Pengiriman:</strong> <span class="text-muted">${manifest.alamat_pengiriman || '-'}</span></div>
+                      ${manifest.alamat_pengiriman ? `<div class="col-md-12"><strong>Alamat Pengiriman:</strong> <span class="text-muted">${manifest.alamat_pengiriman}</span></div>` : ''}
+                    </div>
+
+                    <!-- Status Pengecekan 3 PIC -->
+                    <div class="mt-2 pt-2 border-top">
+                      <div class="row g-2 align-items-center">
+                        <div class="col-12 fw-bold text-dark"><i class="bi bi-shield-check me-1 text-primary"></i> Status Pengecekan 3 PIC:</div>
+                        <div class="col-md-4">
+                          <div class="p-2 rounded border bg-light d-flex align-items-center justify-content-between">
+                            <div><span class="fw-semibold small"><i class="bi bi-person-badge text-primary me-1"></i>PIC SALES:</span></div>
+                            <div>
+                              ${manifest.check_sales === 1 ? 
+                                `<span class="badge bg-success-subtle text-success border border-success-subtle"><i class="bi bi-check-circle-fill"></i> ${manifest.checked_sales_by || 'Checked'}</span> <div class="text-muted small" style="font-size:0.68rem;">${manifest.checked_sales_at ? new Date(manifest.checked_sales_at).toLocaleString('id-ID', { dateStyle: 'short', timeStyle: 'short' }) : ''}</div>` : 
+                                `<span class="badge bg-light text-muted border">Belum</span>`
+                              }
+                            </div>
+                          </div>
+                        </div>
+                        <div class="col-md-4">
+                          <div class="p-2 rounded border bg-light d-flex align-items-center justify-content-between">
+                            <div><span class="fw-semibold small"><i class="bi bi-wallet2 text-warning me-1"></i>PIC FAT:</span></div>
+                            <div>
+                              ${manifest.check_fat === 1 ? 
+                                `<span class="badge bg-success-subtle text-success border border-success-subtle"><i class="bi bi-check-circle-fill"></i> ${manifest.checked_fat_by || 'Checked'}</span> <div class="text-muted small" style="font-size:0.68rem;">${manifest.checked_fat_at ? new Date(manifest.checked_fat_at).toLocaleString('id-ID', { dateStyle: 'short', timeStyle: 'short' }) : ''}</div>` : 
+                                `<span class="badge bg-light text-muted border">Belum</span>`
+                              }
+                            </div>
+                          </div>
+                        </div>
+                        <div class="col-md-4">
+                          <div class="p-2 rounded border bg-light d-flex align-items-center justify-content-between">
+                            <div><span class="fw-semibold small"><i class="bi bi-gear-wide-connected text-info me-1"></i>PIC OPS:</span></div>
+                            <div>
+                              ${manifest.check_ops === 1 ? 
+                                `<span class="badge bg-success-subtle text-success border border-success-subtle"><i class="bi bi-check-circle-fill"></i> ${manifest.checked_ops_by || 'Checked'}</span> <div class="text-muted small" style="font-size:0.68rem;">${manifest.checked_ops_at ? new Date(manifest.checked_ops_at).toLocaleString('id-ID', { dateStyle: 'short', timeStyle: 'short' }) : ''}</div>` : 
+                                `<span class="badge bg-light text-muted border">Belum</span>`
+                              }
+                            </div>
+                          </div>
+                        </div>
+                      </div>
                     </div>
                   </div>
                 </div>
 
                 <div class="card shadow-sm border-0">
                   <div class="card-header bg-secondary text-white py-1 px-3 small d-flex justify-content-between align-items-center">
-                    <span class="fw-bold"><i class="bi bi-box-seam"></i> Daftar Barang Manifest</span>
+                    <span class="fw-bold"><i class="bi bi-box-seam me-1"></i> Daftar Barang Manifest</span>
                     <span class="badge bg-light text-dark">${items.length} SKU</span>
                   </div>
                   <div class="table-responsive">
@@ -614,15 +1887,10 @@
                       <thead class="table-secondary">
                         <tr>
                           <th class="ps-3 text-center" style="width: 50px;"><i class="bi bi-patch-check"></i></th>
-                          <th>No</th>
+                          <th>Kondisi</th>
                           <th>Kode Barang (SKU)</th>
                           <th>Nama Barang</th>
-                          <th>Varian</th>
-                          <th>Rak</th>
                           <th>Qty</th>
-                          <th>Harga Satuan</th>
-                          <th>Serial No.</th>
-                          <th>Batch No.</th>
                           <th>Checked By</th>
                           <th>Keterangan</th>
                         </tr>
@@ -639,6 +1907,9 @@
                 : '<span class="text-muted">-</span>';
 
               const rowClass = item.is_checked ? 'table-success-tint' : '';
+              const kondisiBadge = item.kondisi
+                ? (item.kondisi === 'Baik' ? 'bg-success' : (item.kondisi === 'Pecah' ? 'bg-danger' : 'bg-warning text-dark'))
+                : 'bg-secondary';
 
               itemsHtml += `
                 <tr class="${rowClass}" data-item-id="${item.manifest_item_id}">
@@ -648,15 +1919,12 @@
                            ${item.is_checked ? 'checked' : ''} 
                            ${canCheck ? '' : 'disabled'}>
                   </td>
-                  <td class="font-monospace">${item.nomor || '-'}</td>
+                  <td>
+                    ${item.kondisi ? `<span class="badge ${kondisiBadge}">${item.kondisi}</span>` : '<span class="text-muted">-</span>'}
+                  </td>
                   <td class="font-monospace">${item.item_code || '-'}</td>
                   <td class="fw-bold text-dark">${item.item_name}</td>
-                  <td><span class="badge bg-light text-dark border">${item.varian_product || '-'}</span></td>
-                  <td><span class="badge bg-light text-dark border">${item.rak || '-'}</span></td>
-                  <td>${item.quantity} pcs</td>
-                  <td>Rp ${parseFloat(item.unit_price).toLocaleString('id-ID')}</td>
-                  <td>${item.serial_number || '-'}</td>
-                  <td>${item.batch_number || '-'}</td>
+                  <td><span class="badge bg-light text-dark border">${item.quantity} pcs</span></td>
                   <td class="checked-by-cell">${checkedByText}</td>
                   <td>${item.item_description || '-'}</td>
                 </tr>
@@ -678,6 +1946,127 @@
       }
     });
 
+    // Event listener for toggling manifest PIC checkbox (Sales, FAT, OPS)
+    $('#manifestsTable').on('change', '.manifest-pic-checkbox', function () {
+      const checkbox = $(this);
+      const manifestId = checkbox.data('id');
+      const picType = checkbox.data('pic');
+      const isChecked = checkbox.is(':checked');
+      const cell = checkbox.closest('td');
+      const badgeContainer = cell.find('.pic-badge-container');
+      const tr = checkbox.closest('tr');
+
+      checkbox.prop('disabled', true);
+
+      fetch(`/returns/manifests/${manifestId}/toggle-pic-check`, {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json'
+        },
+        body: JSON.stringify({ picType, isChecked })
+      })
+        .then(res => {
+          if (!res.ok) {
+            return res.json().then(d => { throw new Error(d.error || 'Gagal memperbarui status checklist PIC.'); });
+          }
+          return res.json();
+        })
+        .then(data => {
+          checkbox.prop('disabled', false);
+          if (data.success) {
+            if (data.is_checked) {
+              const dateStr = data.checked_at ? new Date(data.checked_at).toLocaleString('id-ID', { dateStyle: 'short', timeStyle: 'short' }) : '';
+              badgeContainer.html(`
+                <span class="badge bg-success-subtle text-success border border-success-subtle d-inline-flex align-items-center gap-1" style="font-size: 0.68rem;" title="Diperiksa oleh: ${data.checked_by || ''} (${dateStr})">
+                  <i class="bi bi-check-circle-fill"></i> ${data.checked_by || 'Checked'}
+                </span>
+              `);
+              checkbox.attr('title', `Diperiksa oleh: ${data.checked_by || ''} (${dateStr})`);
+            } else {
+              badgeContainer.html(`<span class="badge bg-light text-muted border" style="font-size: 0.65rem;">Belum</span>`);
+              checkbox.attr('title', `Pengecekan PIC ${picType.toUpperCase()}`);
+            }
+
+            // Update row tint
+            const salesChecked = tr.find('[data-pic="sales"]').is(':checked');
+            const fatChecked = tr.find('[data-pic="fat"]').is(':checked');
+            const opsChecked = tr.find('[data-pic="ops"]').is(':checked');
+            if (salesChecked && fatChecked && opsChecked) {
+              tr.removeClass('table-warning-tint').addClass('table-success-tint');
+            } else if (salesChecked || fatChecked || opsChecked) {
+              tr.removeClass('table-success-tint').addClass('table-warning-tint');
+            } else {
+              tr.removeClass('table-success-tint table-warning-tint');
+            }
+          }
+        })
+        .catch(err => {
+          checkbox.prop('disabled', false);
+          checkbox.prop('checked', !isChecked); // revert checkbox state
+          alert(err.message);
+        });
+    });
+
+    // Event listener for toggling Banding MP PIC checkbox (Sales, FAT)
+    $('#manifestsTable').on('change', '.banding-pic-checkbox', function () {
+      const checkbox = $(this);
+      const bandingId = checkbox.data('id');
+      const picType = checkbox.data('pic');
+      const isChecked = checkbox.is(':checked');
+      const cell = checkbox.closest('td');
+      const badgeContainer = cell.find('.pic-badge-container');
+      const tr = checkbox.closest('tr');
+
+      checkbox.prop('disabled', true);
+
+      fetch(`/returns/manifests/banding/${bandingId}/toggle-pic-check`, {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json'
+        },
+        body: JSON.stringify({ picType, isChecked })
+      })
+        .then(res => {
+          if (!res.ok) {
+            return res.json().then(d => { throw new Error(d.error || 'Gagal memperbarui status checklist PIC Banding MP.'); });
+          }
+          return res.json();
+        })
+        .then(data => {
+          checkbox.prop('disabled', false);
+          if (data.success) {
+            if (data.is_checked) {
+              const dateStr = data.checked_at ? new Date(data.checked_at).toLocaleString('id-ID', { dateStyle: 'short', timeStyle: 'short' }) : '';
+              badgeContainer.html(`
+                <span class="badge bg-success-subtle text-success border border-success-subtle d-inline-flex align-items-center gap-1" style="font-size: 0.68rem;" title="Diperiksa oleh: ${data.checked_by || ''} (${dateStr})">
+                  <i class="bi bi-check-circle-fill"></i> ${data.checked_by || 'Checked'}
+                </span>
+              `);
+              checkbox.attr('title', `Diperiksa oleh: ${data.checked_by || ''} (${dateStr})`);
+            } else {
+              badgeContainer.html(`<span class="badge bg-light text-muted border" style="font-size: 0.65rem;">Belum</span>`);
+              checkbox.attr('title', `Pengecekan PIC ${picType.toUpperCase()}`);
+            }
+
+            // Update row tint
+            const salesChecked = tr.find('[data-pic="sales"]').is(':checked');
+            const fatChecked = tr.find('[data-pic="fat"]').is(':checked');
+            if (salesChecked && fatChecked) {
+              tr.removeClass('table-warning-tint').addClass('table-success-tint');
+            } else if (salesChecked || fatChecked) {
+              tr.removeClass('table-success-tint').addClass('table-warning-tint');
+            } else {
+              tr.removeClass('table-success-tint table-warning-tint');
+            }
+          }
+        })
+        .catch(err => {
+          checkbox.prop('disabled', false);
+          checkbox.prop('checked', !isChecked); // revert checkbox state
+          alert(err.message);
+        });
+    });
+
     // Event listener for toggling manifest item checkbox
     $('#manifestsTable').on('change', '.manifest-item-checkbox', function () {
       const checkbox = $(this);
@@ -695,36 +2084,36 @@
         },
         body: JSON.stringify({ isChecked })
       })
-      .then(res => {
-        if (!res.ok) {
-          throw new Error('Gagal memperbarui status checklist.');
-        }
-        return res.json();
-      })
-      .then(data => {
-        checkbox.prop('disabled', false);
-        if (data.success) {
-          if (data.is_checked) {
-            tr.addClass('table-success-tint');
-            const dateStr = data.checked_at ? new Date(data.checked_at).toLocaleString('id-ID', { dateStyle: 'short', timeStyle: 'short' }) : '';
-            checkedByCell.html(`
+        .then(res => {
+          if (!res.ok) {
+            throw new Error('Gagal memperbarui status checklist.');
+          }
+          return res.json();
+        })
+        .then(data => {
+          checkbox.prop('disabled', false);
+          if (data.success) {
+            if (data.is_checked) {
+              tr.addClass('table-success-tint');
+              const dateStr = data.checked_at ? new Date(data.checked_at).toLocaleString('id-ID', { dateStyle: 'short', timeStyle: 'short' }) : '';
+              checkedByCell.html(`
               <span class="badge bg-success-subtle text-success border border-success-subtle px-2 py-1"><i class="bi bi-person-check-fill"></i> ${data.checked_by || ''}</span>
               <div class="text-muted mt-1" style="font-size: 0.7rem;">${dateStr}</div>
             `);
-          } else {
-            tr.removeClass('table-success-tint');
-            checkedByCell.html('<span class="text-muted">-</span>');
+            } else {
+              tr.removeClass('table-success-tint');
+              checkedByCell.html('<span class="text-muted">-</span>');
+            }
           }
-        }
-      })
-      .catch(err => {
-        checkbox.prop('disabled', false);
-        checkbox.prop('checked', !isChecked); // revert checkbox state
-        alert(err.message);
-      });
+        })
+        .catch(err => {
+          checkbox.prop('disabled', false);
+          checkbox.prop('checked', !isChecked); // revert checkbox state
+          alert(err.message);
+        });
     });
 
-    // Event listener for toggling manifest checklist row checkbox
+    // Event listener for toggling manifest checklist row checkbox (Data By Scan tab)
     $('#manifestsTable').on('change', '.manifest-row-checkbox', function () {
       const checkbox = $(this);
       const manifestId = checkbox.data('id');
@@ -740,30 +2129,30 @@
         },
         body: JSON.stringify({ isChecked })
       })
-      .then(res => {
-        if (!res.ok) {
-          throw new Error('Gagal memperbarui status checklist manifest.');
-        }
-        return res.json();
-      })
-      .then(data => {
-        checkbox.prop('disabled', false);
-        if (data.success) {
-          if (data.is_checked) {
-            tr.addClass('table-success-tint');
-            const dateStr = data.checked_at ? new Date(data.checked_at).toLocaleString('id-ID', { dateStyle: 'short', timeStyle: 'short' }) : '';
-            checkbox.attr('title', `Checked by: ${data.checked_by || ''} (${dateStr})`);
-          } else {
-            tr.removeClass('table-success-tint');
-            checkbox.attr('title', 'Tandai sudah diperiksa');
+        .then(res => {
+          if (!res.ok) {
+            throw new Error('Gagal memperbarui status checklist manifest.');
           }
-        }
-      })
-      .catch(err => {
-        checkbox.prop('disabled', false);
-        checkbox.prop('checked', !isChecked); // revert checkbox state
-        alert(err.message);
-      });
+          return res.json();
+        })
+        .then(data => {
+          checkbox.prop('disabled', false);
+          if (data.success) {
+            if (data.is_checked) {
+              tr.addClass('table-success-tint');
+              const dateStr = data.checked_at ? new Date(data.checked_at).toLocaleString('id-ID', { dateStyle: 'short', timeStyle: 'short' }) : '';
+              checkbox.attr('title', `Checked by: ${data.checked_by || ''} (${dateStr})`);
+            } else {
+              tr.removeClass('table-success-tint');
+              checkbox.attr('title', 'Tandai sudah diperiksa');
+            }
+          }
+        })
+        .catch(err => {
+          checkbox.prop('disabled', false);
+          checkbox.prop('checked', !isChecked); // revert checkbox state
+          alert(err.message);
+        });
     });
 
     // Auto-expand detail if page was loaded with a search filter
@@ -876,6 +2265,62 @@
         xhr.send(formData);
       });
     }
+
+    // Edit Manifest handler
+    $('#manifestsTable').on('click', '.edit-manifest', function () {
+      const btn = $(this);
+      const manifestId = btn.data('id');
+      const origHtml = btn.html();
+      btn.prop('disabled', true).html('<span class="spinner-border spinner-border-sm" role="status"></span>');
+
+      fetch(`/returns/manifests/${manifestId}/items`)
+        .then(res => {
+          if (!res.ok) throw new Error('Gagal mengambil data manifest.');
+          return res.json();
+        })
+        .then(data => {
+          btn.prop('disabled', false).html(origHtml);
+          const manifest = data.manifest;
+          const items = data.items || [];
+
+          if (!manifest) {
+            alert('Data manifest tidak ditemukan.');
+            return;
+          }
+
+          const editForm = document.getElementById('editManifestForm');
+          editForm.action = `/returns/manifests/${manifestId}/update`;
+
+          document.getElementById('edit_manifest_tgl').value = formatDateInput(manifest.tgl || manifest.created_at);
+          document.getElementById('edit_manifest_customer_name').value = manifest.customer_name || manifest.penerima || '';
+          document.getElementById('edit_manifest_kota').value = manifest.kota || '';
+          document.getElementById('edit_manifest_expedisi').value = manifest.expedisi || manifest.metode_pengiriman || '';
+          document.getElementById('edit_manifest_nama_toko').value = manifest.nama_toko || '';
+          document.getElementById('edit_manifest_no_pesanan').value = manifest.no_pesanan || '';
+          document.getElementById('edit_manifest_resi_number').value = manifest.resi_number || '';
+          document.getElementById('edit_manifest_status').value = manifest.status || 'Salah Barang';
+          document.getElementById('edit_manifest_notes').value = manifest.notes || '';
+
+          const container = document.getElementById('editManifestItemsContainer');
+          container.innerHTML = '';
+          editManifestItemCounter = 0;
+
+          if (items.length > 0) {
+            items.forEach(it => {
+              addEditManifestItemRow(it);
+            });
+          } else {
+            addEditManifestItemRow();
+          }
+
+          const editModal = new bootstrap.Modal(document.getElementById('editManifestModal'));
+          editModal.show();
+        })
+        .catch(err => {
+          btn.prop('disabled', false).html(origHtml);
+          alert(err.message);
+        });
+    });
 
     // Delete Manifest handler
     $('#manifestsTable').on('click', '.delete-manifest', function () {

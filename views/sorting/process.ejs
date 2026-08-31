@@ -144,6 +144,24 @@
                 <option value="Non Elektronik" <%= item.item_category==='Non Elektronik'?'selected':'' %>>Non Elektronik</option>
               </select>
             </div>
+            <div class="col-md-2" id="itemIkutCol-<%= item.item_id %>" style="<%= item.disposition === 'write_off' ? '' : 'display: none;' %>">
+              <label class="form-label form-label-sm">Ikut <span class="text-danger">*</span></label>
+              <select class="form-select form-select-sm item-ikut-select" name="ikut" data-item-id="<%= item.item_id %>" <%= item.disposition === 'write_off' ? 'required' : '' %>>
+                <option value="">-- Pilih --</option>
+                <option value="Besi" <%= item.ikut==='Besi'?'selected':'' %>>Besi</option>
+                <option value="Plastik" <%= item.ikut==='Plastik'?'selected':'' %>>Plastik</option>
+                <option value="Kaca" <%= item.ikut==='Kaca'?'selected':'' %>>Kaca</option>
+                <option value="Kain" <%= item.ikut==='Kain'?'selected':'' %>>Kain</option>
+              </select>
+            </div>
+            <div class="col-md-2" id="itemIkutWoCol-<%= item.item_id %>" style="<%= (item.disposition === 'write_off' && item.ikut === 'Plastik') ? '' : 'display: none;' %>">
+              <label class="form-label form-label-sm">Ikut WO <span class="text-danger">*</span></label>
+              <select class="form-select form-select-sm item-ikut-wo-select" name="ikut_wo" <%= (item.disposition === 'write_off' && item.ikut === 'Plastik') ? 'required' : '' %>>
+                <option value="">-- Pilih Ikut WO --</option>
+                <option value="Ikut WO Rosok" <%= item.ikut_wo==='Ikut WO Rosok'?'selected':'' %>>Ikut WO Rosok</option>
+                <option value="Ikut WO Tri J" <%= item.ikut_wo==='Ikut WO Tri J'?'selected':'' %>>Ikut WO Tri J</option>
+              </select>
+            </div>
             <div class="col-md-2" id="itemVendorCol-<%= item.item_id %>" style="<%= item.disposition === 'return_to_supplier' ? '' : 'display: none;' %>">
               <label class="form-label form-label-sm">Supplier <span class="text-danger">*</span></label>
               <select class="form-select form-select-sm item-vendor-select" name="vendor_id" <%= item.disposition === 'return_to_supplier' ? 'required' : '' %>>
@@ -234,27 +252,108 @@
       select.addEventListener('change', function () {
         const itemId = this.dataset.itemId;
         const col = document.getElementById('itemCategoryCol-' + itemId);
-        const catSelect = col.querySelector('.item-category-select');
+        const catSelect = col ? col.querySelector('.item-category-select') : null;
         if (['rekondisi', 'refurbish'].includes(this.value)) {
-          col.style.display = '';
-          catSelect.setAttribute('required', 'true');
+          if (col) col.style.display = '';
+          if (catSelect) catSelect.setAttribute('required', 'true');
         } else {
-          col.style.display = 'none';
-          catSelect.removeAttribute('required');
-          catSelect.value = '';
+          if (col) col.style.display = 'none';
+          if (catSelect) {
+            catSelect.removeAttribute('required');
+            catSelect.value = '';
+          }
+        }
+
+        const ikutCol = document.getElementById('itemIkutCol-' + itemId);
+        const ikutSelect = ikutCol ? ikutCol.querySelector('.item-ikut-select') : null;
+        const ikutWoCol = document.getElementById('itemIkutWoCol-' + itemId);
+        const ikutWoSelect = ikutWoCol ? ikutWoCol.querySelector('.item-ikut-wo-select') : null;
+        if (this.value === 'write_off') {
+          if (ikutCol) ikutCol.style.display = '';
+          if (ikutSelect) ikutSelect.setAttribute('required', 'true');
+          if (ikutSelect && ikutSelect.value === 'Plastik') {
+            if (ikutWoCol) ikutWoCol.style.display = '';
+            if (ikutWoSelect) ikutWoSelect.setAttribute('required', 'true');
+          } else {
+            if (ikutWoCol) ikutWoCol.style.display = 'none';
+            if (ikutWoSelect) {
+              ikutWoSelect.removeAttribute('required');
+              ikutWoSelect.value = '';
+            }
+          }
+        } else {
+          if (ikutCol) {
+            ikutCol.style.display = 'none';
+            if (ikutSelect) {
+              ikutSelect.removeAttribute('required');
+              ikutSelect.value = '';
+            }
+          }
+          if (ikutWoCol) {
+            ikutWoCol.style.display = 'none';
+            if (ikutWoSelect) {
+              ikutWoSelect.removeAttribute('required');
+              ikutWoSelect.value = '';
+            }
+          }
         }
 
         const vendorCol = document.getElementById('itemVendorCol-' + itemId);
-        const vendorSelect = vendorCol.querySelector('.item-vendor-select');
+        const vendorSelect = vendorCol ? vendorCol.querySelector('.item-vendor-select') : null;
         if (this.value === 'return_to_supplier') {
-          vendorCol.style.display = '';
-          vendorSelect.setAttribute('required', 'true');
+          if (vendorCol) vendorCol.style.display = '';
+          if (vendorSelect) {
+            vendorSelect.setAttribute('required', 'true');
+            if (window.$ && $.fn.select2) {
+              $(vendorSelect).select2({
+                theme: 'bootstrap-5',
+                placeholder: '-- Cari & Pilih --',
+                allowClear: true,
+                width: '100%'
+              });
+            }
+          }
         } else {
-          vendorCol.style.display = 'none';
-          vendorSelect.removeAttribute('required');
-          vendorSelect.value = '';
+          if (vendorCol) vendorCol.style.display = 'none';
+          if (vendorSelect) {
+            vendorSelect.removeAttribute('required');
+            if (window.$ && $.fn.select2) {
+              $(vendorSelect).val(null).trigger('change');
+            } else {
+              vendorSelect.value = '';
+            }
+          }
         }
       });
     });
+
+    const ikutSelects = document.querySelectorAll('.item-ikut-select');
+    ikutSelects.forEach(select => {
+      select.addEventListener('change', function () {
+        const itemId = this.dataset.itemId;
+        const ikutWoCol = document.getElementById('itemIkutWoCol-' + itemId);
+        const ikutWoSelect = ikutWoCol ? ikutWoCol.querySelector('.item-ikut-wo-select') : null;
+        if (this.value === 'Plastik') {
+          if (ikutWoCol) ikutWoCol.style.display = '';
+          if (ikutWoSelect) ikutWoSelect.setAttribute('required', 'true');
+        } else {
+          if (ikutWoCol) ikutWoCol.style.display = 'none';
+          if (ikutWoSelect) {
+            ikutWoSelect.removeAttribute('required');
+            ikutWoSelect.value = '';
+          }
+        }
+      });
+    });
+
+    // Initialize existing visible vendor selects
+    if (window.$ && $.fn.select2) {
+      $('.item-vendor-select:visible').select2({
+        theme: 'bootstrap-5',
+        placeholder: '-- Cari & Pilih --',
+        allowClear: true,
+        width: '100%'
+      });
+    }
   });
 </script>

@@ -123,6 +123,36 @@
   .excel-ba-table tbody tr:hover {
     background-color: #f8f9fa !important;
   }
+  .select2-container--bootstrap-5 .select2-selection--multiple {
+    min-height: 31px;
+    padding: 2px 6px;
+    font-size: 0.875rem;
+    border-radius: 0.25rem;
+    border-color: #dee2e6;
+  }
+  .select2-container--bootstrap-5 .select2-selection--multiple .select2-selection__rendered {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 4px;
+    margin: 0;
+    padding: 0;
+  }
+  .select2-container--bootstrap-5 .select2-selection--multiple .select2-selection__choice {
+    background-color: #0d6efd;
+    color: #fff;
+    border: none;
+    border-radius: 4px;
+    font-size: 0.75rem;
+    padding: 2px 6px;
+    margin: 0;
+  }
+  .select2-container--bootstrap-5 .select2-selection--multiple .select2-selection__choice__remove {
+    color: #fff;
+    margin-right: 4px;
+  }
+  .select2-container--bootstrap-5 .select2-selection--multiple .select2-selection__choice__remove:hover {
+    color: #ffcccc;
+  }
 </style>
 
 <div class="container-fluid mt-5 pt-4">
@@ -149,10 +179,9 @@
           <!-- Supplier/Vendor -->
           <div class="col-md-4">
             <label class="form-label form-label-sm fw-bold mb-1"><i class="bi bi-building text-muted"></i> Supplier</label>
-            <select class="form-select form-select-sm" name="vendor_id">
-              <option value="">Semua</option>
+            <select class="form-select form-select-sm select2-supplier-multiple" name="vendor_id" multiple="multiple" data-placeholder="-- Pilih Supplier (Bisa Lebih Dari 1) --">
               <% vendors.forEach(v => { %>
-                <option value="<%= v.vendor_id %>" <%= filters.vendor_id == v.vendor_id ? 'selected' : '' %>><%= v.vendor_name %></option>
+                <option value="<%= v.vendor_id %>" <%= (typeof selectedVendorIds !== 'undefined' && selectedVendorIds.includes(String(v.vendor_id))) ? 'selected' : '' %>><%= v.vendor_name %></option>
               <% }) %>
             </select>
           </div>
@@ -189,8 +218,11 @@
           <div class="col-md-6 text-end">
             <button type="submit" class="btn btn-sm btn-primary"><i class="bi bi-search"></i> Cari</button>
             <a href="/ba" class="btn btn-sm btn-outline-secondary ms-1">Reset</a>
-            <button type="button" onclick="exportFilteredData()" class="btn btn-sm btn-success ms-1">
+            <button type="button" onclick="exportFilteredData()" class="btn btn-sm btn-outline-success ms-1">
               <i class="bi bi-file-earmark-excel"></i> Export All Excel
+            </button>
+            <button type="button" onclick="exportSupplierLokalExcel()" class="btn btn-sm btn-success ms-1" id="btnExportSupplierLokal">
+              <i class="bi bi-file-earmark-excel"></i> Export All Excel Supplier Lokal
             </button>
           </div>
         </div>
@@ -204,7 +236,10 @@
       <table class="table table-hover datatable mb-0" data-order="[[9, &quot;desc&quot;]]">
         <thead class="table-light">
           <tr>
-            <th>#</th><th>Nomor BA</th><th>SKU</th><th>Total Qty</th><th>No Resi</th>
+            <th style="width: 45px;" class="text-center" data-orderable="false">
+              <input type="checkbox" class="form-check-input" id="checkAllSupplierLokal" title="Pilih Semua Supplier Lokal">
+            </th>
+            <th>Nomor BA</th><th>SKU</th><th>Total Qty</th><th>No Resi</th>
             <th>Supplier</th><th>Judul</th><th>Harga Final</th><th>Status</th><th>Dibuat</th><th>Aksi</th>
           </tr>
         </thead>
@@ -215,6 +250,7 @@
           <% docs.forEach((d, i) => { %>
           <% 
             const categories = d.item_dispositions ? [...new Set(d.item_dispositions.split(', ').filter(Boolean))] : [];
+            const hasSupplierLokal = categories.includes('return_to_supplier') || d.ba_type === 'retur_supplier';
             const statusMap = {
               rekondisi: { label: 'REKONDISI', color: 'primary' },
               refurbish: { label: 'REFURBISH', color: 'dark' },
@@ -240,10 +276,14 @@
             const statusFilterQuery = filters.status || '';
           %>
                   <tr class="clickable-row <%= ba && ba.ba_id === d.ba_id ? 'table-active font-weight-bold' : '' %>"
-                    onclick="if (!event.target.closest('a') && !event.target.closest('button') && !event.target.closest('form')) window.location.href='/ba?ba_id=<%= d.ba_id %>&status=<%= statusFilterQuery %>'"
+                    onclick="if (!event.target.closest('a') && !event.target.closest('button') && !event.target.closest('form') && !event.target.closest('.form-check-input')) window.location.href='/ba?ba_id=<%= d.ba_id %>&status=<%= statusFilterQuery %>'"
                     style="cursor: pointer;">
-                    <td>
-                      <%= i + 1 %>
+                    <td class="text-center" onclick="event.stopPropagation()">
+                      <% if (hasSupplierLokal) { %>
+                        <input type="checkbox" class="form-check-input supplier-lokal-checkbox" value="<%= d.ba_id %>" data-ba-number="<%= d.ba_number %>" title="Pilih <%= d.ba_number %>">
+                      <% } else { %>
+                        <span class="text-muted small"><%= i + 1 %></span>
+                      <% } %>
                     </td>
                     <td><code><%= d.ba_number %></code></td>
                     <td>
@@ -300,6 +340,67 @@
           </div>
 
   <script>
+    function updateSupplierLokalCheckAllState() {
+      let total = 0;
+      let checked = 0;
+
+      if (window.$ && $.fn.DataTable && $.fn.DataTable.isDataTable('.datatable')) {
+        const table = $('.datatable').DataTable();
+        const rows = table.rows({ search: 'applied' }).nodes();
+        const $cbs = $('input.supplier-lokal-checkbox', rows);
+        total = $cbs.length;
+        checked = $cbs.filter(':checked').length;
+      } else {
+        const $cbs = $('.supplier-lokal-checkbox');
+        total = $cbs.length;
+        checked = $cbs.filter(':checked').length;
+      }
+
+      $('#checkAllSupplierLokal').prop('checked', total > 0 && total === checked);
+
+      const $btn = $('#btnExportSupplierLokal');
+      if (checked > 0) {
+        $btn.html(`<i class="bi bi-file-earmark-excel"></i> Export Excel Supplier Lokal (${checked})`);
+      } else {
+        $btn.html(`<i class="bi bi-file-earmark-excel"></i> Export All Excel Supplier Lokal`);
+      }
+    }
+
+    $(document).ready(function() {
+      if (window.$ && $.fn.select2) {
+        $('.select2-supplier-multiple').select2({
+          theme: 'bootstrap-5',
+          placeholder: '-- Pilih Supplier (Bisa Lebih Dari 1) --',
+          allowClear: true,
+          width: '100%',
+          closeOnSelect: false
+        });
+      }
+
+      // Handle Check All click
+      $(document).on('click change', '#checkAllSupplierLokal', function (e) {
+        const isChecked = $(this).is(':checked');
+        if (window.$ && $.fn.DataTable && $.fn.DataTable.isDataTable('.datatable')) {
+          const table = $('.datatable').DataTable();
+          const rows = table.rows({ search: 'applied' }).nodes();
+          $('input.supplier-lokal-checkbox', rows).prop('checked', isChecked);
+        } else {
+          $('.supplier-lokal-checkbox').prop('checked', isChecked);
+        }
+        updateSupplierLokalCheckAllState();
+      });
+
+      // Handle individual checkbox change
+      $(document).on('change', '.supplier-lokal-checkbox', function () {
+        updateSupplierLokalCheckAllState();
+      });
+
+      // When DataTables redraws
+      $(document).on('draw.dt', '.datatable', function () {
+        updateSupplierLokalCheckAllState();
+      });
+    });
+
     function exportFilteredData() {
       const form = document.getElementById('filter-form');
       const formData = new FormData(form);
@@ -310,6 +411,36 @@
         }
       }
       window.location.href = '/ba/export-all?' + params.toString();
+    }
+
+    function exportSupplierLokalExcel() {
+      let selectedIds = [];
+      if (window.$ && $.fn.DataTable && $.fn.DataTable.isDataTable('.datatable')) {
+        const table = $('.datatable').DataTable();
+        const rows = table.rows().nodes();
+        $('input.supplier-lokal-checkbox:checked', rows).each(function () {
+          selectedIds.push($(this).val());
+        });
+      } else {
+        $('.supplier-lokal-checkbox:checked').each(function () {
+          selectedIds.push($(this).val());
+        });
+      }
+
+      if (selectedIds.length > 0) {
+        window.location.href = '/ba/export-supplier-lokal?ba_ids=' + selectedIds.join(',');
+      } else {
+        const form = document.getElementById('filter-form');
+        const formData = new FormData(form);
+        const params = new URLSearchParams();
+        for (const [key, value] of formData.entries()) {
+          if (value) {
+            params.append(key, value);
+          }
+        }
+        params.set('status', 'return_to_supplier');
+        window.location.href = '/ba/export-supplier-lokal?' + params.toString();
+      }
     }
   </script>
 </div>

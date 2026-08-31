@@ -2,192 +2,512 @@
   <div class="row mb-3 align-items-center">
     <div class="col">
       <h2>
-        <% const catConf = {rekondisi:['primary','bi-tools'],refurbish:['warning','bi-stars'],write_off:['danger','bi-trash3'],stok_utama:['success','bi-archive'],return_to_supplier:['secondary','bi-truck']}; %>
-        <% const [catColor, catIcon] = catConf[category] || ['secondary','bi-box']; %>
-        <% const catNames = { rekondisi: 'Rekondisi', refurbish: 'Refurbish', write_off: 'Write Off', stok_utama: 'Utama', return_to_supplier: 'Supplier Lokal' }; %>
-        <i class="bi <%= catIcon %> text-<%= catColor %>"></i>
-        Stok <%= catNames[category] || category.replace('_', ' ') %>
+        <% const
+          catConf={rekondisi:['primary','bi-tools'],refurbish:['warning','bi-stars'],write_off:['danger','bi-trash3'],stok_utama:['success','bi-archive'],return_to_supplier:['secondary','bi-truck']};
+          %>
+          <% const [catColor, catIcon]=catConf[category] || ['secondary','bi-box']; %>
+            <% const catNames={ rekondisi: 'Rekondisi' , refurbish: 'Refurbish' , write_off: 'Write Off' ,
+              stok_utama: 'Utama' , return_to_supplier: 'Supplier Lokal' }; %>
+              <i class="bi <%= catIcon %> text-<%= catColor %>"></i>
+              Stok <%= catNames[category] || category.replace('_', ' ' ) %>
       </h2>
     </div>
     <div class="col-auto d-flex gap-2">
-      <% if (['rekondisi', 'refurbish', 'write_off', 'return_to_supplier'].includes(category)) { %>
-        <button id="btn-bulk-ba" class="btn btn-sm btn-primary d-none" onclick="submitBulkBA()">
-          <i class="bi bi-file-earmark-plus"></i> Buat Berita Acara (<span id="selected-count">0</span>)
-        </button>
-      <% } %>
-      <a href="/inventory" class="btn btn-sm btn-outline-secondary"><i class="bi bi-arrow-left"></i> Kembali</a>
+      <% if (category==='rekondisi' ) { %>
+        <div class="dropdown d-none" id="bulk-status-group">
+          <button class="btn btn-sm btn-outline-warning dropdown-toggle" type="button" data-bs-toggle="dropdown"
+            aria-expanded="false">
+            <i class="bi bi-arrow-left-right"></i> Ubah Status (<span class="selected-count-span">0</span>)
+          </button>
+          <ul class="dropdown-menu shadow">
+            <li><a class="dropdown-item" href="#" onclick="submitBulkChangeCategory('refurbish'); return false;"><i
+                  class="bi bi-stars text-warning me-1"></i> Ubah ke Refurbish</a></li>
+            <li><a class="dropdown-item text-danger" href="#"
+                onclick="submitBulkChangeCategory('write_off'); return false;"><i
+                  class="bi bi-trash3 text-danger me-1"></i> Ubah ke Write Off</a></li>
+          </ul>
+        </div>
+        <% } else if (category==='refurbish' ) { %>
+          <div class="dropdown d-none" id="bulk-status-group">
+            <button class="btn btn-sm btn-outline-warning dropdown-toggle" type="button" data-bs-toggle="dropdown"
+              aria-expanded="false">
+              <i class="bi bi-arrow-left-right"></i> Ubah Status (<span class="selected-count-span">0</span>)
+            </button>
+            <ul class="dropdown-menu shadow">
+              <li><a class="dropdown-item" href="#" onclick="submitBulkChangeCategory('rekondisi'); return false;"><i
+                    class="bi bi-tools text-primary me-1"></i> Ubah ke Rekondisi</a></li>
+              <li><a class="dropdown-item text-danger" href="#"
+                  onclick="submitBulkChangeCategory('write_off'); return false;"><i
+                    class="bi bi-trash3 text-danger me-1"></i> Ubah ke Write Off</a></li>
+            </ul>
+          </div>
+          <% } else if (category==='write_off' ) { %>
+            <div class="dropdown d-none" id="bulk-status-group">
+              <button class="btn btn-sm btn-outline-warning dropdown-toggle" type="button" data-bs-toggle="dropdown"
+                aria-expanded="false">
+                <i class="bi bi-arrow-left-right"></i> Ubah Status (<span class="selected-count-span">0</span>)
+              </button>
+              <ul class="dropdown-menu shadow">
+                <li><a class="dropdown-item" href="#" onclick="submitBulkChangeCategory('refurbish'); return false;"><i
+                      class="bi bi-stars text-warning me-1"></i> Ubah ke Refurbish</a></li>
+              </ul>
+            </div>
+            <% } %>
+              <% if (['rekondisi', 'refurbish' , 'write_off' , 'return_to_supplier' ].includes(category)) { %>
+                <button id="btn-bulk-ba" class="btn btn-sm btn-primary d-none" onclick="submitBulkBA()">
+                  <i class="bi bi-file-earmark-plus"></i> Buat Berita Acara (<span id="selected-count">0</span>)
+                </button>
+                <% } %>
+                  <a href="/inventory" class="btn btn-sm btn-outline-secondary"><i class="bi bi-arrow-left"></i>
+                    Kembali</a>
     </div>
   </div>
 
-  <% if (category === 'return_to_supplier') { %>
-  <div class="alert alert-info mb-3" role="alert">
-    <i class="bi bi-info-circle"></i> <strong>Informasi:</strong> Pilih SKU Supplier Lokal lalu klik <strong>Buat Berita Acara</strong> untuk memindahkan item ke dokumen BA dan memperbarui status stok menjadi completed.
-  </div>
-  <% } %>
+  <% if (category==='return_to_supplier' ) { %>
+    <div class="alert alert-info mb-3" role="alert">
+      <i class="bi bi-info-circle"></i> <strong>Informasi:</strong> Pilih SKU Supplier Lokal lalu klik <strong>Buat
+        Berita Acara</strong> untuk memindahkan item ke dokumen BA dan memperbarui status stok menjadi completed.
+    </div>
+    <% } %>
 
-  <div class="card">
-    <div class="card-header d-flex justify-content-between">
-      <h6 class="mb-0">Daftar Stok</h6>
-      <span class="badge bg-secondary"><%= items.length %> item</span>
-    </div>
-    <div class="table-responsive">
-      <table class="table table-hover datatable mb-0">
-        <thead class="table-light">
-          <tr>
-            <% if (['rekondisi', 'refurbish', 'write_off', 'return_to_supplier'].includes(category)) { %>
-              <th class="text-center" style="width: 40px;"><input type="checkbox" id="check-all-items"></th>
-            <% } else if (category === 'return_to_supplier') { %>
-              <th>#</th>
-            <% } else { %>
-              <th>#</th>
-            <% } %>
-            <th>No Resi</th><th>Item</th><th>SKU</th>
-            <% if (category === 'return_to_supplier') { %>
-              <th>Kondisi</th>
-              <th>Qty</th>
-              <th>Status</th>
-              <th>Tanggal Input</th>
-              <th>Vendor</th>
-            <% } else if (['rekondisi', 'refurbish'].includes(category)) { %>
-              <th>Kondisi</th>
-              <th>Qty</th>
-              <th>Status</th>
-              <th>Tanggal Input</th>
-              <th>SLA</th>
-            <% } else if (category === 'write_off') { %>
-              <th>Kondisi</th>
-              <th>Qty</th>
-              <th>Status</th>
-              <th>Tanggal Input</th>
-            <% } else { %>
-              <th>Lokasi</th><th>Status</th><th>Harga Jual</th><th>Tgl Jual</th><th>Vendor</th>
-            <% } %>
-          </tr>
-        </thead>
-        <tbody>
-          <% if (items.length === 0) { %>
-            <% const emptyColspan = ['rekondisi', 'refurbish'].includes(category) ? 9 : 8; %>
-            <tr><td colspan="<%= emptyColspan %>" class="text-center text-muted py-4">Stok kosong.</td></tr>
-          <% } %>
-          <% items.forEach((item, i) => { %>
-          <tr>
-            <% if (['rekondisi', 'refurbish', 'write_off', 'return_to_supplier'].includes(category)) { %>
-              <td class="text-center">
-                <% if (item.status === 'tersedia') { %>
-                  <input type="checkbox" class="item-checkbox" data-stock-id="<%= item.stock_id %>">
-                <% } else { %>
-                  <input type="checkbox" class="item-checkbox" disabled title="Hanya item dengan status tersedia yang dapat dipilih">
-                <% } %>
-              </td>
-            <% } else { %>
-              <td><%= i + 1 %></td>
-            <% } %>
-            <td>
-              <% if (item.resi_number) { %>
-                <small class="text-muted"><i class="bi bi-truck"></i> <%= item.resi_number %></small>
-              <% } else { %>
-                <span class="text-muted">-</span>
-              <% } %>
-            </td>
-            <td>
-              <strong><%= item.item_name %></strong>
-              <% if (item.serial_number) { %><br><small class="text-muted">S/N: <%= item.serial_number %></small><% } %>
-              <% if (item.sticker_tag) { %>
-                <br><span class="badge bg-warning text-dark"><i class="bi bi-tag"></i> <%= item.sticker_tag %></span>
-              <% } %>
-            </td>
-            <td><small><%= item.sku || item.item_code || '-' %></small></td>
-            <% if (category === 'return_to_supplier') { %>
-              <td class="text-capitalize"><%= formatCategory(item.return_category) %></td>
-              <td><%= item.quantity %></td>
-              <td>
-                <% const stColors = {tersedia:'success',terjual:'primary',diproses:'info',void:'secondary',completed:'warning'}; %>
-                <span class="badge bg-<%= stColors[item.status]||'secondary' %>"><%= item.status %></span>
-              </td>
-              <td><small><%= item.item_created_at ? formatDate(item.item_created_at) : '-' %></small></td>
-              <td><small><%= item.vendor_name || '-' %></small></td>
-            <% } else if (['rekondisi', 'refurbish'].includes(category)) { %>
-              <td class="text-capitalize"><%= formatCategory(item.return_category) %></td>
-              <td><%= item.quantity %></td>
-              <td>
-                <% const stColors = {tersedia:'success',terjual:'primary',diproses:'info',void:'secondary',completed:'warning'}; %>
-                <span class="badge bg-<%= stColors[item.status]||'secondary' %>"><%= item.status %></span>
-              </td>
-              <td><small><%= item.item_created_at ? formatDate(item.item_created_at) : '-' %></small></td>
-              <td>
-                <% if (item.sla_deadline && item.slaInfo) { %>
-                  <span class="badge bg-<%= item.slaInfo.color %>"><i class="bi bi-clock"></i> <%= item.slaInfo.label %></span>
-                  <div><small class="text-muted"><%= formatDate(item.sla_deadline) %></small></div>
-                <% } else { %>
-                  <span class="text-muted">-</span>
-                <% } %>
-              </td>
-            <% } else if (category === 'write_off') { %>
-              <td class="text-capitalize"><%= formatCategory(item.return_category) %></td>
-              <td><%= item.quantity %></td>
-              <td>
-                <% const stColors = {tersedia:'success',terjual:'primary',diproses:'info',void:'secondary',completed:'warning'}; %>
-                <span class="badge bg-<%= stColors[item.status]||'secondary' %>"><%= item.status %></span>
-              </td>
-              <td><small><%= item.item_created_at ? formatDate(item.item_created_at) : '-' %></small></td>
-            <% } else { %>
-              <td><%= item.location || '-' %></td>
-              <td>
-                <% const stColors = {tersedia:'success',terjual:'primary',diproses:'info',void:'secondary',completed:'warning'}; %>
-                <span class="badge bg-<%= stColors[item.status]||'secondary' %>"><%= item.status %></span>
-              </td>
-              <td><%= item.sale_price ? formatCurrency(item.sale_price) : '-' %></td>
-              <td><small><%= item.sale_date ? formatDate(item.sale_date) : '-' %></small></td>
-              <td><small><%= item.vendor_name || '-' %></small></td>
-            <% } %>
-          </tr>
-          <% }) %>
-        </tbody>
-      </table>
-    </div>
-  </div>
+      <div class="card">
+        <div class="card-header d-flex justify-content-between">
+          <h6 class="mb-0">Daftar Stok</h6>
+          <span class="badge bg-secondary">
+            <%= items.length %> item
+          </span>
+        </div>
+        <div class="table-responsive">
+          <table class="table table-hover datatable mb-0">
+            <thead class="table-light">
+              <tr>
+                <% if (['rekondisi', 'refurbish' , 'write_off' , 'return_to_supplier' ].includes(category)) { %>
+                  <th class="text-center" style="width: 40px;" data-orderable="false"><input type="checkbox"
+                      id="check-all-items"></th>
+                  <% } else if (category==='return_to_supplier' ) { %>
+                    <th>#</th>
+                    <% } else { %>
+                      <th>#</th>
+                      <% } %>
+                        <th>No Resi</th>
+                        <th>Item</th>
+                        <th>SKU</th>
+                        <% if (category==='return_to_supplier' ) { %>
+                          <th>Kondisi</th>
+                          <th>Qty</th>
+                          <th>Status</th>
+                          <th>Tanggal Input</th>
+                          <th>Vendor</th>
+                          <% } else if (['rekondisi', 'refurbish' ].includes(category)) { %>
+                            <th>Kondisi</th>
+                            <th>Qty</th>
+                            <th>Status</th>
+                            <th>Tanggal Input</th>
+                            <th>SLA</th>
+                            <% } else if (category==='write_off' ) { %>
+                              <th>Kondisi</th>
+                              <th>Qty</th>
+                              <th>Ikut</th>
+                              <th>Status</th>
+                              <th>Tanggal Input</th>
+                              <% } else { %>
+                                <th>Lokasi</th>
+                                <th>Status</th>
+                                <th>Harga Jual</th>
+                                <th>Tgl Jual</th>
+                                <th>Vendor</th>
+                                <% } %>
+              </tr>
+            </thead>
+            <tbody>
+              <% if (items.length===0) { %>
+                <% const emptyColspan=['rekondisi', 'refurbish' , 'write_off' , 'return_to_supplier'
+                  ].includes(category) ? 9 : 8; %>
+                  <tr>
+                    <td colspan="<%= emptyColspan %>" class="text-center text-muted py-4">Stok kosong.</td>
+                  </tr>
+                  <% } %>
+                    <% items.forEach((item, i)=> { %>
+                      <tr>
+                        <% if (['rekondisi', 'refurbish' , 'write_off' , 'return_to_supplier' ].includes(category)) { %>
+                          <td class="text-center">
+                            <% if (item.status==='tersedia' ) { %>
+                              <input type="checkbox" class="item-checkbox" data-stock-id="<%= item.stock_id %>">
+                              <% } else { %>
+                                <input type="checkbox" class="item-checkbox" disabled
+                                  title="Hanya item dengan status tersedia yang dapat dipilih">
+                                <% } %>
+                          </td>
+                          <% } else { %>
+                            <td>
+                              <%= i + 1 %>
+                            </td>
+                            <% } %>
+                              <td>
+                                <% if (item.resi_number) { %>
+                                  <small class="text-muted"><i class="bi bi-truck"></i>
+                                    <%= item.resi_number %>
+                                  </small>
+                                  <% } else { %>
+                                    <span class="text-muted">-</span>
+                                    <% } %>
+                              </td>
+                              <td>
+                                <strong>
+                                  <%= item.item_name %>
+                                </strong>
+                                <% if (item.serial_number) { %><br><small class="text-muted">S/N: <%= item.serial_number
+                                      %></small>
+                                  <% } %>
+                                    <% if (item.sticker_tag) { %>
+                                      <br><span class="badge bg-warning text-dark"><i class="bi bi-tag"></i>
+                                        <%= item.sticker_tag %>
+                                      </span>
+                                      <% } %>
+                              </td>
+                              <td><small>
+                                  <%= item.sku || item.item_code || '-' %>
+                                </small></td>
+                              <% if (category==='return_to_supplier' ) { %>
+                                <td class="text-capitalize">
+                                  <%= formatCategory(item.return_category) %>
+                                </td>
+                                <td>
+                                  <%= item.quantity %>
+                                </td>
+                                <td>
+                                  <% const
+                                    stColors={tersedia:'success',terjual:'primary',diproses:'info',void:'secondary',completed:'warning'};
+                                    %>
+                                    <span class="badge bg-<%= stColors[item.status]||'secondary' %>">
+                                      <%= item.status %>
+                                    </span>
+                                </td>
+                                <td><small>
+                                    <%= item.item_created_at ? formatDate(item.item_created_at) : '-' %>
+                                  </small></td>
+                                <td><small>
+                                    <%= item.vendor_name || '-' %>
+                                  </small></td>
+                                <% } else if (['rekondisi', 'refurbish' ].includes(category)) { %>
+                                  <td class="text-capitalize">
+                                    <%= formatCategory(item.return_category) %>
+                                  </td>
+                                  <td>
+                                    <%= item.quantity %>
+                                  </td>
+                                  <td>
+                                    <% const
+                                      stColors={tersedia:'success',terjual:'primary',diproses:'info',void:'secondary',completed:'warning'};
+                                      %>
+                                      <% if (category==='rekondisi' ) { %>
+                                        <% if (item.status==='tersedia' ) { %>
+                                          <select class="form-select form-select-sm bg-light border-primary"
+                                            style="min-width: 125px; font-size: 0.8rem; padding: 0.25rem 0.5rem; font-weight: 500;"
+                                            data-stock-id="<%= item.stock_id %>" data-current-cat="rekondisi"
+                                            data-item-name="<%= item.sku || item.item_name %>"
+                                            onchange="handleStockCategoryChange(this)">
+                                            <option value="rekondisi" selected>Rekondisi</option>
+                                            <option value="refurbish">Refurbish</option>
+                                            <option value="write_off">Write Off</option>
+                                          </select>
+                                          <% } else { %>
+                                            <span class="badge bg-<%= stColors[item.status]||'secondary' %>">
+                                              <%= item.status %>
+                                            </span>
+                                            <% } %>
+                                              <% } else if (category==='refurbish' ) { %>
+                                                <% if (item.status==='tersedia' ) { %>
+                                                  <select class="form-select form-select-sm bg-light border-warning"
+                                                    style="min-width: 125px; font-size: 0.8rem; padding: 0.25rem 0.5rem; font-weight: 500;"
+                                                    data-stock-id="<%= item.stock_id %>" data-current-cat="refurbish"
+                                                    data-item-name="<%= item.sku || item.item_name %>"
+                                                    onchange="handleStockCategoryChange(this)">
+                                                    <option value="refurbish" selected>Refurbish</option>
+                                                    <option value="rekondisi">Rekondisi</option>
+                                                    <option value="write_off">Write Off</option>
+                                                  </select>
+                                                  <% } else { %>
+                                                    <span class="badge bg-<%= stColors[item.status]||'secondary' %>">
+                                                      <%= item.status %>
+                                                    </span>
+                                                    <% } %>
+                                                      <% } else { %>
+                                                        <span
+                                                          class="badge bg-<%= stColors[item.status]||'secondary' %>">
+                                                          <%= item.status %>
+                                                        </span>
+                                                        <% } %>
+                                  </td>
+                                  <td><small>
+                                      <%= item.item_created_at ? formatDate(item.item_created_at) : '-' %>
+                                    </small></td>
+                                  <td>
+                                    <% if (item.sla_deadline && item.slaInfo) { %>
+                                      <span class="badge bg-<%= item.slaInfo.color %>"><i class="bi bi-clock"></i>
+                                        <%= item.slaInfo.label %>
+                                      </span>
+                                      <div><small class="text-muted">
+                                          <%= formatDate(item.sla_deadline) %>
+                                        </small></div>
+                                      <% } else { %>
+                                        <span class="text-muted">-</span>
+                                        <% } %>
+                                  </td>
+                                  <% } else if (category==='write_off' ) { %>
+                                    <td class="text-capitalize">
+                                      <%= formatCategory(item.return_category) %>
+                                    </td>
+                                    <td>
+                                      <%= item.quantity %>
+                                    </td>
+                                    <td>
+                                      <% if (item.ikut) { %>
+                                        <span class="badge bg-light text-dark border font-monospace"
+                                          style="font-size: 0.75rem;">
+                                          <%= item.ikut %><%= item.ikut_wo ? ' (' + item.ikut_wo + ')' : '' %>
+                                        </span>
+                                        <% } else { %><span class="text-muted">-</span>
+                                          <% } %>
+                                    </td>
+                                    <td>
+                                      <% const
+                                        stColors={tersedia:'success',terjual:'primary',diproses:'info',void:'secondary',completed:'warning'};
+                                        %>
+                                        <% if (item.status==='tersedia' ) { %>
+                                          <select class="form-select form-select-sm bg-light border-danger"
+                                            style="min-width: 125px; font-size: 0.8rem; padding: 0.25rem 0.5rem; font-weight: 500;"
+                                            data-stock-id="<%= item.stock_id %>" data-current-cat="write_off"
+                                            data-item-name="<%= item.sku || item.item_name %>"
+                                            onchange="handleStockCategoryChange(this)">
+                                            <option value="write_off" selected>Write Off</option>
+                                            <option value="refurbish">Refurbish</option>
+                                          </select>
+                                          <% } else { %>
+                                            <span class="badge bg-<%= stColors[item.status]||'secondary' %>">
+                                              <%= item.status %>
+                                            </span>
+                                            <% } %>
+                                    </td>
+                                    <td><small>
+                                        <%= item.item_created_at ? formatDate(item.item_created_at) : '-' %>
+                                      </small></td>
+                                    <% } else { %>
+                                      <td>
+                                        <%= item.location || '-' %>
+                                      </td>
+                                      <td>
+                                        <% const
+                                          stColors={tersedia:'success',terjual:'primary',diproses:'info',void:'secondary',completed:'warning'};
+                                          %>
+                                          <span class="badge bg-<%= stColors[item.status]||'secondary' %>">
+                                            <%= item.status %>
+                                          </span>
+                                      </td>
+                                      <td>
+                                        <%= item.sale_price ? formatCurrency(item.sale_price) : '-' %>
+                                      </td>
+                                      <td><small>
+                                          <%= item.sale_date ? formatDate(item.sale_date) : '-' %>
+                                        </small></td>
+                                      <td><small>
+                                          <%= item.vendor_name || '-' %>
+                                        </small></td>
+                                      <% } %>
+                      </tr>
+                      <% }) %>
+            </tbody>
+          </table>
+        </div>
+      </div>
 </div>
 
-<% if (['rekondisi', 'refurbish', 'write_off', 'return_to_supplier'].includes(category)) { %>
-<script>
-  document.addEventListener('DOMContentLoaded', function() {
-    const checkAll = document.getElementById('check-all-items');
-    const checkboxes = document.querySelectorAll('.item-checkbox:not(:disabled)');
-    const bulkButton = document.getElementById('btn-bulk-ba');
-    const selectedCount = document.getElementById('selected-count');
+<% if (['rekondisi', 'refurbish' , 'write_off' , 'return_to_supplier' ].includes(category)) { %>
+  <script>
+    document.addEventListener('DOMContentLoaded', function () {
+      const checkAll = document.getElementById('check-all-items');
+      const bulkButton = document.getElementById('btn-bulk-ba');
+      const bulkStatusGroup = document.getElementById('bulk-status-group');
+      const selectedCount = document.getElementById('selected-count');
+      const table = document.querySelector('.datatable') || document.querySelector('table');
+      const selectedStockIds = new Set();
 
-    if (checkAll) {
-      checkAll.addEventListener('change', function() {
-        checkboxes.forEach(cb => {
-          cb.checked = this.checked;
+      window.selectedStockIds = selectedStockIds;
+
+      function updateBulkButton() {
+        const count = selectedStockIds.size;
+        if (selectedCount) selectedCount.textContent = count;
+        document.querySelectorAll('.selected-count-span').forEach(el => el.textContent = count);
+
+        if (bulkButton) {
+          if (count > 0) {
+            bulkButton.classList.remove('d-none');
+          } else {
+            bulkButton.classList.add('d-none');
+          }
+        }
+
+        if (bulkStatusGroup) {
+          if (count > 0) {
+            bulkStatusGroup.classList.remove('d-none');
+          } else {
+            bulkStatusGroup.classList.add('d-none');
+          }
+        }
+      }
+
+      function syncCheckAllState() {
+        if (!checkAll || !table) return;
+        const visibleCheckboxes = table.querySelectorAll('tbody tr .item-checkbox:not(:disabled)');
+        if (visibleCheckboxes.length === 0) {
+          checkAll.checked = false;
+          return;
+        }
+        const allChecked = Array.from(visibleCheckboxes).every(cb => cb.checked);
+        checkAll.checked = allChecked;
+      }
+
+      function syncVisibleCheckboxes() {
+        if (!table) return;
+        const visibleCheckboxes = table.querySelectorAll('tbody tr .item-checkbox:not(:disabled)');
+        visibleCheckboxes.forEach(cb => {
+          const id = cb.getAttribute('data-stock-id');
+          cb.checked = selectedStockIds.has(id);
         });
-        updateBulkButton();
-      });
-    }
+        syncCheckAllState();
+      }
 
-    checkboxes.forEach(cb => {
-      cb.addEventListener('change', updateBulkButton);
+      document.addEventListener('change', function (e) {
+        if (e.target && e.target.classList.contains('item-checkbox')) {
+          const cb = e.target;
+          const stockId = cb.getAttribute('data-stock-id');
+          if (stockId) {
+            if (cb.checked) {
+              selectedStockIds.add(stockId);
+            } else {
+              selectedStockIds.delete(stockId);
+            }
+          }
+          updateBulkButton();
+          syncCheckAllState();
+        }
+      });
+
+      if (checkAll) {
+        checkAll.addEventListener('click', function (e) {
+          e.stopPropagation();
+        });
+
+        checkAll.addEventListener('change', function () {
+          const isChecked = this.checked;
+          let targetCheckboxes = [];
+
+          if (window.$ && $.fn.DataTable && $.fn.DataTable.isDataTable(table)) {
+            const dt = $(table).DataTable();
+            targetCheckboxes = dt.$('.item-checkbox:not(:disabled)', { search: 'applied' }).toArray();
+          } else {
+            targetCheckboxes = Array.from(table.querySelectorAll('tbody tr .item-checkbox:not(:disabled)'));
+          }
+
+          targetCheckboxes.forEach(cb => {
+            cb.checked = isChecked;
+            const stockId = cb.getAttribute('data-stock-id');
+            if (stockId) {
+              if (isChecked) {
+                selectedStockIds.add(stockId);
+              } else {
+                selectedStockIds.delete(stockId);
+              }
+            }
+          });
+
+          updateBulkButton();
+        });
+      }
+
+      if (window.$ && table) {
+        $(table).on('draw.dt', function () {
+          syncVisibleCheckboxes();
+        });
+      }
     });
 
-    function updateBulkButton() {
-      const checked = document.querySelectorAll('.item-checkbox:checked');
-      if (checked.length > 0) {
-        bulkButton.classList.remove('d-none');
-        selectedCount.textContent = checked.length;
+    function handleStockCategoryChange(selectEl) {
+      const stockId = selectEl.getAttribute('data-stock-id');
+      const itemName = selectEl.getAttribute('data-item-name');
+      const currentCat = selectEl.getAttribute('data-current-cat') || 'rekondisi';
+      const newCat = selectEl.value;
+
+      if (newCat === currentCat) return;
+
+      const targetLabels = { rekondisi: 'Rekondisi', refurbish: 'Refurbish', write_off: 'Write Off' };
+      const targetLabel = targetLabels[newCat] || newCat;
+
+      if (confirm(`Apakah Anda yakin ingin mengubah status item "${itemName}" menjadi ${targetLabel}?`)) {
+        const form = document.createElement('form');
+        form.method = 'POST';
+        form.action = `/inventory/change-category/${stockId}`;
+
+        const input = document.createElement('input');
+        input.type = 'hidden';
+        input.name = 'target_category';
+        input.value = newCat;
+        form.appendChild(input);
+
+        document.body.appendChild(form);
+        form.submit();
       } else {
-        bulkButton.classList.add('d-none');
-        selectedCount.textContent = '0';
+        selectEl.value = currentCat;
       }
     }
-  });
 
-  function submitBulkBA() {
-    const checked = document.querySelectorAll('.item-checkbox:checked');
-    const stockIds = Array.from(checked).map(cb => cb.getAttribute('data-stock-id'));
-    if (stockIds.length === 0) return;
-    
-    window.location.href = '/ba/create?stock_ids=' + stockIds.join(',');
-  }
-</script>
-<% } %>
+    function submitBulkChangeCategory(targetCat) {
+      let stockIds = [];
+      if (window.selectedStockIds && window.selectedStockIds.size > 0) {
+        stockIds = Array.from(window.selectedStockIds);
+      } else {
+        const checked = document.querySelectorAll('.item-checkbox:checked');
+        stockIds = Array.from(checked).map(cb => cb.getAttribute('data-stock-id')).filter(Boolean);
+      }
 
+      if (stockIds.length === 0) return;
+
+      const targetLabels = { rekondisi: 'Rekondisi', refurbish: 'Refurbish', write_off: 'Write Off' };
+      const targetLabel = targetLabels[targetCat] || targetCat;
+
+      if (confirm(`Apakah Anda yakin ingin mengubah ${stockIds.length} item stok terpilih menjadi ${targetLabel}?`)) {
+        const form = document.createElement('form');
+        form.method = 'POST';
+        form.action = '/inventory/bulk-change-category';
+
+        const catInput = document.createElement('input');
+        catInput.type = 'hidden';
+        catInput.name = 'target_category';
+        catInput.value = targetCat;
+        form.appendChild(catInput);
+
+        const idsInput = document.createElement('input');
+        idsInput.type = 'hidden';
+        idsInput.name = 'stock_ids';
+        idsInput.value = stockIds.join(',');
+        form.appendChild(idsInput);
+
+        document.body.appendChild(form);
+        form.submit();
+      }
+    }
+
+    function submitBulkBA() {
+      let stockIds = [];
+      if (window.selectedStockIds && window.selectedStockIds.size > 0) {
+        stockIds = Array.from(window.selectedStockIds);
+      } else {
+        const checked = document.querySelectorAll('.item-checkbox:checked');
+        stockIds = Array.from(checked).map(cb => cb.getAttribute('data-stock-id')).filter(Boolean);
+      }
+
+      if (stockIds.length === 0) return;
+      window.location.href = '/ba/create?stock_ids=' + stockIds.join(',');
+    }
+  </script>
+  <% } %>

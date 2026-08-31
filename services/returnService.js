@@ -777,6 +777,8 @@ async function updateItemQC(itemId, data) {
             disposition       = ?,
             inspection_notes  = COALESCE(?, inspection_notes),
             item_category     = COALESCE(?, item_category),
+            ikut              = COALESCE(?, ikut),
+            ikut_wo           = ?,
             vendor_id         = ?,
             perbaikan_status  = ?,
             current_status    = ?,
@@ -791,6 +793,8 @@ async function updateItemQC(itemId, data) {
       data.disposition || 'pending',
       data.inspection_notes || null,
       data.item_category || null,
+      data.ikut || null,
+      data.ikut_wo !== undefined ? (data.ikut_wo || null) : null,
       data.vendor_id || null,
       perbaikanStatus,
       itemCurrentStatus,
@@ -1228,7 +1232,8 @@ async function saveManifest(manifestData, items) {
           admin_pengemasan = ?, waktu_packing = ?,
           nomor_daftar = ?, no_pesanan_wms = ?, no_pesanan_oms = ?,
           status = ?, gudang = ?, waktu_pesanan = ?,
-          batas_waktu_pengiriman = ?, waktu_cetak = ?, mata_uang = ?
+          batas_waktu_pengiriman = ?, waktu_cetak = ?, mata_uang = ?,
+          tgl = ?, kota = ?, expedisi = ?
          WHERE manifest_id = ?`,
         [
           manifestData.customer_name || null,
@@ -1257,6 +1262,9 @@ async function saveManifest(manifestData, items) {
           manifestData.batas_waktu_pengiriman || null,
           manifestData.waktu_cetak || null,
           manifestData.mata_uang || null,
+          manifestData.tgl || null,
+          manifestData.kota || null,
+          manifestData.expedisi || null,
           manifestId
         ]
       );
@@ -1265,8 +1273,9 @@ async function saveManifest(manifestData, items) {
         `INSERT INTO temp_return_manifests 
           (resi_number, no_pesanan, customer_name, customer_contact, source_type, return_category, return_reason, notes, is_processed,
            nama_toko, metode_pengiriman, jenis_pengiriman, penerima, alamat_pengiriman, waktu_outbound, total_harga_pesanan, nama_pemilik, waktu_picking, admin_pengemasan, waktu_packing,
-           nomor_daftar, no_pesanan_wms, no_pesanan_oms, status, gudang, waktu_pesanan, batas_waktu_pengiriman, waktu_cetak, mata_uang)
-         VALUES (?, ?, ?, ?, ?, ?, ?, ?, 0, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
+           nomor_daftar, no_pesanan_wms, no_pesanan_oms, status, gudang, waktu_pesanan, batas_waktu_pengiriman, waktu_cetak, mata_uang,
+           tgl, kota, expedisi)
+         VALUES (?, ?, ?, ?, ?, ?, ?, ?, 0, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
         [
           manifestData.resi_number,
           manifestData.no_pesanan,
@@ -1295,7 +1304,10 @@ async function saveManifest(manifestData, items) {
           manifestData.waktu_pesanan || null,
           manifestData.batas_waktu_pengiriman || null,
           manifestData.waktu_cetak || null,
-          manifestData.mata_uang || null
+          manifestData.mata_uang || null,
+          manifestData.tgl || null,
+          manifestData.kota || null,
+          manifestData.expedisi || null
         ]
       );
       manifestId = res.insertId;
@@ -1304,8 +1316,8 @@ async function saveManifest(manifestData, items) {
     for (const item of items) {
       await conn.query(
         `INSERT INTO temp_return_manifest_items 
-          (manifest_id, item_code, item_name, item_description, serial_number, batch_number, quantity, unit_price, varian_product, nomor, rak)
-         VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
+          (manifest_id, item_code, item_name, item_description, serial_number, batch_number, quantity, unit_price, varian_product, nomor, rak, kondisi)
+         VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
         [
           manifestId,
           item.item_code || null,
@@ -1317,7 +1329,8 @@ async function saveManifest(manifestData, items) {
           parseFloat(item.unit_price) || 0.00,
           item.varian_product || null,
           item.nomor || null,
-          item.rak || null
+          item.rak || null,
+          item.kondisi || null
         ]
       );
     }
@@ -1378,7 +1391,8 @@ async function saveManifestsBatch(batch) {
             admin_pengemasan = ?, waktu_packing = ?,
             nomor_daftar = ?, no_pesanan_wms = ?, no_pesanan_oms = ?,
             status = ?, gudang = ?, waktu_pesanan = ?,
-            batas_waktu_pengiriman = ?, waktu_cetak = ?, mata_uang = ?
+            batas_waktu_pengiriman = ?, waktu_cetak = ?, mata_uang = ?,
+            tgl = ?, kota = ?, expedisi = ?
            WHERE manifest_id = ?`,
           [
             manifestData.customer_name || null,
@@ -1407,6 +1421,9 @@ async function saveManifestsBatch(batch) {
             manifestData.batas_waktu_pengiriman || null,
             manifestData.waktu_cetak || null,
             manifestData.mata_uang || null,
+            manifestData.tgl || null,
+            manifestData.kota || null,
+            manifestData.expedisi || null,
             manifestId
           ]
         );
@@ -1415,8 +1432,9 @@ async function saveManifestsBatch(batch) {
           `INSERT INTO temp_return_manifests 
             (resi_number, no_pesanan, customer_name, customer_contact, source_type, return_category, return_reason, notes, is_processed,
              nama_toko, metode_pengiriman, jenis_pengiriman, penerima, alamat_pengiriman, waktu_outbound, total_harga_pesanan, nama_pemilik, waktu_picking, admin_pengemasan, waktu_packing,
-             nomor_daftar, no_pesanan_wms, no_pesanan_oms, status, gudang, waktu_pesanan, batas_waktu_pengiriman, waktu_cetak, mata_uang)
-           VALUES (?, ?, ?, ?, ?, ?, ?, ?, 0, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
+             nomor_daftar, no_pesanan_wms, no_pesanan_oms, status, gudang, waktu_pesanan, batas_waktu_pengiriman, waktu_cetak, mata_uang,
+             tgl, kota, expedisi)
+           VALUES (?, ?, ?, ?, ?, ?, ?, ?, 0, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
           [
             manifestData.resi_number,
             manifestData.no_pesanan,
@@ -1445,7 +1463,10 @@ async function saveManifestsBatch(batch) {
             manifestData.waktu_pesanan || null,
             manifestData.batas_waktu_pengiriman || null,
             manifestData.waktu_cetak || null,
-            manifestData.mata_uang || null
+            manifestData.mata_uang || null,
+            manifestData.tgl || null,
+            manifestData.kota || null,
+            manifestData.expedisi || null
           ]
         );
         manifestId = res.insertId;
@@ -1454,8 +1475,8 @@ async function saveManifestsBatch(batch) {
       for (const item of manifestData.items) {
         await conn.query(
           `INSERT INTO temp_return_manifest_items 
-            (manifest_id, item_code, item_name, item_description, serial_number, batch_number, quantity, unit_price, varian_product, nomor, rak)
-           VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
+            (manifest_id, item_code, item_name, item_description, serial_number, batch_number, quantity, unit_price, varian_product, nomor, rak, kondisi)
+           VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
           [
             manifestId,
             item.item_code || null,
@@ -1467,7 +1488,8 @@ async function saveManifestsBatch(batch) {
             parseFloat(item.unit_price) || 0.00,
             item.varian_product || null,
             item.nomor || null,
-            item.rak || null
+            item.rak || null,
+            item.kondisi || null
           ]
         );
       }
@@ -1509,13 +1531,13 @@ async function saveManifestsBatch(batch) {
  */
 async function getManifestByQuery(queryStr) {
   const q = queryStr.trim();
-  
+
   // First, check if it is already in return_manifests
   const [existing] = await db.query(
     'SELECT * FROM return_manifests WHERE resi_number = ? OR no_pesanan = ? ORDER BY is_processed ASC, manifest_id DESC LIMIT 1',
     [q, q]
   );
-  
+
   if (existing.length > 0) {
     const manifest = existing[0];
     const [items] = await db.query(
@@ -1524,16 +1546,27 @@ async function getManifestByQuery(queryStr) {
     );
     return { ...manifest, items };
   }
-  
+
   // If not found in return_manifests, lookup in temp_return_manifests
   const [temps] = await db.query(
     'SELECT * FROM temp_return_manifests WHERE resi_number = ? OR no_pesanan = ? ORDER BY is_processed ASC, manifest_id DESC LIMIT 1',
     [q, q]
   );
-  
+
   if (temps.length === 0) return null;
-  
+
+  return promoteTempManifest(temps[0].manifest_id);
+}
+
+/**
+ * Move a temp manifest (and its items) from the staging tables into the main
+ * return_manifests / return_manifest_items tables, deleting the temp record.
+ */
+async function promoteTempManifest(tempManifestId) {
+  const [temps] = await db.query('SELECT * FROM temp_return_manifests WHERE manifest_id = ?', [tempManifestId]);
   const tempManifest = temps[0];
+  if (!tempManifest) throw new Error('Temp manifest tidak ditemukan.');
+
   const conn = await db.getConnection();
   await conn.beginTransaction();
   try {
@@ -1541,8 +1574,9 @@ async function getManifestByQuery(queryStr) {
       `INSERT INTO return_manifests 
         (resi_number, no_pesanan, customer_name, customer_contact, source_type, return_category, return_reason, notes, is_processed,
          nama_toko, metode_pengiriman, jenis_pengiriman, penerima, alamat_pengiriman, waktu_outbound, total_harga_pesanan, nama_pemilik, waktu_picking, admin_pengemasan, waktu_packing,
-         nomor_daftar, no_pesanan_wms, no_pesanan_oms, status, gudang, waktu_pesanan, batas_waktu_pengiriman, waktu_cetak, mata_uang)
-       VALUES (?, ?, ?, ?, ?, ?, ?, ?, 0, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
+         nomor_daftar, no_pesanan_wms, no_pesanan_oms, status, gudang, waktu_pesanan, batas_waktu_pengiriman, waktu_cetak, mata_uang,
+         tgl, kota, expedisi)
+       VALUES (?, ?, ?, ?, ?, ?, ?, ?, 0, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
       [
         tempManifest.resi_number,
         tempManifest.no_pesanan,
@@ -1571,7 +1605,10 @@ async function getManifestByQuery(queryStr) {
         tempManifest.waktu_pesanan,
         tempManifest.batas_waktu_pengiriman,
         tempManifest.waktu_cetak,
-        tempManifest.mata_uang
+        tempManifest.mata_uang,
+        tempManifest.tgl,
+        tempManifest.kota,
+        tempManifest.expedisi
       ]
     );
     const newManifestId = res.insertId;
@@ -1584,8 +1621,8 @@ async function getManifestByQuery(queryStr) {
     for (const item of tempItems) {
       await conn.query(
         `INSERT INTO return_manifest_items 
-          (manifest_id, item_code, item_name, item_description, serial_number, batch_number, quantity, unit_price, varian_product, nomor, rak)
-         VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
+          (manifest_id, item_code, item_name, item_description, serial_number, batch_number, quantity, unit_price, varian_product, nomor, rak, kondisi)
+         VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
         [
           newManifestId,
           item.item_code,
@@ -1597,7 +1634,8 @@ async function getManifestByQuery(queryStr) {
           item.unit_price,
           item.varian_product,
           item.nomor,
-          item.rak
+          item.rak,
+          item.kondisi
         ]
       );
     }
@@ -1653,14 +1691,23 @@ async function getManifestsList() {
   return rows;
 }
 
-async function getManifestsListPaginated({ page = 1, limit = 15, search = '', barcodes = [], month = '', year = '' }) {
+async function getManifestsListPaginated({ page = 1, limit = 15, search = '', barcodes = [], startDate = '', endDate = '', tab = 'scan' }) {
   const offset = (page - 1) * limit;
   const conditions = [];
   const params = [];
 
+  const manualCondition = "(rm.tgl IS NOT NULL AND rm.kota IS NOT NULL AND TRIM(COALESCE(rm.kota, '')) != '' AND rm.expedisi IS NOT NULL AND TRIM(COALESCE(rm.expedisi, '')) != '')";
+  const scanCondition = "(rm.tgl IS NULL OR rm.kota IS NULL OR TRIM(COALESCE(rm.kota, '')) = '' OR rm.expedisi IS NULL OR TRIM(COALESCE(rm.expedisi, '')) = '')";
+
+  if (tab === 'manual') {
+    conditions.push(manualCondition);
+  } else {
+    conditions.push(scanCondition);
+  }
+
   if (search) {
-    conditions.push('(rm.resi_number LIKE ? OR rm.no_pesanan LIKE ? OR rm.customer_name LIKE ?)');
-    params.push(`%${search}%`, `%${search}%`, `%${search}%`);
+    conditions.push('(rm.resi_number LIKE ? OR rm.no_pesanan LIKE ? OR rm.customer_name LIKE ? OR rm.kota LIKE ? OR rm.expedisi LIKE ? OR rm.nama_toko LIKE ?)');
+    params.push(`%${search}%`, `%${search}%`, `%${search}%`, `%${search}%`, `%${search}%`, `%${search}%`);
   } else if (barcodes && barcodes.length > 0) {
     const cleanBarcodes = barcodes.map(b => String(b).trim()).filter(Boolean);
     if (cleanBarcodes.length > 0) {
@@ -1670,14 +1717,14 @@ async function getManifestsListPaginated({ page = 1, limit = 15, search = '', ba
     }
   }
 
-  if (month) {
-    conditions.push('MONTH(rm.created_at) = ?');
-    params.push(parseInt(month));
+  if (startDate) {
+    conditions.push('COALESCE(DATE(rm.tgl), DATE(rm.created_at)) >= ?');
+    params.push(startDate);
   }
 
-  if (year) {
-    conditions.push('YEAR(rm.created_at) = ?');
-    params.push(parseInt(year));
+  if (endDate) {
+    conditions.push('COALESCE(DATE(rm.tgl), DATE(rm.created_at)) <= ?');
+    params.push(endDate);
   }
 
   const whereClause = conditions.length > 0 ? ' WHERE ' + conditions.join(' AND ') : '';
@@ -1709,9 +1756,196 @@ async function getManifestsListPaginated({ page = 1, limit = 15, search = '', ba
 }
 
 /**
+ * Get count for Data By Scan, Data By Manual, and Data Banding MP tabs.
+ */
+async function getManifestTabCounts({ search = '', startDate = '', endDate = '' } = {}) {
+  const baseConditions = [];
+  const baseParams = [];
+
+  if (search) {
+    baseConditions.push('(rm.resi_number LIKE ? OR rm.no_pesanan LIKE ? OR rm.customer_name LIKE ? OR rm.kota LIKE ? OR rm.expedisi LIKE ? OR rm.nama_toko LIKE ?)');
+    baseParams.push(`%${search}%`, `%${search}%`, `%${search}%`, `%${search}%`, `%${search}%`, `%${search}%`);
+  }
+
+  if (startDate) {
+    baseConditions.push('COALESCE(DATE(rm.tgl), DATE(rm.created_at)) >= ?');
+    baseParams.push(startDate);
+  }
+
+  if (endDate) {
+    baseConditions.push('COALESCE(DATE(rm.tgl), DATE(rm.created_at)) <= ?');
+    baseParams.push(endDate);
+  }
+
+  const baseWhere = baseConditions.length > 0 ? ' AND ' + baseConditions.join(' AND ') : '';
+
+  const manualCondition = "(rm.tgl IS NOT NULL AND rm.kota IS NOT NULL AND TRIM(COALESCE(rm.kota, '')) != '' AND rm.expedisi IS NOT NULL AND TRIM(COALESCE(rm.expedisi, '')) != '')";
+  const scanCondition = "(rm.tgl IS NULL OR rm.kota IS NULL OR TRIM(COALESCE(rm.kota, '')) = '' OR rm.expedisi IS NULL OR TRIM(COALESCE(rm.expedisi, '')) = '')";
+
+  const countSql = `
+    SELECT 
+      COALESCE(SUM(CASE WHEN ${manualCondition} THEN 1 ELSE 0 END), 0) AS manual_count,
+      COALESCE(SUM(CASE WHEN ${scanCondition} THEN 1 ELSE 0 END), 0) AS scan_count
+    FROM return_manifests rm
+    WHERE 1=1 ${baseWhere}
+  `;
+
+  const [rows] = await db.query(countSql, baseParams);
+
+  // Banding MP count
+  let bandingCount = 0;
+  try {
+    const bmpConditions = [];
+    const bmpParams = [];
+    if (search) {
+      bmpConditions.push('(no_invoice LIKE ? OR kode_toko LIKE ? OR keterangan LIKE ? OR status_banding LIKE ?)');
+      bmpParams.push(`%${search}%`, `%${search}%`, `%${search}%`, `%${search}%`);
+    }
+    if (startDate) {
+      bmpConditions.push('DATE(tgl) >= ?');
+      bmpParams.push(startDate);
+    }
+    if (endDate) {
+      bmpConditions.push('DATE(tgl) <= ?');
+      bmpParams.push(endDate);
+    }
+    const bmpWhere = bmpConditions.length > 0 ? ' WHERE ' + bmpConditions.join(' AND ') : '';
+    const [bmpRows] = await db.query(`SELECT COUNT(*) AS total FROM banding_mp ${bmpWhere}`, bmpParams);
+    bandingCount = parseInt(bmpRows[0]?.total) || 0;
+  } catch (e) {
+    bandingCount = 0;
+  }
+
+  return {
+    scan: parseInt(rows[0]?.scan_count) || 0,
+    manual: parseInt(rows[0]?.manual_count) || 0,
+    banding: bandingCount
+  };
+}
+
+// ─── BANDING MP FUNCTIONS ───────────────────────────────────────────────────
+
+async function getBandingMPListPaginated({ page = 1, limit = 15, search = '', startDate = '', endDate = '' }) {
+  const offset = (page - 1) * limit;
+  const conditions = [];
+  const params = [];
+
+  if (search) {
+    conditions.push('(bmp.no_invoice LIKE ? OR bmp.kode_toko LIKE ? OR bmp.keterangan LIKE ? OR bmp.status_banding LIKE ?)');
+    params.push(`%${search}%`, `%${search}%`, `%${search}%`, `%${search}%`);
+  }
+
+  if (startDate) {
+    conditions.push('DATE(bmp.tgl) >= ?');
+    params.push(startDate);
+  }
+
+  if (endDate) {
+    conditions.push('DATE(bmp.tgl) <= ?');
+    params.push(endDate);
+  }
+
+  const whereClause = conditions.length > 0 ? ' WHERE ' + conditions.join(' AND ') : '';
+
+  const countSql = `SELECT COUNT(*) AS total FROM banding_mp bmp ${whereClause}`;
+  const [countRows] = await db.query(countSql, params);
+  const total = countRows[0]?.total || 0;
+
+  const sql = `
+    SELECT bmp.*, u.full_name AS creator_name
+    FROM banding_mp bmp
+    LEFT JOIN users u ON bmp.created_by = u.user_id
+    ${whereClause}
+    ORDER BY bmp.tgl DESC, bmp.id DESC
+    LIMIT ? OFFSET ?
+  `;
+
+  const [rows] = await db.query(sql, [...params, limit, offset]);
+  return {
+    rows,
+    total,
+    totalPages: Math.ceil(total / limit)
+  };
+}
+
+async function getAllBandingMP({ search = '', startDate = '', endDate = '' } = {}) {
+  const conditions = [];
+  const params = [];
+
+  if (search) {
+    conditions.push('(bmp.no_invoice LIKE ? OR bmp.kode_toko LIKE ? OR bmp.keterangan LIKE ? OR bmp.status_banding LIKE ?)');
+    params.push(`%${search}%`, `%${search}%`, `%${search}%`, `%${search}%`);
+  }
+
+  if (startDate) {
+    conditions.push('DATE(bmp.tgl) >= ?');
+    params.push(startDate);
+  }
+
+  if (endDate) {
+    conditions.push('DATE(bmp.tgl) <= ?');
+    params.push(endDate);
+  }
+
+  const whereClause = conditions.length > 0 ? ' WHERE ' + conditions.join(' AND ') : '';
+
+  const sql = `
+    SELECT bmp.*, u.full_name AS creator_name
+    FROM banding_mp bmp
+    LEFT JOIN users u ON bmp.created_by = u.user_id
+    ${whereClause}
+    ORDER BY bmp.tgl DESC, bmp.id DESC
+  `;
+
+  const [rows] = await db.query(sql, params);
+  return rows;
+}
+
+async function getBandingMPById(id) {
+  const [rows] = await db.query('SELECT * FROM banding_mp WHERE id = ?', [id]);
+  return rows[0] || null;
+}
+
+async function createBandingMP(data) {
+  const sql = `
+    INSERT INTO banding_mp (tgl, kode_toko, no_invoice, keterangan, status_banding, created_by)
+    VALUES (?, ?, ?, ?, ?, ?)
+  `;
+  const [result] = await db.query(sql, [
+    data.tgl,
+    data.kode_toko,
+    data.no_invoice,
+    data.keterangan,
+    data.status_banding,
+    data.created_by || null
+  ]);
+  return result.insertId;
+}
+
+async function updateBandingMP(id, data) {
+  const sql = `
+    UPDATE banding_mp 
+    SET tgl = ?, kode_toko = ?, no_invoice = ?, keterangan = ?, status_banding = ?
+    WHERE id = ?
+  `;
+  await db.query(sql, [
+    data.tgl,
+    data.kode_toko,
+    data.no_invoice,
+    data.keterangan,
+    data.status_banding,
+    id
+  ]);
+}
+
+async function deleteBandingMP(id) {
+  await db.query('DELETE FROM banding_mp WHERE id = ?', [id]);
+}
+
+/**
  * Get return manifests summary statistics.
  */
-async function getManifestsStats({ month = '', year = '' } = {}) {
+async function getManifestsStats({ startDate = '', endDate = '' } = {}) {
   let tempWhere = '';
   let mainWhere = '';
   const tempParams = [];
@@ -1719,18 +1953,18 @@ async function getManifestsStats({ month = '', year = '' } = {}) {
   const tempConditions = [];
   const mainConditions = [];
 
-  if (month) {
-    tempConditions.push('MONTH(created_at) = ?');
-    mainConditions.push('MONTH(created_at) = ?');
-    tempParams.push(parseInt(month));
-    mainParams.push(parseInt(month));
+  if (startDate) {
+    tempConditions.push('COALESCE(DATE(tgl), DATE(created_at)) >= ?');
+    mainConditions.push('COALESCE(DATE(tgl), DATE(created_at)) >= ?');
+    tempParams.push(startDate);
+    mainParams.push(startDate);
   }
 
-  if (year) {
-    tempConditions.push('YEAR(created_at) = ?');
-    mainConditions.push('YEAR(created_at) = ?');
-    tempParams.push(parseInt(year));
-    mainParams.push(parseInt(year));
+  if (endDate) {
+    tempConditions.push('COALESCE(DATE(tgl), DATE(created_at)) <= ?');
+    mainConditions.push('COALESCE(DATE(tgl), DATE(created_at)) <= ?');
+    tempParams.push(endDate);
+    mainParams.push(endDate);
   }
 
   if (tempConditions.length > 0) {
@@ -1763,26 +1997,177 @@ async function getManifestItems(manifestId) {
 }
 
 /**
- * Flatten all manifest rows with items for flat CSV export.
+ * Flatten all manifest rows with items for flat CSV/Excel export with optional filters.
  */
-async function getAllManifestsWithItems() {
+async function getAllManifestsWithItems({ tab = '', search = '', startDate = '', endDate = '' } = {}) {
+  const conditions = [];
+  const params = [];
+
+  const manualCondition = "(rm.tgl IS NOT NULL AND rm.kota IS NOT NULL AND TRIM(COALESCE(rm.kota, '')) != '' AND rm.expedisi IS NOT NULL AND TRIM(COALESCE(rm.expedisi, '')) != '')";
+  const scanCondition = "(rm.tgl IS NULL OR rm.kota IS NULL OR TRIM(COALESCE(rm.kota, '')) = '' OR rm.expedisi IS NULL OR TRIM(COALESCE(rm.expedisi, '')) = '')";
+
+  if (tab === 'manual') {
+    conditions.push(manualCondition);
+  } else if (tab === 'scan') {
+    conditions.push(scanCondition);
+  }
+
+  if (search) {
+    conditions.push('(rm.resi_number LIKE ? OR rm.no_pesanan LIKE ? OR rm.customer_name LIKE ? OR rm.kota LIKE ? OR rm.expedisi LIKE ? OR rm.nama_toko LIKE ?)');
+    params.push(`%${search}%`, `%${search}%`, `%${search}%`, `%${search}%`, `%${search}%`, `%${search}%`);
+  }
+
+  if (startDate) {
+    conditions.push('COALESCE(DATE(rm.tgl), DATE(rm.created_at)) >= ?');
+    params.push(startDate);
+  }
+
+  if (endDate) {
+    conditions.push('COALESCE(DATE(rm.tgl), DATE(rm.created_at)) <= ?');
+    params.push(endDate);
+  }
+
+  const whereClause = conditions.length > 0 ? ' WHERE ' + conditions.join(' AND ') : '';
+
   const [rows] = await db.query(`
-    SELECT rm.resi_number, rm.no_pesanan, rm.customer_name, rm.customer_contact, 
+    SELECT rm.manifest_id, rm.resi_number, rm.no_pesanan, rm.customer_name, rm.customer_contact, 
            rm.source_type, rm.return_category, rm.return_reason, rm.notes,
            rm.nama_toko, rm.metode_pengiriman, rm.jenis_pengiriman, rm.penerima,
            rm.alamat_pengiriman, rm.waktu_outbound, rm.total_harga_pesanan, rm.nama_pemilik,
            rm.waktu_picking, rm.admin_pengemasan, rm.waktu_packing,
            rm.nomor_daftar, rm.no_pesanan_wms, rm.no_pesanan_oms, rm.status,
            rm.gudang, rm.waktu_pesanan, rm.batas_waktu_pengiriman, rm.waktu_cetak,
-           rm.mata_uang,
-           rmi.item_code, rmi.item_name, rmi.quantity, rmi.unit_price, 
+           rm.mata_uang, rm.tgl, rm.kota, rm.expedisi, rm.is_processed,
+           rm.is_checked, rm.checked_by, rm.checked_at,
+           rm.check_sales, rm.checked_sales_by, rm.checked_sales_at,
+           rm.check_fat, rm.checked_fat_by, rm.checked_fat_at,
+           rm.check_ops, rm.checked_ops_by, rm.checked_ops_at,
+           rm.created_at,
+           rmi.manifest_item_id, rmi.item_code, rmi.item_name, rmi.quantity, rmi.unit_price, 
            rmi.serial_number, rmi.batch_number, rmi.item_description, rmi.varian_product,
-           rmi.nomor, rmi.rak
+           rmi.nomor, rmi.rak, rmi.kondisi, rmi.is_checked AS item_is_checked,
+           rmi.checked_by AS item_checked_by, rmi.checked_at AS item_checked_at
     FROM return_manifests rm
-    JOIN return_manifest_items rmi ON rm.manifest_id = rmi.manifest_id
-    ORDER BY rm.manifest_id DESC
-  `);
+    LEFT JOIN return_manifest_items rmi ON rm.manifest_id = rmi.manifest_id
+    ${whereClause}
+    ORDER BY rm.is_processed ASC, rm.manifest_id DESC, rmi.manifest_item_id ASC
+  `, params);
   return rows;
+}
+
+/**
+ * Update a return manifest and its items.
+ */
+async function updateManifest(manifestId, manifestData, items) {
+  const conn = await db.getConnection();
+  await conn.beginTransaction();
+  try {
+    const [existing] = await conn.query('SELECT * FROM return_manifests WHERE manifest_id = ?', [manifestId]);
+    if (existing.length === 0) {
+      throw new Error('Data manifest tidak ditemukan.');
+    }
+
+    await conn.query(
+      `UPDATE return_manifests SET 
+        resi_number = ?, no_pesanan = ?, customer_name = ?, customer_contact = ?, source_type = ?, 
+        return_category = ?, return_reason = ?, notes = ?,
+        nama_toko = ?, metode_pengiriman = ?, jenis_pengiriman = ?,
+        penerima = ?, alamat_pengiriman = ?, waktu_outbound = ?,
+        total_harga_pesanan = ?, nama_pemilik = ?, waktu_picking = ?,
+        admin_pengemasan = ?, waktu_packing = ?,
+        nomor_daftar = ?, no_pesanan_wms = ?, no_pesanan_oms = ?,
+        status = ?, gudang = ?, waktu_pesanan = ?,
+        batas_waktu_pengiriman = ?, waktu_cetak = ?, mata_uang = ?,
+        tgl = ?, kota = ?, expedisi = ?
+       WHERE manifest_id = ?`,
+      [
+        manifestData.resi_number,
+        manifestData.no_pesanan,
+        manifestData.customer_name || null,
+        manifestData.customer_contact || null,
+        manifestData.source_type || null,
+        manifestData.return_category || null,
+        manifestData.return_reason || null,
+        manifestData.notes || null,
+        manifestData.nama_toko || null,
+        manifestData.metode_pengiriman || null,
+        manifestData.jenis_pengiriman || null,
+        manifestData.penerima || null,
+        manifestData.alamat_pengiriman || null,
+        manifestData.waktu_outbound || null,
+        manifestData.total_harga_pesanan || 0.00,
+        manifestData.nama_pemilik || null,
+        manifestData.waktu_picking || null,
+        manifestData.admin_pengemasan || null,
+        manifestData.waktu_packing || null,
+        manifestData.nomor_daftar || null,
+        manifestData.no_pesanan_wms || null,
+        manifestData.no_pesanan_oms || null,
+        manifestData.status || null,
+        manifestData.gudang || null,
+        manifestData.waktu_pesanan || null,
+        manifestData.batas_waktu_pengiriman || null,
+        manifestData.waktu_cetak || null,
+        manifestData.mata_uang || null,
+        manifestData.tgl || null,
+        manifestData.kota || null,
+        manifestData.expedisi || null,
+        manifestId
+      ]
+    );
+
+    // Delete existing items for this manifest
+    await conn.query('DELETE FROM return_manifest_items WHERE manifest_id = ?', [manifestId]);
+
+    // Insert updated items
+    for (const item of items) {
+      await conn.query(
+        `INSERT INTO return_manifest_items 
+          (manifest_id, item_code, item_name, item_description, serial_number, batch_number, quantity, unit_price, varian_product, nomor, rak, kondisi)
+         VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
+        [
+          manifestId,
+          item.item_code || null,
+          item.item_name,
+          item.item_description || null,
+          item.serial_number || null,
+          item.batch_number || null,
+          parseInt(item.quantity) || 1,
+          parseFloat(item.unit_price) || 0.00,
+          item.varian_product || null,
+          item.nomor || null,
+          item.rak || null,
+          item.kondisi || null
+        ]
+      );
+    }
+
+    // Sync unique items to master_barang
+    const masterBarangRows = [];
+    const seenCodes = new Set();
+    for (const item of items) {
+      const code = (item.item_code || '').trim();
+      const name = (item.item_name || '').trim();
+      if (code && name && !seenCodes.has(code)) {
+        seenCodes.add(code);
+        masterBarangRows.push([code, name]);
+      }
+    }
+    if (masterBarangRows.length > 0) {
+      await conn.query(
+        `INSERT INTO master_barang (kode_barang, nama_barang) VALUES ?
+         ON DUPLICATE KEY UPDATE nama_barang = VALUES(nama_barang)`,
+        [masterBarangRows]
+      );
+    }
+
+    await conn.commit();
+  } catch (err) {
+    await conn.rollback();
+    throw err;
+  } finally {
+    conn.release();
+  }
 }
 
 /**
@@ -1825,11 +2210,11 @@ async function deleteAllPendingManifests() {
       WHERE rm.is_processed = 0
     `);
     await conn.query('DELETE FROM return_manifests WHERE is_processed = 0');
-    
+
     // Also clear all temp tables
     await conn.query('DELETE FROM temp_return_manifest_items');
     await conn.query('DELETE FROM temp_return_manifests');
-    
+
     await conn.commit();
   } catch (err) {
     await conn.rollback();
@@ -1924,12 +2309,22 @@ module.exports = {
   saveManifest,
   saveManifestsBatch,
   getManifestByQuery,
+  promoteTempManifest,
   markManifestProcessed,
   getManifestsList,
   getManifestsListPaginated,
+  getManifestTabCounts,
   getManifestsStats,
   getManifestItems,
   getAllManifestsWithItems,
+  updateManifest,
   deleteManifest,
-  deleteAllPendingManifests
+  deleteAllPendingManifests,
+  // Banding MP methods
+  getBandingMPListPaginated,
+  getAllBandingMP,
+  getBandingMPById,
+  createBandingMP,
+  updateBandingMP,
+  deleteBandingMP
 };

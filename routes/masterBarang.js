@@ -24,7 +24,7 @@ const upload = multer({
 const canView   = requireRole(['admin', 'manager', 'admin_retur', 'admin_sorting', 'staff_recover', 'purchasing']);
 const canManage = requireRole(['admin', 'manager', 'admin_retur']);
 
-router.get('/api/search',    requireLogin, canView,   ctrl.apiSearch);
+router.get('/api/search',    requireLogin,             ctrl.apiSearch);
 router.get('/',              requireLogin, canView,   ctrl.index);
 router.get('/export-xlsx',   requireLogin, canView,   ctrl.exportXLSX);
 router.get('/create',        requireLogin, canManage, ctrl.createForm);

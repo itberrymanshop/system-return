@@ -628,6 +628,161 @@ exports.handleUpload = async (req, res, next) => {
   }
 };
 
+// ─── Manual Add Return Manifest POST ─────────────────────────────────────────
+exports.createManifest = async (req, res, next) => {
+  try {
+    const body = req.body;
+
+    const manifestData = {
+      tgl: body.tgl || null,
+      resi_number: (body.resi_number || '').trim(),
+      no_pesanan: (body.no_pesanan || '').trim(),
+      customer_name: (body.customer_name || '').trim() || body.penerima || body.nama_pemilik || null,
+      customer_contact: body.customer_contact || null,
+      source_type: body.expedisi || body.metode_pengiriman || null,
+      return_category: body.return_category || null,
+      return_reason: body.return_reason || null,
+      notes: body.notes || null,
+      nama_toko: (body.nama_toko || '').trim() || null,
+      kota: (body.kota || '').trim() || null,
+      expedisi: (body.expedisi || '').trim() || null,
+      metode_pengiriman: body.expedisi || body.metode_pengiriman || null,
+      jenis_pengiriman: body.jenis_pengiriman || null,
+      penerima: body.penerima || body.customer_name || null,
+      alamat_pengiriman: body.alamat_pengiriman || null,
+      waktu_outbound: body.waktu_outbound || null,
+      total_harga_pesanan: parseFloat(body.total_harga_pesanan) || 0.00,
+      nama_pemilik: body.nama_pemilik || null,
+      waktu_picking: body.waktu_picking || null,
+      admin_pengemasan: body.admin_pengemasan || null,
+      waktu_packing: body.waktu_packing || null,
+      nomor_daftar: body.nomor_daftar || null,
+      no_pesanan_wms: body.no_pesanan_wms || null,
+      no_pesanan_oms: body.no_pesanan_oms || null,
+      status: body.status || null,
+      gudang: body.gudang || null,
+      waktu_pesanan: body.waktu_pesanan || null,
+      batas_waktu_pengiriman: body.batas_waktu_pengiriman || null,
+      waktu_cetak: body.waktu_cetak || null,
+      mata_uang: body.mata_uang || null
+    };
+
+    if (!manifestData.resi_number || !manifestData.no_pesanan || !manifestData.tgl || !manifestData.kota || !manifestData.expedisi) {
+      req.flash('error', 'Tanggal, Nomor Resi, Nomor Pesanan, Kota, dan Expedisi wajib diisi.');
+      return res.redirect('/returns/manifests?tab=manual');
+    }
+
+    const rawItems = Array.isArray(body.items) ? body.items : Object.values(body.items || {});
+    const items = rawItems
+      .filter(it => it && (String(it.item_name || '').trim() || String(it.item_code || '').trim()))
+      .map(it => ({
+        kondisi: it.kondisi || null,
+        item_code: (it.item_code || '').trim() || null,
+        item_name: String(it.item_name || it.item_code || '').trim(),
+        quantity: parseInt(it.quantity) || 1,
+        varian_product: it.varian_product || null,
+        item_description: it.kondisi ? `Kondisi: ${it.kondisi}` : (it.varian_product ? `Variant: ${it.varian_product}` : null),
+        unit_price: parseFloat(it.unit_price) || 0.00,
+        nomor: it.nomor || null,
+        rak: it.rak || null
+      }));
+
+    if (items.length === 0) {
+      req.flash('error', 'Minimal satu item barang wajib diisi.');
+      return res.redirect('/returns/manifests?tab=manual');
+    }
+
+    const tempManifestId = await returnService.saveManifest(manifestData, items);
+    await returnService.promoteTempManifest(tempManifestId);
+
+    req.flash('success', 'Data return manifest berhasil ditambahkan.');
+    res.redirect('/returns/manifests?tab=manual');
+  } catch (err) {
+    req.flash('error', `Gagal menambahkan data manifest: ${err.message}`);
+    res.redirect('/returns/manifests?tab=manual');
+  }
+};
+
+// ─── Manual Update Return Manifest POST ──────────────────────────────────────
+exports.updateManifest = async (req, res, next) => {
+  try {
+    const manifestId = parseInt(req.params.id);
+    const body = req.body;
+
+    const manifestData = {
+      tgl: body.tgl || null,
+      resi_number: (body.resi_number || '').trim(),
+      no_pesanan: (body.no_pesanan || '').trim(),
+      customer_name: (body.customer_name || '').trim() || body.penerima || body.nama_pemilik || null,
+      customer_contact: body.customer_contact || null,
+      source_type: body.expedisi || body.metode_pengiriman || null,
+      return_category: body.return_category || null,
+      return_reason: body.return_reason || null,
+      notes: body.notes || null,
+      nama_toko: (body.nama_toko || '').trim() || null,
+      kota: (body.kota || '').trim() || null,
+      expedisi: (body.expedisi || '').trim() || null,
+      metode_pengiriman: body.expedisi || body.metode_pengiriman || null,
+      jenis_pengiriman: body.jenis_pengiriman || null,
+      penerima: body.penerima || body.customer_name || null,
+      alamat_pengiriman: body.alamat_pengiriman || null,
+      waktu_outbound: body.waktu_outbound || null,
+      total_harga_pesanan: parseFloat(body.total_harga_pesanan) || 0.00,
+      nama_pemilik: body.nama_pemilik || null,
+      waktu_picking: body.waktu_picking || null,
+      admin_pengemasan: body.admin_pengemasan || null,
+      waktu_packing: body.waktu_packing || null,
+      nomor_daftar: body.nomor_daftar || null,
+      no_pesanan_wms: body.no_pesanan_wms || null,
+      no_pesanan_oms: body.no_pesanan_oms || null,
+      status: body.status || null,
+      gudang: body.gudang || null,
+      waktu_pesanan: body.waktu_pesanan || null,
+      batas_waktu_pengiriman: body.batas_waktu_pengiriman || null,
+      waktu_cetak: body.waktu_cetak || null,
+      mata_uang: body.mata_uang || null
+    };
+
+    if (!manifestData.resi_number || !manifestData.no_pesanan || !manifestData.tgl || !manifestData.kota || !manifestData.expedisi) {
+      req.flash('error', 'Tanggal, Nomor Resi, Nomor Pesanan, Kota, dan Expedisi wajib diisi.');
+      return res.redirect('/returns/manifests?tab=manual');
+    }
+
+    const rawItems = Array.isArray(body.items) ? body.items : Object.values(body.items || {});
+    const items = rawItems
+      .filter(it => it && (String(it.item_name || '').trim() || String(it.item_code || '').trim()))
+      .map(it => ({
+        kondisi: it.kondisi || null,
+        item_code: (it.item_code || '').trim() || null,
+        item_name: String(it.item_name || it.item_code || '').trim(),
+        quantity: parseInt(it.quantity) || 1,
+        varian_product: it.varian_product || null,
+        item_description: it.kondisi ? `Kondisi: ${it.kondisi}` : (it.varian_product ? `Variant: ${it.varian_product}` : null),
+        unit_price: parseFloat(it.unit_price) || 0.00,
+        nomor: it.nomor || null,
+        rak: it.rak || null
+      }));
+
+    if (items.length === 0) {
+      req.flash('error', 'Minimal satu item barang wajib diisi.');
+      return res.redirect('/returns/manifests?tab=manual');
+    }
+
+    await returnService.updateManifest(manifestId, manifestData, items);
+
+    await reportService.logActivity(
+      req.session.userId, 'update_manifest', `Updated manifest resi: ${manifestData.resi_number}, order: ${manifestData.no_pesanan}`,
+      req.ip, req.headers['user-agent']
+    );
+
+    req.flash('success', 'Data return manifest berhasil diperbarui.');
+    res.redirect('/returns/manifests?tab=manual');
+  } catch (err) {
+    req.flash('error', `Gagal memperbarui data manifest: ${err.message}`);
+    res.redirect('/returns/manifests?tab=manual');
+  }
+};
+
 // ─── Download Manifest Template GET ──────────────────────────────────────────
 exports.downloadTemplate = async (req, res, next) => {
   try {
@@ -759,13 +914,58 @@ exports.lookupManifest = async (req, res, next) => {
   }
 };
 
+// ─── Banding MP Constants ───────────────────────────────────────────────────
+const KODE_TOKO_OPTIONS = [
+  'Sh Berryman',
+  'Sh kikomi_Store',
+  'Sh Kikomi_SDA',
+  'Sh Jikomi',
+  'Sh Hepimi',
+  'Sh Miyami',
+  'Laz Berryman',
+  'Laz Tirumi',
+  'Tokopedia',
+  'Sh Klevo',
+  'Tiktok RGM',
+  'Tiktok BMS',
+  'Bukalapak'
+];
+
+const KETERANGAN_OPTIONS = [
+  'Barang rusak, pengajuan pengembalian dana saja',
+  'Barang kurang tidak ada video unboxing, pengajuan pengembalian dana saja',
+  'Barang pecah, pengajuan pengembalian dana saja',
+  'Barang yang dikirim sesuai, pembeli menolak barang dan pengajuan pengembalian dana saja',
+  'Barang kurang, Beli beberapa dikirim 1, pengajuan dana semua barang',
+  'Barang tidak sesuai, Pengajuan pengembalian dana saja',
+  'Pesanan terkirim, pembeli klaim tidak terima pesanan',
+  'Salah kirim barang, pengajuan pengembalian dana saja',
+  'Berubah fikiran/pesanan dibuat scr tidak sengaja, Pengajuan pengembalian dana saja',
+  'Barang rusak/pecah tanpa video unboxing, pengembalian barang dan dana',
+  'Barang yang dikirim sesuai, pembeli menolak barang dan pengajuan pengembalian barang dan dana',
+  'Kurang Partisi, Pengajuan pengembalian dana saja',
+  'Pengembalian barang bukan barang BMS',
+  'Pengembalian barang jumlah tidak sesuai dgn yang di ajukan',
+  'Barang rusak, pembeli tidak melampirkan foto/video kerusakan, pengembalian dana saja',
+  'Barang pengembalian belum diterima',
+  'Pembeli komplain barang blm diterima, di status pesanan paket lah diterima oleh yg bersangkutan',
+  'Pembalian dana tidak sesuai'
+];
+
+const STATUS_BANDING_OPTIONS = [
+  'Dana Dicairkan Ke Penjual',
+  'Banding Ditolak',
+  'Dana Dikembalikan Ke Pembeli'
+];
+
 exports.manifestsList = async (req, res, next) => {
   try {
     const page = parseInt(req.query.page) || 1;
     const limit = parseInt(req.query.limit) || 15;
     const search = (req.query.search || '').trim();
-    const month = req.query.month || '';
-    const year = req.query.year || '';
+    const startDate = (req.query.startDate || req.query.date_from || '').trim();
+    const endDate = (req.query.endDate || req.query.date_to || '').trim();
+    const tab = (req.query.tab === 'manual' || req.query.tab === 'banding') ? req.query.tab : 'scan';
 
     // Parse cookies from headers (keeping parsing logic if needed elsewhere)
     const cookieHeader = req.headers.cookie || '';
@@ -790,20 +990,48 @@ exports.manifestsList = async (req, res, next) => {
       scannedBarcodes = [];
     }
 
-    // Always fetch manifests (all scanned ones are in return_manifests)
-    const result = await returnService.getManifestsListPaginated({ page, limit, search, month, year });
-    const manifests = result.rows;
-    const total = result.total;
-    const totalPages = result.totalPages;
+    let manifests = [];
+    let bandingList = [];
+    let total = 0;
+    let totalPages = 1;
+
+    if (tab === 'banding') {
+      const result = await returnService.getBandingMPListPaginated({ page, limit, search, startDate, endDate });
+      bandingList = result.rows;
+      total = result.total;
+      totalPages = result.totalPages;
+    } else {
+      // Fetch manifests filtered by active tab (scan or manual)
+      const result = await returnService.getManifestsListPaginated({ page, limit, search, startDate, endDate, tab });
+      manifests = result.rows;
+      total = result.total;
+      totalPages = result.totalPages;
+    }
     
-    const stats = await returnService.getManifestsStats({ month, year });
+    const tabCounts = await returnService.getManifestTabCounts({ search, startDate, endDate });
+    const stats = await returnService.getManifestsStats({ startDate, endDate });
+
+    let expedisiList = [];
+    try {
+      const [expRows] = await db.query("SELECT * FROM master_expedisi WHERE status = 'active' ORDER BY nama_expedisi ASC");
+      expedisiList = expRows;
+    } catch (e) {
+      expedisiList = [];
+    }
 
     res.render('returns/manifests', {
       title: 'Return Manifests',
       manifests,
+      bandingList,
       stats,
-      month,
-      year,
+      activeTab: tab,
+      tabCounts,
+      expedisiList,
+      kodeTokoOptions: KODE_TOKO_OPTIONS,
+      keteranganOptions: KETERANGAN_OPTIONS,
+      statusBandingOptions: STATUS_BANDING_OPTIONS,
+      startDate,
+      endDate,
       pagination: {
         page,
         limit,
@@ -813,6 +1041,97 @@ exports.manifestsList = async (req, res, next) => {
       }
     });
   } catch (err) { next(err); }
+};
+
+// ─── Banding MP Controllers ──────────────────────────────────────────────────
+exports.createBandingMP = async (req, res, next) => {
+  try {
+    const { tgl, kode_toko, no_invoice, keterangan, status_banding } = req.body;
+    if (!tgl || !kode_toko || !no_invoice || !keterangan || !status_banding) {
+      req.flash('error', 'Semua field Banding MP wajib diisi.');
+      return res.redirect('/returns/manifests?tab=banding');
+    }
+
+    await returnService.createBandingMP({
+      tgl,
+      kode_toko: kode_toko.trim(),
+      no_invoice: no_invoice.trim(),
+      keterangan: keterangan.trim(),
+      status_banding: status_banding.trim(),
+      created_by: req.session.userId || null
+    });
+
+    await reportService.logActivity(
+      req.session.userId, 'create_banding_mp', `Created Banding MP Invoice: ${no_invoice}, Toko: ${kode_toko}`,
+      req.ip, req.headers['user-agent']
+    );
+
+    req.flash('success', 'Data Banding MP berhasil ditambahkan.');
+    res.redirect('/returns/manifests?tab=banding');
+  } catch (err) {
+    req.flash('error', `Gagal menambahkan data Banding MP: ${err.message}`);
+    res.redirect('/returns/manifests?tab=banding');
+  }
+};
+
+exports.updateBandingMP = async (req, res, next) => {
+  try {
+    const id = parseInt(req.params.id);
+    const { tgl, kode_toko, no_invoice, keterangan, status_banding } = req.body;
+    if (!tgl || !kode_toko || !no_invoice || !keterangan || !status_banding) {
+      req.flash('error', 'Semua field Banding MP wajib diisi.');
+      return res.redirect('/returns/manifests?tab=banding');
+    }
+
+    const existing = await returnService.getBandingMPById(id);
+    if (!existing) {
+      req.flash('error', 'Data Banding MP tidak ditemukan.');
+      return res.redirect('/returns/manifests?tab=banding');
+    }
+
+    await returnService.updateBandingMP(id, {
+      tgl,
+      kode_toko: kode_toko.trim(),
+      no_invoice: no_invoice.trim(),
+      keterangan: keterangan.trim(),
+      status_banding: status_banding.trim()
+    });
+
+    await reportService.logActivity(
+      req.session.userId, 'update_banding_mp', `Updated Banding MP ID: ${id}, Invoice: ${no_invoice}`,
+      req.ip, req.headers['user-agent']
+    );
+
+    req.flash('success', 'Data Banding MP berhasil diperbarui.');
+    res.redirect('/returns/manifests?tab=banding');
+  } catch (err) {
+    req.flash('error', `Gagal memperbarui data Banding MP: ${err.message}`);
+    res.redirect('/returns/manifests?tab=banding');
+  }
+};
+
+exports.deleteBandingMP = async (req, res, next) => {
+  try {
+    const id = parseInt(req.params.id);
+    const existing = await returnService.getBandingMPById(id);
+    if (!existing) {
+      req.flash('error', 'Data Banding MP tidak ditemukan.');
+      return res.redirect('/returns/manifests?tab=banding');
+    }
+
+    await returnService.deleteBandingMP(id);
+
+    await reportService.logActivity(
+      req.session.userId, 'delete_banding_mp', `Deleted Banding MP ID: ${id}, Invoice: ${existing.no_invoice}`,
+      req.ip, req.headers['user-agent']
+    );
+
+    req.flash('success', 'Data Banding MP berhasil dihapus.');
+    res.redirect('/returns/manifests?tab=banding');
+  } catch (err) {
+    req.flash('error', `Gagal menghapus data Banding MP: ${err.message}`);
+    res.redirect('/returns/manifests?tab=banding');
+  }
 };
 
 // ─── API Manifest Items GET ──────────────────────────────────────────────────
@@ -876,80 +1195,350 @@ exports.deleteAllPendingManifests = async (req, res, next) => {
 // ─── Export Return Manifests to Excel GET ──────────────────────────────────────
 exports.exportManifests = async (req, res, next) => {
   try {
-    const rows = await returnService.getAllManifestsWithItems();
+    const tab = req.query.tab === 'manual' ? 'manual' : (req.query.tab === 'banding' ? 'banding' : (req.query.tab === 'scan' ? 'scan' : ''));
+    const search = (req.query.search || '').trim();
+    const startDate = (req.query.startDate || req.query.date_from || '').trim();
+    const endDate = (req.query.endDate || req.query.date_to || '').trim();
 
-    const headers = [
-      'Nomor Daftar',
-      'Nomor Pesanan WMS',
-      'Nomor',
-      'Nomor Pesanan OMS',
-      'Nomor Pesanan Platform',
-      'SKU Produk',
-      'Nama Produk',
-      'Varian Produk',
-      'Status',
-      'Jumlah',
-      'Nama Toko',
-      'Gudang',
-      'Rak',
-      'Metode Pengiriman',
-      'Jenis Pengiriman',
-      'Nomor Pengiriman',
-      'Penerima',
-      'Alamat Pengiriman',
-      'Waktu Pesanan',
-      'Batas Waktu Pengiriman',
-      'Waktu Outbound',
-      'Catatan',
-      'Waktu Cetak',
-      'Mata Uang',
-      'Total Harga Pesanan',
-      'Nama Pemilih',
-      'Waktu Picking',
-      'Admin Pengemasan',
-      'Waktu Packing'
-    ];
+    let headers = [];
+    let data = [];
+    let sheetName = 'Manifests Export';
+    let filenamePrefix = 'return_manifests';
 
-    const data = rows.map(r => ({
-      'Nomor Daftar': r.nomor_daftar || '',
-      'Nomor Pesanan WMS': r.no_pesanan_wms || '',
-      'Nomor': r.nomor || '',
-      'Nomor Pesanan OMS': r.no_pesanan_oms || '',
-      'Nomor Pesanan Platform': r.no_pesanan || '',
-      'SKU Produk': r.sku_product || r.item_code || '',
-      'Nama Produk': r.nama_product || r.item_name || '',
-      'Varian Produk': r.varian_product || '',
-      'Status': r.status || '',
-      'Jumlah': r.jumlah || r.quantity || 0,
-      'Nama Toko': r.nama_toko || '',
-      'Gudang': r.gudang || '',
-      'Rak': r.rak || '',
-      'Metode Pengiriman': r.metode_pengiriman || r.source_type || '',
-      'Jenis Pengiriman': r.jenis_pengiriman || '',
-      'Nomor Pengiriman': r.nomor_pengiriman || r.resi_number || '',
-      'Penerima': r.penerima || r.customer_name || '',
-      'Alamat Pengiriman': r.alamat_pengiriman || '',
-      'Waktu Pesanan': r.waktu_pesanan || '',
-      'Batas Waktu Pengiriman': r.batas_waktu_pengiriman || '',
-      'Waktu Outbound': r.waktu_outbound || '',
-      'Catatan': r.notes || '',
-      'Waktu Cetak': r.waktu_cetak || '',
-      'Mata Uang': r.mata_uang || '',
-      'Total Harga Pesanan': r.total_harga_pesanan || r.total_value || 0,
-      'Nama Pemilih': r.nama_pemilik || '',
-      'Waktu Picking': r.waktu_picking || '',
-      'Admin Pengemasan': r.admin_pengemasan || '',
-      'Waktu Packing': r.waktu_packing || ''
-    }));
+    const formatDateVal = (d) => {
+      if (!d) return '';
+      if (d instanceof Date) {
+        return d.toLocaleDateString('id-ID');
+      }
+      return String(d);
+    };
+
+    const formatDateTimeVal = (d) => {
+      if (!d) return '';
+      if (d instanceof Date) {
+        return d.toLocaleString('id-ID');
+      }
+      return String(d);
+    };
+
+    if (tab === 'banding') {
+      sheetName = 'Data Banding MP';
+      filenamePrefix = 'data_banding_mp';
+      headers = [
+        'No',
+        'Tanggal',
+        'Kode Toko',
+        'Nomor Invoice',
+        'Keterangan',
+        'Status Banding',
+        'PIC Sales Check',
+        'PIC Sales Oleh & Waktu',
+        'PIC FAT Check',
+        'PIC FAT Oleh & Waktu',
+        'Dibuat Oleh',
+        'Waktu Input'
+      ];
+      const bmpRows = await returnService.getAllBandingMP({ search, startDate, endDate });
+      data = bmpRows.map((r, index) => {
+        const salesChecked = r.check_sales === 1;
+        const fatChecked = r.check_fat === 1;
+        return {
+          'No': index + 1,
+          'Tanggal': formatDateVal(r.tgl || r.created_at),
+          'Kode Toko': r.kode_toko || '',
+          'Nomor Invoice': r.no_invoice || '',
+          'Keterangan': r.keterangan || '',
+          'Status Banding': r.status_banding || '',
+          'PIC Sales Check': salesChecked ? 'Sudah Diperiksa' : 'Belum Diperiksa',
+          'PIC Sales Oleh & Waktu': salesChecked ? `${r.checked_sales_by || ''} (${formatDateTimeVal(r.checked_sales_at)})` : '-',
+          'PIC FAT Check': fatChecked ? 'Sudah Diperiksa' : 'Belum Diperiksa',
+          'PIC FAT Oleh & Waktu': fatChecked ? `${r.checked_fat_by || ''} (${formatDateTimeVal(r.checked_fat_at)})` : '-',
+          'Dibuat Oleh': r.creator_name || '-',
+          'Waktu Input': formatDateTimeVal(r.created_at)
+        };
+      });
+    } else if (tab === 'manual') {
+      const rows = await returnService.getAllManifestsWithItems({ tab, search, startDate, endDate });
+      sheetName = 'Manifest Data Manual';
+      filenamePrefix = 'return_manifest_manual';
+      headers = [
+        'No',
+        'Tanggal',
+        'Nama Customer',
+        'Kontak Customer',
+        'Kota',
+        'Expedisi',
+        'Nama Toko',
+        'No Pesanan',
+        'Nomor Resi',
+        'Status',
+        'SKU Produk',
+        'Nama Produk',
+        'Kondisi',
+        'Varian Produk',
+        'Jumlah',
+        'Harga Satuan',
+        'Total Harga',
+        'Rak',
+        'Catatan',
+        'PIC Sales Check',
+        'PIC Sales Oleh & Waktu',
+        'PIC FAT Check',
+        'PIC FAT Oleh & Waktu',
+        'PIC OPS Check',
+        'PIC OPS Oleh & Waktu',
+        'Status Periksa',
+        'Diperiksa Oleh',
+        'Waktu Diperiksa',
+        'Status Proses',
+        'Waktu Input'
+      ];
+
+      data = rows.map((r, index) => {
+        const qty = parseInt(r.quantity) || 0;
+        const unitPrice = parseFloat(r.unit_price) || 0;
+        const totalPrice = qty * unitPrice;
+        const isChecked = (r.item_is_checked === 1 || r.is_checked === 1);
+        const checkedBy = r.item_checked_by || r.checked_by || '';
+        const checkedAt = r.item_checked_at || r.checked_at;
+
+        const salesChecked = r.check_sales === 1;
+        const fatChecked = r.check_fat === 1;
+        const opsChecked = r.check_ops === 1;
+
+        return {
+          'No': index + 1,
+          'Tanggal': formatDateVal(r.tgl || r.created_at),
+          'Nama Customer': r.customer_name || r.penerima || '',
+          'Kontak Customer': r.customer_contact || '',
+          'Kota': r.kota || '',
+          'Expedisi': r.expedisi || r.metode_pengiriman || '',
+          'Nama Toko': r.nama_toko || '',
+          'No Pesanan': r.no_pesanan || '',
+          'Nomor Resi': r.resi_number || '',
+          'Status': r.status || 'Pending',
+          'SKU Produk': r.item_code || '',
+          'Nama Produk': r.item_name || '',
+          'Kondisi': r.kondisi || '',
+          'Varian Produk': r.varian_product || '',
+          'Jumlah': qty,
+          'Harga Satuan': unitPrice,
+          'Total Harga': totalPrice > 0 ? totalPrice : (parseFloat(r.total_harga_pesanan) || 0),
+          'Rak': r.rak || '',
+          'Catatan': r.notes || '',
+          'PIC Sales Check': salesChecked ? 'Sudah Diperiksa' : 'Belum Diperiksa',
+          'PIC Sales Oleh & Waktu': salesChecked ? `${r.checked_sales_by || ''} (${formatDateTimeVal(r.checked_sales_at)})` : '-',
+          'PIC FAT Check': fatChecked ? 'Sudah Diperiksa' : 'Belum Diperiksa',
+          'PIC FAT Oleh & Waktu': fatChecked ? `${r.checked_fat_by || ''} (${formatDateTimeVal(r.checked_fat_at)})` : '-',
+          'PIC OPS Check': opsChecked ? 'Sudah Diperiksa' : 'Belum Diperiksa',
+          'PIC OPS Oleh & Waktu': opsChecked ? `${r.checked_ops_by || ''} (${formatDateTimeVal(r.checked_ops_at)})` : '-',
+          'Status Periksa': isChecked ? 'Sudah Diperiksa' : 'Belum Diperiksa',
+          'Diperiksa Oleh': checkedBy,
+          'Waktu Diperiksa': formatDateTimeVal(checkedAt),
+          'Status Proses': r.is_processed === 1 ? 'Sudah Diproses' : 'Pending',
+          'Waktu Input': formatDateTimeVal(r.created_at)
+        };
+      });
+    } else if (tab === 'scan') {
+      const rows = await returnService.getAllManifestsWithItems({ tab, search, startDate, endDate });
+      sheetName = 'Manifest Data Scan';
+      filenamePrefix = 'return_manifest_scan';
+      headers = [
+        'No',
+        'Nomor Daftar Outbound',
+        'Nomor Pesanan WMS',
+        'Nomor Wave',
+        'Nomor Perintah OMS',
+        'Nomor Pesanan Platform',
+        'SKU Produk',
+        'Nama Produk',
+        'Varian Produk',
+        'Status',
+        'Jumlah',
+        'Nama Toko',
+        'Gudang',
+        'Rak',
+        'Metode Pengiriman',
+        'Jenis Pengiriman',
+        'Nomor Pengiriman',
+        'Penerima',
+        'Alamat Pengiriman',
+        'Waktu Pemesanan',
+        'Batas Waktu Pengiriman',
+        'Waktu Outbound',
+        'Catatan',
+        'Waktu Cetak Pesanan',
+        'Mata Uang',
+        'Total Harga Pesanan',
+        'Nama Pemilih',
+        'Waktu Picking',
+        'Admin Pengemasan',
+        'Waktu Packing',
+        'PIC Sales Check',
+        'PIC Sales Oleh & Waktu',
+        'PIC FAT Check',
+        'PIC FAT Oleh & Waktu',
+        'PIC OPS Check',
+        'PIC OPS Oleh & Waktu',
+        'Status Scan',
+        'Waktu Upload'
+      ];
+
+      data = rows.map((r, index) => {
+        const salesChecked = r.check_sales === 1;
+        const fatChecked = r.check_fat === 1;
+        const opsChecked = r.check_ops === 1;
+
+        return {
+          'No': index + 1,
+          'Nomor Daftar Outbound': r.nomor_daftar || '',
+          'Nomor Pesanan WMS': r.no_pesanan_wms || '',
+          'Nomor Wave': r.nomor || '',
+          'Nomor Perintah OMS': r.no_pesanan_oms || '',
+          'Nomor Pesanan Platform': r.no_pesanan || '',
+          'SKU Produk': r.sku_product || r.item_code || '',
+          'Nama Produk': r.nama_product || r.item_name || '',
+          'Varian Produk': r.varian_product || '',
+          'Status': r.status || '',
+          'Jumlah': r.jumlah || r.quantity || 0,
+          'Nama Toko': r.nama_toko || '',
+          'Gudang': r.gudang || '',
+          'Rak': r.rak || '',
+          'Metode Pengiriman': r.metode_pengiriman || r.source_type || '',
+          'Jenis Pengiriman': r.jenis_pengiriman || '',
+          'Nomor Pengiriman': r.nomor_pengiriman || r.resi_number || '',
+          'Penerima': r.penerima || r.customer_name || '',
+          'Alamat Pengiriman': r.alamat_pengiriman || '',
+          'Waktu Pemesanan': r.waktu_pesanan || '',
+          'Batas Waktu Pengiriman': r.batas_waktu_pengiriman || '',
+          'Waktu Outbound': r.waktu_outbound || '',
+          'Catatan': r.notes || '',
+          'Waktu Cetak Pesanan': r.waktu_cetak || '',
+          'Mata Uang': r.mata_uang || '',
+          'Total Harga Pesanan': r.total_harga_pesanan || 0,
+          'Nama Pemilih': r.nama_pemilik || '',
+          'Waktu Picking': r.waktu_picking || '',
+          'Admin Pengemasan': r.admin_pengemasan || '',
+          'Waktu Packing': r.waktu_packing || '',
+          'PIC Sales Check': salesChecked ? 'Sudah Diperiksa' : 'Belum Diperiksa',
+          'PIC Sales Oleh & Waktu': salesChecked ? `${r.checked_sales_by || ''} (${formatDateTimeVal(r.checked_sales_at)})` : '-',
+          'PIC FAT Check': fatChecked ? 'Sudah Diperiksa' : 'Belum Diperiksa',
+          'PIC FAT Oleh & Waktu': fatChecked ? `${r.checked_fat_by || ''} (${formatDateTimeVal(r.checked_fat_at)})` : '-',
+          'PIC OPS Check': opsChecked ? 'Sudah Diperiksa' : 'Belum Diperiksa',
+          'PIC OPS Oleh & Waktu': opsChecked ? `${r.checked_ops_by || ''} (${formatDateTimeVal(r.checked_ops_at)})` : '-',
+          'Status Scan': r.is_processed === 1 ? 'Sudah Di-scan' : 'Pending',
+          'Waktu Upload': formatDateTimeVal(r.created_at)
+        };
+      });
+    } else {
+      // General / All manifests
+      sheetName = 'Semua Manifest';
+      filenamePrefix = 'return_manifests_all';
+      headers = [
+        'No',
+        'Tanggal',
+        'Nomor Daftar Outbound',
+        'Nomor Pesanan WMS',
+        'Nomor Wave',
+        'Nomor Perintah OMS',
+        'Nomor Pesanan Platform',
+        'Nomor Pengiriman (Resi)',
+        'SKU Produk',
+        'Nama Produk',
+        'Kondisi',
+        'Varian Produk',
+        'Status',
+        'Jumlah',
+        'Harga Satuan',
+        'Total Harga',
+        'Nama Toko',
+        'Kota',
+        'Expedisi',
+        'Gudang',
+        'Rak',
+        'Penerima / Customer',
+        'Kontak Customer',
+        'Alamat Pengiriman',
+        'Waktu Pemesanan',
+        'Batas Waktu Pengiriman',
+        'Waktu Outbound',
+        'Catatan',
+        'Waktu Cetak Pesanan',
+        'Mata Uang',
+        'Nama Pemilih',
+        'Waktu Picking',
+        'Admin Pengemasan',
+        'Waktu Packing',
+        'Status Proses',
+        'Waktu Input/Upload'
+      ];
+
+      data = rows.map((r, index) => {
+        const qty = parseInt(r.quantity) || 0;
+        const unitPrice = parseFloat(r.unit_price) || 0;
+        const totalPrice = qty * unitPrice;
+        return {
+          'No': index + 1,
+          'Tanggal': formatDateVal(r.tgl || r.created_at),
+          'Nomor Daftar Outbound': r.nomor_daftar || '',
+          'Nomor Pesanan WMS': r.no_pesanan_wms || '',
+          'Nomor Wave': r.nomor || '',
+          'Nomor Perintah OMS': r.no_pesanan_oms || '',
+          'Nomor Pesanan Platform': r.no_pesanan || '',
+          'Nomor Pengiriman (Resi)': r.resi_number || r.nomor_pengiriman || '',
+          'SKU Produk': r.item_code || r.sku_product || '',
+          'Nama Produk': r.item_name || r.nama_product || '',
+          'Kondisi': r.kondisi || '',
+          'Varian Produk': r.varian_product || '',
+          'Status': r.status || '',
+          'Jumlah': qty || r.jumlah || 0,
+          'Harga Satuan': unitPrice,
+          'Total Harga': totalPrice > 0 ? totalPrice : (parseFloat(r.total_harga_pesanan) || 0),
+          'Nama Toko': r.nama_toko || '',
+          'Kota': r.kota || '',
+          'Expedisi': r.expedisi || r.metode_pengiriman || '',
+          'Gudang': r.gudang || '',
+          'Rak': r.rak || '',
+          'Penerima / Customer': r.customer_name || r.penerima || '',
+          'Kontak Customer': r.customer_contact || '',
+          'Alamat Pengiriman': r.alamat_pengiriman || '',
+          'Waktu Pemesanan': r.waktu_pesanan || '',
+          'Batas Waktu Pengiriman': r.batas_waktu_pengiriman || '',
+          'Waktu Outbound': r.waktu_outbound || '',
+          'Catatan': r.notes || '',
+          'Waktu Cetak Pesanan': r.waktu_cetak || '',
+          'Mata Uang': r.mata_uang || '',
+          'Nama Pemilih': r.nama_pemilik || '',
+          'Waktu Picking': r.waktu_picking || '',
+          'Admin Pengemasan': r.admin_pengemasan || '',
+          'Waktu Packing': r.waktu_packing || '',
+          'Status Proses': r.is_processed === 1 ? 'Sudah Diproses' : 'Pending',
+          'Waktu Input/Upload': formatDateTimeVal(r.created_at)
+        };
+      });
+    }
 
     const ws = XLSX.utils.json_to_sheet(data, { header: headers });
+
+    // Auto-fit column widths
+    const colWidths = headers.map(header => {
+      let maxLen = header.length;
+      data.forEach(row => {
+        const val = row[header] != null ? String(row[header]) : '';
+        if (val.length > maxLen) maxLen = Math.min(val.length, 60);
+      });
+      return { wch: Math.max(maxLen + 2, 10) };
+    });
+    ws['!cols'] = colWidths;
+
     const wb = XLSX.utils.book_new();
-    XLSX.utils.book_append_sheet(wb, ws, 'Manifests Export');
+    XLSX.utils.book_append_sheet(wb, ws, sheetName);
 
     const buffer = XLSX.write(wb, { type: 'buffer', bookType: 'xlsx' });
 
+    const nowStr = new Date().toISOString().slice(0, 10);
     res.setHeader('Content-Type', 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet');
-    res.setHeader('Content-Disposition', `attachment; filename=return_manifests_export_${Date.now()}.xlsx`);
+    res.setHeader('Content-Disposition', `attachment; filename=${filenamePrefix}_${nowStr}_${Date.now()}.xlsx`);
     res.send(buffer);
   } catch (err) { next(err); }
 };
@@ -1041,5 +1630,129 @@ exports.toggleManifestCheck = async (req, res, next) => {
     res.status(500).json({ error: err.message });
   }
 };
+
+// ─── Toggle Manifest PIC Check (Sales, FAT, OPS) POST ───────────────────────
+exports.toggleManifestPicCheck = async (req, res, next) => {
+  try {
+    const manifestId = parseInt(req.params.id);
+    const { picType, isChecked } = req.body;
+    
+    if (!['sales', 'fat', 'ops'].includes(picType)) {
+      return res.status(400).json({ error: 'Tipe PIC tidak valid. Harus sales, fat, atau ops.' });
+    }
+
+    // Find the manifest first
+    const [manifestRows] = await db.query('SELECT * FROM return_manifests WHERE manifest_id = ?', [manifestId]);
+    const manifest = manifestRows[0];
+    if (!manifest) {
+      return res.status(404).json({ error: 'Manifest tidak ditemukan.' });
+    }
+
+    const isCheckedVal = isChecked ? 1 : 0;
+    const checkedBy = isChecked ? (req.session.fullName || req.session.username) : null;
+    const checkedAt = isChecked ? new Date() : null;
+
+    const columnCheck = `check_${picType}`;
+    const columnBy = `checked_${picType}_by`;
+    const columnAt = `checked_${picType}_at`;
+
+    await db.query(
+      `UPDATE return_manifests 
+       SET ${columnCheck} = ?, ${columnBy} = ?, ${columnAt} = ? 
+       WHERE manifest_id = ?`,
+      [isCheckedVal, checkedBy, checkedAt, manifestId]
+    );
+
+    // Synchronize overall is_checked: if all 3 PICs are checked, mark is_checked = 1
+    const [updatedRows] = await db.query('SELECT check_sales, check_fat, check_ops FROM return_manifests WHERE manifest_id = ?', [manifestId]);
+    const updated = updatedRows[0];
+    const allChecked = (updated.check_sales === 1 && updated.check_fat === 1 && updated.check_ops === 1);
+
+    await db.query(
+      'UPDATE return_manifests SET is_checked = ? WHERE manifest_id = ?',
+      [allChecked ? 1 : 0, manifestId]
+    );
+
+    // Log activity
+    const picLabel = picType.toUpperCase();
+    await reportService.logActivity(
+      req.session.userId,
+      `check_manifest_pic_${picType}`,
+      `${isChecked ? 'Checked' : 'Unchecked'} PIC ${picLabel} for manifest resi ${manifest.resi_number} (ID: ${manifestId})`,
+      req.ip,
+      req.headers['user-agent']
+    );
+
+    res.json({
+      success: true,
+      pic_type: picType,
+      is_checked: isCheckedVal,
+      checked_by: checkedBy,
+      checked_at: checkedAt,
+      all_checked: allChecked
+    });
+  } catch (err) {
+    res.status(500).json({ error: err.message });
+  }
+};
+
+// ─── Toggle Banding MP PIC Check (Sales, FAT) POST ───────────────────────
+exports.toggleBandingPicCheck = async (req, res, next) => {
+  try {
+    const bandingId = parseInt(req.params.id);
+    const { picType, isChecked } = req.body;
+    
+    if (!['sales', 'fat'].includes(picType)) {
+      return res.status(400).json({ error: 'Tipe PIC tidak valid. Harus sales atau fat.' });
+    }
+
+    const [bandingRows] = await db.query('SELECT * FROM banding_mp WHERE id = ?', [bandingId]);
+    const banding = bandingRows[0];
+    if (!banding) {
+      return res.status(404).json({ error: 'Data Banding MP tidak ditemukan.' });
+    }
+
+    const isCheckedVal = isChecked ? 1 : 0;
+    const checkedBy = isChecked ? (req.session.fullName || req.session.username) : null;
+    const checkedAt = isChecked ? new Date() : null;
+
+    const columnCheck = `check_${picType}`;
+    const columnBy = `checked_${picType}_by`;
+    const columnAt = `checked_${picType}_at`;
+
+    await db.query(
+      `UPDATE banding_mp 
+       SET ${columnCheck} = ?, ${columnBy} = ?, ${columnAt} = ? 
+       WHERE id = ?`,
+      [isCheckedVal, checkedBy, checkedAt, bandingId]
+    );
+
+    const [updatedRows] = await db.query('SELECT check_sales, check_fat FROM banding_mp WHERE id = ?', [bandingId]);
+    const updated = updatedRows[0];
+    const allChecked = (updated.check_sales === 1 && updated.check_fat === 1);
+
+    // Log activity
+    const picLabel = picType.toUpperCase();
+    await reportService.logActivity(
+      req.session.userId,
+      `check_banding_pic_${picType}`,
+      `${isChecked ? 'Checked' : 'Unchecked'} PIC ${picLabel} for Banding MP invoice ${banding.no_invoice} (ID: ${bandingId})`,
+      req.ip,
+      req.headers['user-agent']
+    );
+
+    res.json({
+      success: true,
+      pic_type: picType,
+      is_checked: isCheckedVal,
+      checked_by: checkedBy,
+      checked_at: checkedAt,
+      all_checked: allChecked
+    });
+  } catch (err) {
+    res.status(500).json({ error: err.message });
+  }
+};
+
 
 

@@ -4,282 +4,325 @@
     <div class="col">
       <h2><i class="bi bi-file-earmark-text"></i> Berita Acara – <code><%= ba.ba_number %></code></h2>
       <p class="mb-0">
-        <% const btColors = {rekondisi:'primary',refurbish:'dark',write_off:'danger',retur_supplier:'secondary',retur_final:'primary'}; %>
-        <span class="badge bg-<%= btColors[ba.ba_type]||'dark' %>"><%= ba.ba_type === 'retur_final' ? 'RETUR FINAL' : ba.ba_type.replace('_',' ').toUpperCase() %></span>
-        <% const stColors = {draft:'secondary',pending_sign:'warning',signed:'success',void:'danger'}; %>
-        <span class="badge bg-<%= stColors[ba.status]||'secondary' %> ms-1">
-          <% if (ba.status==='signed') { %><i class="bi bi-patch-check-fill"></i><% } %>
-          <%= ba.status.replace('_',' ').toUpperCase() %>
+        <% const
+          btColors={rekondisi:'primary',refurbish:'dark',write_off:'danger',retur_supplier:'secondary',retur_final:'primary'};
+          %>
+          <span class="badge bg-<%= btColors[ba.ba_type]||'dark' %>">
+            <%= ba.ba_type==='retur_final' ? 'RETUR FINAL' : ba.ba_type.replace('_',' ').toUpperCase() %></span>
+        <% const stColors = {draft:' secondary',pending_sign:'warning',signed:'success',void:'danger'}; %>
+              <span class="badge bg-<%= stColors[ba.status]||'secondary' %> ms-1">
+                <% if (ba.status==='signed' ) { %><i class="bi bi-patch-check-fill"></i>
+                  <% } %>
+                    <%= ba.status.replace('_',' ').toUpperCase() %>
         </span>
       </p>
     </div>
     <div class="col-auto d-flex gap-2">
-      <button onclick="window.print()" class="btn btn-sm btn-primary">
+      <button onclick="openPrintModal()" class="btn btn-sm btn-primary">
         <i class="bi bi-printer"></i> Print
       </button>
       <a href="/ba/<%= ba.ba_id %>/export-excel" class="btn btn-sm btn-success">
         <i class="bi bi-file-earmark-excel"></i> Download Excel
       </a>
-      <% if (ba.status === 'draft') { %>
-        <form method="POST" action="/ba/<%= ba.ba_id %>/submit">
-          <button type="submit" class="btn btn-sm btn-warning">
-            <i class="bi bi-send"></i> Ajukan untuk Tanda Tangan
-          </button>
-        </form>
-      <% } %>
-      <% if (['draft','pending_sign'].includes(ba.status)) { %>
-        <a href="/ba/<%= ba.ba_id %>/sign" class="btn btn-sm btn-success">
-          <i class="bi bi-pen"></i> Tanda Tangan
-        </a>
-      <% } %>
-      <% if (!['void'].includes(ba.status) && hasRole(['admin','manager'])) { %>
-        <form method="POST" action="/ba/<%= ba.ba_id %>/void"
-          onsubmit="return confirm('Void dokumen ini? Tindakan tidak dapat dibalik.')">
-          <button type="submit" class="btn btn-sm btn-outline-danger">
-            <i class="bi bi-x-circle"></i> Void
-          </button>
-        </form>
-      <% } %>
-      <a href="/ba" class="btn btn-sm btn-outline-secondary"><i class="bi bi-arrow-left"></i> Kembali</a>
+
+      <% if (![' void'].includes(ba.status) && hasRole(['admin','manager'])) { %>
+                      <form method="POST" action="/ba/<%= ba.ba_id %>/void"
+                        onsubmit="return confirm('Void dokumen ini? Tindakan tidak dapat dibalik.')">
+                        <button type="submit" class="btn btn-sm btn-outline-danger">
+                          <i class="bi bi-x-circle"></i> Void
+                        </button>
+                      </form>
+                      <% } %>
+                        <a href="/ba" class="btn btn-sm btn-outline-secondary"><i class="bi bi-arrow-left"></i>
+                          Kembali</a>
     </div>
   </div>
 
-<style>
-  .excel-ba-container {
-    width: 100%;
-    border-collapse: collapse;
-    background-color: #000;
-    color: #fff;
-    font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
-    border: 2px solid #333;
-    margin-bottom: 20px;
-  }
-  .excel-ba-container td {
-    border: 1px solid #333;
-    padding: 10px;
-    vertical-align: middle;
-  }
-  .excel-ba-header-main {
-    background-color: #107c41;
-    color: #ffffff;
-    text-align: center;
-    font-weight: bold;
-    font-size: 1.4rem;
-    letter-spacing: 1px;
-    height: 50px;
-    border-bottom: 2px solid #444 !important;
-  }
-  .excel-logo-block {
-    background-color: #000;
-    width: 160px;
-    text-align: center;
-    border-right: 2px solid #444 !important;
-    vertical-align: middle;
-  }
-  .excel-ba-title {
-    font-weight: bold;
-    font-size: 1.1rem;
-    text-align: center;
-    background-color: #000;
-    color: #fff;
-    border-bottom: 2px solid #444 !important;
-  }
-  .excel-ba-info-label {
-    width: 130px;
-    background-color: #0c0c0c;
-    color: #aaa;
-    font-weight: 600;
-    font-size: 0.85rem;
-  }
-  .excel-ba-info-value {
-    background-color: #121212;
-    color: #fff;
-    font-weight: 500;
-    font-size: 0.9rem;
-  }
-  .excel-ba-approval-header {
-    text-align: center;
-    font-weight: bold;
-    font-size: 0.85rem;
-    background-color: #0c0c0c;
-    color: #aaa;
-    border-bottom: 2px solid #444 !important;
-  }
-  .excel-ba-approval-col {
-    width: 120px;
-    text-align: center;
-    font-size: 0.8rem;
-    font-weight: bold;
-    background-color: #0c0c0c;
-    color: #fff;
-    border-bottom: 1px solid #444 !important;
-  }
-  .excel-ba-approval-name {
-    width: 120px;
-    height: 60px;
-    text-align: center;
-    background-color: #000;
-    font-size: 0.8rem;
-    vertical-align: middle;
-  }
-  .excel-ba-table {
-    width: 100%;
-    border-collapse: collapse;
-    background-color: #ffffff !important;
-    color: #333333 !important;
-    border: 2px solid #cccccc !important;
-    font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
-    table-layout: fixed;
-  }
-  .excel-ba-table th {
-    background-color: #107c41 !important;
-    color: #ffffff !important;
-    border: 1px solid #cccccc !important;
-    padding: 10px;
-    font-weight: bold;
-    font-size: 0.85rem;
-    text-transform: none;
-    letter-spacing: 0.5px;
-  }
-  .excel-ba-table td {
-    background-color: #ffffff !important;
-    color: #333333 !important;
-    border: 1px solid #cccccc !important;
-    padding: 8px 10px;
-    font-size: 0.85rem;
-    vertical-align: middle;
-    word-wrap: break-word;
-  }
-  .excel-ba-table td[style*="color: #aaa"],
-  .excel-ba-table td[style*="color: #666"] {
-    background-color: #f8f9fa !important;
-    color: #555555 !important;
-    font-weight: bold !important;
-  }
-  .excel-ba-table tbody tr:hover {
-    background-color: #f8f9fa !important;
-  }
+  <style>
+    .excel-ba-container {
+      width: 100%;
+      border-collapse: collapse;
+      background-color: #000;
+      color: #fff;
+      font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+      border: 2px solid #333;
+      margin-bottom: 20px;
+    }
 
-  /* Logo styling */
-  .ba-logo {
-    max-width: 180px;
-    max-height: 100px;
-    display: block;
-    margin: 0 auto;
-    object-fit: contain;
-  }
+    .excel-ba-container td {
+      border: 1px solid #333;
+      padding: 10px;
+      vertical-align: middle;
+    }
 
-  /* Print styles */
-  @media print {
-    /* Hide header row with buttons - only hide the row.mb-3 */
-    .row.mb-3.align-items-center {
-      display: none !important;
+    .excel-ba-header-main {
+      background-color: #107c41;
+      color: #ffffff;
+      text-align: center;
+      font-weight: bold;
+      font-size: 1.4rem;
+      letter-spacing: 1px;
+      height: 50px;
+      border-bottom: 2px solid #444 !important;
     }
-    
-    /* Show only the row g-4 content */
-    .row.g-4 {
-      display: block !important;
-      margin: 0 !important;
-      padding: 0 !important;
+
+    .excel-logo-block {
+      background-color: #000;
+      width: 160px;
+      text-align: center;
+      border-right: 2px solid #444 !important;
+      vertical-align: middle;
     }
-    
-    /* Make col-lg-8 full width for print */
-    .row.g-4 .col-lg-8 {
-      width: 100% !important;
-      max-width: 100% !important;
-      padding: 0 !important;
+
+    .excel-ba-title {
+      font-weight: bold;
+      font-size: 1.1rem;
+      text-align: center;
+      background-color: #000;
+      color: #fff;
+      border-bottom: 2px solid #444 !important;
     }
-    
-    /* Hide sidebar cards (col-lg-4) */
-    .row.g-4 .col-lg-4 {
-      display: none !important;
+
+    .excel-ba-info-label {
+      width: 130px;
+      background-color: #0c0c0c;
+      color: #aaa;
+      font-weight: 600;
+      font-size: 0.85rem;
     }
-    
-    /* Hide Kronologi/Deskripsi section - only show table */
-    .mb-4.p-3.border.rounded {
-      display: none !important;
+
+    .excel-ba-info-value {
+      background-color: #121212;
+      color: #fff;
+      font-weight: 500;
+      font-size: 0.9rem;
     }
-    
-    /* BA table styling for print */
+
+    .excel-ba-approval-header {
+      text-align: center;
+      font-weight: bold;
+      font-size: 0.85rem;
+      background-color: #0c0c0c;
+      color: #aaa;
+      border-bottom: 2px solid #444 !important;
+    }
+
+    .excel-ba-approval-col {
+      width: 120px;
+      text-align: center;
+      font-size: 0.8rem;
+      font-weight: bold;
+      background-color: #0c0c0c;
+      color: #fff;
+      border-bottom: 1px solid #444 !important;
+    }
+
+    .excel-ba-approval-name {
+      width: 120px;
+      height: 60px;
+      text-align: center;
+      background-color: #000;
+      font-size: 0.8rem;
+      vertical-align: middle;
+    }
+
     .excel-ba-table {
-      page-break-inside: avoid;
-      margin: 0 !important;
-      width: 100% !important;
-      border-collapse: collapse !important;
+      width: 100%;
+      border-collapse: collapse;
+      background-color: #ffffff !important;
+      color: #333333 !important;
+      border: 2px solid #cccccc !important;
+      font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+      table-layout: fixed;
     }
-    
-    /* Table cells print styling */
-    .excel-ba-table th,
+
+    .excel-ba-table th {
+      background-color: #107c41 !important;
+      color: #ffffff !important;
+      border: 1px solid #cccccc !important;
+      padding: 10px;
+      font-weight: bold;
+      font-size: 0.85rem;
+      text-transform: none;
+      letter-spacing: 0.5px;
+    }
+
     .excel-ba-table td {
-      -webkit-print-color-adjust: exact !important;
-      print-color-adjust: exact !important;
-      border: 1px solid #000 !important;
+      background-color: #ffffff !important;
+      color: #333333 !important;
+      border: 1px solid #cccccc !important;
+      padding: 8px 10px;
+      font-size: 0.85rem;
+      vertical-align: middle;
+      word-wrap: break-word;
     }
-    
-    /* Header background color for print */
-    .excel-ba-table thead tr:first-child th {
-      background-color: #107c41 !important;
-      color: #ffffff !important;
+
+    .excel-ba-table td[style*="color: #aaa"],
+    .excel-ba-table td[style*="color: #666"] {
+      background-color: #f8f9fa !important;
+      color: #555555 !important;
+      font-weight: bold !important;
     }
-    
-    .excel-ba-table thead tr:nth-child(6) th {
-      background-color: #107c41 !important;
-      color: #ffffff !important;
+
+    .excel-ba-table tbody tr:hover {
+      background-color: #f8f9fa !important;
     }
-    
-    /* Black background cells for print */
-    .excel-ba-table thead td[style*="background-color: #000"] {
-      background-color: #000 !important;
-      color: #fff !important;
-    }
-    
-    /* White background cells for approved by */
-    .excel-ba-table thead td[style*="background-color: #fff"] {
-      background-color: #fff !important;
-      color: #000 !important;
-      border: 1px solid #000 !important;
-    }
-    
-    /* Logo styling for print */
+
+    /* Logo styling */
     .ba-logo {
-      max-width: 150px !important;
-      max-height: 80px !important;
-      -webkit-print-color-adjust: exact !important;
-      print-color-adjust: exact !important;
+      max-width: 180px;
+      max-height: 100px;
+      display: block;
+      margin: 0 auto;
+      object-fit: contain;
     }
-    
-    /* Ensure all images print properly */
-    img {
-      -webkit-print-color-adjust: exact !important;
-      print-color-adjust: exact !important;
+
+    /* Print styles */
+    @media print {
+
+      /* Hide sidebar, topbar, and backdrop */
+      .sidebar,
+      .sidebar-topbar,
+      .sidebar-backdrop {
+        display: none !important;
+      }
+
+      /* Remove left margin caused by sidebar */
+      .main-content {
+        margin-left: 0 !important;
+        padding-left: 0 !important;
+      }
+
+      /* Hide header row with buttons */
+      .row.mb-3.align-items-center {
+        display: none !important;
+      }
+
+      /* Show only the row g-4 content */
+      .row.g-4 {
+        display: block !important;
+        margin: 0 !important;
+        padding: 0 !important;
+      }
+
+      /* Make col-lg-8 full width for print */
+      .row.g-4 .col-lg-8 {
+        width: 100% !important;
+        max-width: 100% !important;
+        padding: 0 !important;
+      }
+
+      /* Hide sidebar cards (col-lg-4) */
+      .row.g-4 .col-lg-4 {
+        display: none !important;
+      }
+
+      /* Hide Kronologi/Deskripsi section */
+      .mb-4.p-3.border.rounded {
+        display: none !important;
+      }
+
+      /* BA table: allow page breaks between rows, not inside them */
+      .excel-ba-table {
+        margin: 0 !important;
+        width: 100% !important;
+        border-collapse: collapse !important;
+        page-break-inside: auto !important;
+      }
+
+      /* Repeat table header on every printed page */
+      .excel-ba-table thead {
+        display: table-header-group !important;
+      }
+
+      /* Prevent individual rows from breaking mid-row */
+      .excel-ba-table tbody tr {
+        page-break-inside: avoid !important;
+        break-inside: avoid !important;
+      }
+
+      /* Table cells print styling */
+      .excel-ba-table th,
+      .excel-ba-table td {
+        -webkit-print-color-adjust: exact !important;
+        print-color-adjust: exact !important;
+        border: 1px solid #000 !important;
+      }
+
+      /* Header row green background for print */
+      .excel-ba-table thead tr:first-child th {
+        background-color: #107c41 !important;
+        color: #ffffff !important;
+      }
+
+      .excel-ba-table thead tr:nth-child(6) th {
+        background-color: #107c41 !important;
+        color: #ffffff !important;
+      }
+
+      /* Black background cells for print */
+      .excel-ba-table thead td[style*="background-color: #000"] {
+        background-color: #000 !important;
+        color: #fff !important;
+      }
+
+      /* White background cells for approved by */
+      .excel-ba-table thead td[style*="background-color: #fff"] {
+        background-color: #fff !important;
+        color: #000 !important;
+        border: 1px solid #000 !important;
+      }
+
+      /* Logo styling for print */
+      .ba-logo {
+        max-width: 150px !important;
+        max-height: 80px !important;
+        -webkit-print-color-adjust: exact !important;
+        print-color-adjust: exact !important;
+      }
+
+      /* Ensure all images print properly */
+      img {
+        -webkit-print-color-adjust: exact !important;
+        print-color-adjust: exact !important;
+      }
+
+      /* Default page orientation (landscape) */
+      @page {
+        margin: 0.8cm;
+        size: A4 landscape;
+      }
+
+      /* Portrait override when body has class print-portrait */
+      body.print-portrait * {
+        /* styles still inherit from @page portrait below */
+      }
+
+      /* Reset container padding for print */
+      .container-fluid {
+        padding: 0 !important;
+        margin: 0 !important;
+      }
+
+      /* Table responsive wrapper */
+      .table-responsive {
+        display: block !important;
+        overflow: visible !important;
+        margin: 0 !important;
+      }
+
+      /* Body items white background */
+      .excel-ba-table tbody tr td {
+        background-color: #fff !important;
+        color: #333 !important;
+      }
     }
-    
-    /* Adjust page margins */
-    @page {
-      margin: 0.5cm;
-      size: A4 landscape;
+
+    /* Dynamic portrait page style (injected via JS) */
+    .print-style-portrait {
+      display: none;
     }
-    
-    /* Reset container padding for print */
-    .container-fluid {
-      padding: 0 !important;
-      margin: 0 !important;
-    }
-    
-    /* Table responsive wrapper */
-    .table-responsive {
-      display: block !important;
-      overflow: visible !important;
-      margin: 0 !important;
-    }
-    
-    /* Body items white background */
-    .excel-ba-table tbody tr td {
-      background-color: #fff !important;
-      color: #333 !important;
-    }
-  }
-</style>
+  </style>
 
   <div class="row g-4">
     <div class="col-lg-8">
@@ -295,212 +338,394 @@
             </tr>
             <!-- Row 2 -->
             <tr>
-              <td colspan="2" rowspan="4" style="background-color: #f1eaea; border: 1px solid #444; width: 25%; text-align: center; vertical-align: middle; padding: 20px;">
-                <img src="/logo-berryman.jpeg" alt="Berryman Logo" class="ba-logo" style="max-width: 180px; max-height: 100px; display: block; margin: 0 auto;">
+              <td colspan="2" rowspan="4"
+                style="background-color: #f1eaea; border: 1px solid #444; width: 25%; text-align: center; vertical-align: middle; padding: 20px;">
+                <img src="/logo-berryman.jpeg" alt="Berryman Logo" class="ba-logo"
+                  style="max-width: 180px; max-height: 100px; display: block; margin: 0 auto;">
               </td>
-              <td colspan="2" style="background-color: #f1eaea; color: #fff; text-align: center; font-weight: bold; border: 1px solid #444; font-size: 0.9rem;">
+              <td colspan="2"
+                style="background-color: #f1eaea; color: #fff; text-align: center; font-weight: bold; border: 1px solid #444; font-size: 0.9rem;">
                 BERRYMAN
               </td>
-              <td colspan="3" style="background-color: #fff; color: #000; text-align: center; font-weight: bold; border: 1px solid #444; font-size: 0.9rem;">
+              <td colspan="3"
+                style="background-color: #fff; color: #000; text-align: center; font-weight: bold; border: 1px solid #444; font-size: 0.9rem;">
                 Approved by:
               </td>
             </tr>
             <!-- Row 3 -->
             <tr>
-              <td style="background-color: #f1eaea; color: #aaa; font-weight: bold; border: 1px solid #444; font-size: 0.85rem; width: 12%;">Judul</td>
-              <td style="background-color: #f1eaea; color: #000; border: 1px solid #444; font-size: 0.9rem; width: 20%;"><%= ba.title || 'Berita acara retur Final' %></td>
-              <td style="background-color: #f1eaea; color: #fff; text-align: center; font-weight: bold; border: 1px solid #444; font-size: 0.8rem;">Manager Ops</td>
-              <td style="background-color: #f1eaea; color: #fff; text-align: center; font-weight: bold; border: 1px solid #444; font-size: 0.8rem;">Purchasing</td>
-              <td style="background-color: #f1eaea; color: #fff; text-align: center; font-weight: bold; border: 1px solid #444; font-size: 0.8rem;">FAT</td>
+              <td
+                style="background-color: #f1eaea; color: #aaa; font-weight: bold; border: 1px solid #444; font-size: 0.85rem; width: 12%;">
+                Judul</td>
+              <td
+                style="background-color: #f1eaea; color: #000; border: 1px solid #444; font-size: 0.9rem; width: 20%;">
+                <%= ba.title || 'Berita acara retur Final' %>
+              </td>
+              <td
+                style="background-color: #f1eaea; color: #fff; text-align: center; font-weight: bold; border: 1px solid #444; font-size: 0.8rem;">
+                Manager Ops</td>
+              <td
+                style="background-color: #f1eaea; color: #fff; text-align: center; font-weight: bold; border: 1px solid #444; font-size: 0.8rem;">
+                Purchasing</td>
+              <td
+                style="background-color: #f1eaea; color: #fff; text-align: center; font-weight: bold; border: 1px solid #444; font-size: 0.8rem;">
+                FAT</td>
             </tr>
             <!-- Row 4 -->
             <tr>
-              <td style="background-color: #f1eaea; color: #aaa; font-weight: bold; border: 1px solid #444; font-size: 0.85rem;">Periode Dokumen</td>
-              <td style="background-color: #f1eaea; color: #000; border: 1px solid #444; font-size: 0.9rem; padding-left: 10px;">
-                <% 
-                  const months = ['Januari', 'Februari', 'Maret', 'April', 'Mei', 'Juni', 'Juli', 'Agustus', 'September', 'Oktober', 'November', 'Desember'];
-                  const docDate = ba.created_at ? new Date(ba.created_at) : new Date();
-                  const docPeriod = `${months[docDate.getMonth()]} ${docDate.getFullYear()}`;
-                %>
-                <%= docPeriod %>
+              <td
+                style="background-color: #f1eaea; color: #aaa; font-weight: bold; border: 1px solid #444; font-size: 0.85rem;">
+                Periode Dokumen</td>
+              <td
+                style="background-color: #f1eaea; color: #000; border: 1px solid #444; font-size: 0.9rem; padding-left: 10px;">
+                <% const months=['Januari', 'Februari' , 'Maret' , 'April' , 'Mei' , 'Juni' , 'Juli' , 'Agustus'
+                  , 'September' , 'Oktober' , 'November' , 'Desember' ]; const docDate=ba.created_at ? new
+                  Date(ba.created_at) : new Date(); const docPeriod=`${months[docDate.getMonth()]}
+                  ${docDate.getFullYear()}`; %>
+                  <%= docPeriod %>
               </td>
-              <td style="background-color: #f1eaea; text-align: center; border: 1px solid #444; vertical-align: middle;">
+              <td
+                style="background-color: #f1eaea; text-align: center; border: 1px solid #444; vertical-align: middle;">
                 <% if (ba.sig_admin) { %>
-                  <span style="color: #ff3b3b; font-weight: bold; font-size: 0.8rem;"><%= ba.sig_admin_name %></span>
-                <% } else { %>
-                  <span style="color: #ff3b3b; font-weight: bold; font-size: 0.8rem;">Nama</span>
-                <% } %>
+                  <span style="color: #ff3b3b; font-weight: bold; font-size: 0.8rem;">
+                    <%= ba.sig_admin_name %>
+                  </span>
+                  <% } else { %>
+                    <span style="color: #ff3b3b; font-weight: bold; font-size: 0.8rem;">Nama</span>
+                    <% } %>
               </td>
-              <td style="background-color: #f1eaea; text-align: center; border: 1px solid #444; vertical-align: middle;">
+              <td
+                style="background-color: #f1eaea; text-align: center; border: 1px solid #444; vertical-align: middle;">
                 <% if (ba.sig_fat) { %>
-                  <span style="color: #ff3b3b; font-weight: bold; font-size: 0.8rem;"><%= ba.sig_fat_name %></span>
-                <% } else { %>
-                  <span style="color: #ff3b3b; font-weight: bold; font-size: 0.8rem;">Nama</span>
-                <% } %>
+                  <span style="color: #ff3b3b; font-weight: bold; font-size: 0.8rem;">
+                    <%= ba.sig_fat_name %>
+                  </span>
+                  <% } else { %>
+                    <span style="color: #ff3b3b; font-weight: bold; font-size: 0.8rem;">Nama</span>
+                    <% } %>
               </td>
-              <td style="background-color: #f1eaea; text-align: center; border: 1px solid #444; vertical-align: middle;">
+              <td
+                style="background-color: #f1eaea; text-align: center; border: 1px solid #444; vertical-align: middle;">
                 <% if (ba.sig_staff_recover) { %>
-                  <span style="color: #ff3b3b; font-weight: bold; font-size: 0.8rem;"><%= ba.sig_staff_recover_name %></span>
-                <% } else { %>
-                  <span style="color: #ff3b3b; font-weight: bold; font-size: 0.8rem;">Nama</span>
-                <% } %>
+                  <span style="color: #ff3b3b; font-weight: bold; font-size: 0.8rem;">
+                    <%= ba.sig_staff_recover_name %>
+                  </span>
+                  <% } else { %>
+                    <span style="color: #ff3b3b; font-weight: bold; font-size: 0.8rem;">Nama</span>
+                    <% } %>
               </td>
             </tr>
             <!-- Row 5 -->
             <tr>
               <td colspan="2" style="background-color: #f1eaea; border: 1px solid #444; height: 60px;"></td>
-              <td style="background-color: #f1eaea; text-align: center; border: 1px solid #444; vertical-align: middle; height: 60px;">
+              <td
+                style="background-color: #f1eaea; text-align: center; border: 1px solid #444; vertical-align: middle; height: 60px;">
                 <% if (ba.sig_admin) { %>
                   <img src="<%= ba.sig_admin %>" style="max-height: 45px; display: block; margin: 0 auto;">
-                <% } else { %>
-                  &nbsp;
-                <% } %>
+                  <% } else { %>
+                    &nbsp;
+                    <% } %>
               </td>
-              <td style="background-color: #f1eaea; text-align: center; border: 1px solid #444; vertical-align: middle; height: 60px;">
+              <td
+                style="background-color: #f1eaea; text-align: center; border: 1px solid #444; vertical-align: middle; height: 60px;">
                 <% if (ba.sig_fat) { %>
                   <img src="<%= ba.sig_fat %>" style="max-height: 45px; display: block; margin: 0 auto;">
-                <% } else { %>
-                  &nbsp;
-                <% } %>
+                  <% } else { %>
+                    &nbsp;
+                    <% } %>
               </td>
-              <td style="background-color: #f1eaea; text-align: center; border: 1px solid #444; vertical-align: middle; height: 60px;">
+              <td
+                style="background-color: #f1eaea; text-align: center; border: 1px solid #444; vertical-align: middle; height: 60px;">
                 <% if (ba.sig_staff_recover) { %>
                   <img src="<%= ba.sig_staff_recover %>" style="max-height: 45px; display: block; margin: 0 auto;">
-                <% } else { %>
-                  &nbsp;
-                <% } %>
+                  <% } else { %>
+                    &nbsp;
+                    <% } %>
               </td>
             </tr>
             <!-- Row 6: Column headers for items -->
             <tr style="background-color: #107c41; color: #ffffff;">
-              <th style="width: 5%; text-align: center; border: 1px solid #444; font-weight: bold; font-size: 0.85rem;">No</th>
+              <th style="width: 5%; text-align: center; border: 1px solid #444; font-weight: bold; font-size: 0.85rem;">
+                No</th>
               <th style="width: 12%; border: 1px solid #444; font-weight: bold; font-size: 0.85rem;">SKU</th>
               <th style="width: 25%; border: 1px solid #444; font-weight: bold; font-size: 0.85rem;">Nama Produk</th>
-              <th style="width: 8%; text-align: center; border: 1px solid #444; font-weight: bold; font-size: 0.85rem;">QTY</th>
-              <th style="width: 15%; text-align: center; border: 1px solid #444; font-weight: bold; font-size: 0.85rem;">Kategori Retur</th>
+              <th style="width: 8%; text-align: center; border: 1px solid #444; font-weight: bold; font-size: 0.85rem;">
+                QTY</th>
+              <th
+                style="width: 15%; text-align: center; border: 1px solid #444; font-weight: bold; font-size: 0.85rem;">
+                Kategori Retur</th>
               <th style="width: 20%; border: 1px solid #444; font-weight: bold; font-size: 0.85rem;">Keterangan</th>
               <th style="width: 15%; border: 1px solid #444; font-weight: bold; font-size: 0.85rem;">Vendor</th>
             </tr>
           </thead>
           <tbody>
-            <% if (items.length === 0) { %>
+            <% if (items.length===0) { %>
               <tr>
-                <td colspan="7" class="text-center py-4" style="color: #888; border: 1px solid #444;">Belum ada item retur dalam Berita Acara ini.</td>
+                <td colspan="7" class="text-center py-4" style="color: #888; border: 1px solid #444;">Belum ada item
+                  retur dalam Berita Acara ini.</td>
               </tr>
-            <% } %>
-            <% items.forEach((item, idx) => { %>
-              <tr>
-                <td style="text-align: center; border: 1px solid #444;"><%= idx + 1 %></td>
-                <td style="border: 1px solid #444;"><%= item.sku || '-' %></td>
-                <td style="border: 1px solid #444;"><%= item.item_name %></td>
-                <td style="text-align: center; border: 1px solid #444;"><%= item.quantity %></td>
-                <td style="text-align: center; border: 1px solid #444;">
-                  <% const catMap = { rekondisi: 'Rekondisi', refurbish: 'Refurbish', write_off: 'Write off', return_to_supplier: 'Retur Supplier' }; %>
-                  <%= catMap[item.disposition] || item.disposition || '-' %>
-                </td>
-                <td style="border: 1px solid #444;"></td>
-                <td style="border: 1px solid #444;"><%= item.vendor_name || '-' %></td>
-              </tr>
-            <% }) %>
-            <% 
-              const minRows = 10;
-              const emptyRowsCount = Math.max(0, minRows - items.length);
-              for (let i = 0; i < emptyRowsCount; i++) { 
-            %>
-              <tr>
-                <td style="text-align: center; border: 1px solid #444;">&nbsp;</td>
-                <td style="border: 1px solid #444;">&nbsp;</td>
-                <td style="border: 1px solid #444;">&nbsp;</td>
-                <td style="text-align: center; border: 1px solid #444;">&nbsp;</td>
-                <td style="text-align: center; border: 1px solid #444;">&nbsp;</td>
-                <td style="border: 1px solid #444;">&nbsp;</td>
-                <td style="border: 1px solid #444;">&nbsp;</td>
-              </tr>
-            <% } %>
+              <% } %>
+                <% items.forEach((item, idx)=> { %>
+                  <tr>
+                    <td style="text-align: center; border: 1px solid #444;">
+                      <%= idx + 1 %>
+                    </td>
+                    <td style="border: 1px solid #444;">
+                      <%= item.sku || '-' %>
+                    </td>
+                    <td style="border: 1px solid #444;">
+                      <%= item.item_name %>
+                    </td>
+                    <td style="text-align: center; border: 1px solid #444;">
+                      <%= item.quantity %>
+                    </td>
+                    <td style="text-align: center; border: 1px solid #444;">
+                      <% const catMap={ rekondisi: 'Rekondisi' , refurbish: 'Refurbish' , write_off: 'Write off' ,
+                        return_to_supplier: 'Retur Supplier' }; %>
+                        <%= catMap[item.disposition] || item.disposition || '-' %>
+                    </td>
+                    <td style="border: 1px solid #444;"></td>
+                    <td style="border: 1px solid #444;">
+                      <%= item.vendor_name || '-' %>
+                    </td>
+                  </tr>
+                  <% }) %>
+                    <% const minRows=10; const emptyRowsCount=Math.max(0, minRows - items.length); for (let i=0; i <
+                      emptyRowsCount; i++) { %>
+                      <tr>
+                        <td style="text-align: center; border: 1px solid #444;">&nbsp;</td>
+                        <td style="border: 1px solid #444;">&nbsp;</td>
+                        <td style="border: 1px solid #444;">&nbsp;</td>
+                        <td style="text-align: center; border: 1px solid #444;">&nbsp;</td>
+                        <td style="text-align: center; border: 1px solid #444;">&nbsp;</td>
+                        <td style="border: 1px solid #444;">&nbsp;</td>
+                        <td style="border: 1px solid #444;">&nbsp;</td>
+                      </tr>
+                      <% } %>
           </tbody>
         </table>
       </div>
 
       <!-- Kronologi / Content Section -->
-      <div class="mb-4 p-3 border rounded" style="background-color: #f8f9fa; color: #333; border-color: #dee2e6 !important;">
+      <div class="mb-4 p-3 border rounded"
+        style="background-color: #f8f9fa; color: #333; border-color: #dee2e6 !important;">
         <h6 class="border-bottom pb-2 mb-2 text-success" style="font-weight: bold; border-color: #dee2e6 !important;">
           <i class="bi bi-justify-left"></i> Kronologi / Deskripsi Berita Acara:
         </h6>
-        <div style="white-space: pre-wrap; font-family: monospace; font-size: 0.9rem; line-height: 1.5; color: #333;"><%= ba.content || '(Belum ada isi kronologi)' %></div>
+        <div style="white-space: pre-wrap; font-family: monospace; font-size: 0.9rem; line-height: 1.5; color: #333;">
+          <%= ba.content || '(Belum ada isi kronologi)' %>
+        </div>
       </div>
     </div>
 
     <div class="col-lg-4">
-      <!-- Return Info (Only shown if return_id exists) -->
-      <% if (ba.return_id) { %>
-        <div class="card mb-4">
-          <div class="card-header bg-light"><h6 class="mb-0"><i class="bi bi-link-45deg"></i> Info Return Terkait</h6></div>
-          <div class="card-body">
-            <table class="table table-sm table-borderless mb-0" style="font-size: 0.9rem;">
-              <tr><td class="text-muted" style="width: 120px;">Return #</td><td><a href="/returns/<%= ba.return_id %>"><code><%= ba.return_number %></code></a></td></tr>
-              <tr><td class="text-muted">Nomor Resi</td><td><strong><%= ba.resi_number || '-' %></strong></td></tr>
-              <tr><td class="text-muted">Kurir</td><td><strong><%= ba.resi_courier || '-' %></strong></td></tr>
-              <tr><td class="text-muted">Customer</td><td><strong><%= ba.customer_name %></strong></td></tr>
-              <tr><td class="text-muted">Tanggal Retur</td><td><%= formatDate(ba.return_date) %></td></tr>
-              <tr><td class="text-muted">Status Sekarang</td><td><%- getStatusBadge(ba.current_status) %></td></tr>
-            </table>
-          </div>
-        </div>
-      <% } %>
 
-      <!-- BA Metadata -->
-      <div class="card mb-4">
-        <div class="card-header bg-light"><h6 class="mb-0"><i class="bi bi-info-circle"></i> Detail Metadata BA</h6></div>
-        <div class="card-body">
-          <table class="table table-sm table-borderless mb-0" style="font-size: 0.9rem;">
-            <tr><td class="text-muted" style="width: 120px;">Nomor BA</td><td><code><%= ba.ba_number %></code></td></tr>
-            <tr><td class="text-muted">Tipe</td><td class="text-uppercase"><strong><%= ba.ba_type.replace('_',' ') %></strong></td></tr>
-            <tr><td class="text-muted">Status Dokumen</td><td><span class="badge bg-secondary"><%= ba.status.toUpperCase() %></span></td></tr>
-            <tr><td class="text-muted">Dibuat oleh</td><td><%= ba.created_by_name %></td></tr>
-            <tr><td class="text-muted">Tanggal Dibuat</td><td><%= formatDateTime(ba.created_at) %></td></tr>
-            <% if (ba.vendor_name) { %>
-              <tr><td class="text-muted">Vendor Utama</td><td><%= ba.vendor_name %></td></tr>
-            <% } %>
-            <% if (ba.final_price) { %>
-              <tr><td class="text-muted">Total Harga Final</td><td><strong class="text-success"><%= formatCurrency(ba.final_price) %></strong></td></tr>
-            <% } %>
-          </table>
+
+      <!-- Catatan BA -->
+      <div class="card mt-4">
+        <div class="card-header bg-light">
+          <h6 class="mb-0"><i class="bi bi-chat-left-text"></i> Catatan</h6>
+        </div>
+        <div class="card-body p-3">
+
+          <!-- Form tambah catatan -->
+          <form method="POST" action="/ba/<%= ba.ba_id %>/notes" class="mb-3">
+            <div class="mb-2">
+              <textarea id="note_text" name="note_text" class="form-control form-control-sm" rows="3"
+                placeholder="Tulis catatan..." required></textarea>
+            </div>
+            <div class="d-flex justify-content-end">
+              <button type="submit" class="btn btn-sm btn-primary">
+                <i class="bi bi-send"></i> Tambah Catatan
+              </button>
+            </div>
+          </form>
+
+          <hr class="my-2">
+
+          <!-- Daftar catatan -->
+          <% if (notes && notes.length> 0) { %>
+            <div style="max-height: 380px; overflow-y: auto;">
+              <% notes.forEach(note=> {
+                const canEdit = (note.user_id === user.id) || ['admin','manager'].includes(user.role);
+                %>
+                <div class="mb-2 p-2 rounded border" style="background-color: #f8f9fa; font-size: 0.85rem;">
+                  <!-- Header: nama + waktu + aksi -->
+                  <div class="d-flex justify-content-between align-items-start mb-1">
+                    <span class="fw-semibold text-dark">
+                      <i class="bi bi-person-circle"></i>
+                      <%= note.author_name %>
+                        <span class="badge bg-secondary ms-1" style="font-size: 0.65rem;">
+                          <%= note.author_role %>
+                        </span>
+                    </span>
+                    <div class="d-flex align-items-center gap-1">
+                      <span class="text-muted me-1" style="font-size: 0.72rem;">
+                        <%= new Date(note.created_at).toLocaleString('id-ID', { timeZone:'Asia/Jakarta', day:'2-digit',
+                          month:'short', year:'numeric', hour:'2-digit', minute:'2-digit' }) %> WIB
+                      </span>
+                      <% if (canEdit) { %>
+                        <!-- Tombol Edit -->
+                        <button type="button" class="btn btn-xs p-0 px-1 btn-outline-secondary"
+                          style="font-size:0.72rem; line-height:1.4;" title="Edit catatan" data-bs-toggle="modal"
+                          data-bs-target="#editNoteModal" data-note-id="<%= note.note_id %>"
+                          data-ba-id="<%= ba.ba_id %>" data-note-text="<%= note.note_text.replace(/\" /g, '&quot;' )
+                          %>">
+                          <i class="bi bi-pencil"></i>
+                        </button>
+                        <!-- Tombol Delete -->
+                        <form method="POST" action="/ba/<%= ba.ba_id %>/notes/<%= note.note_id %>/delete"
+                          class="d-inline" onsubmit="return confirm('Hapus catatan ini?')">
+                          <button type="submit" class="btn btn-xs p-0 px-1 btn-outline-danger"
+                            style="font-size:0.72rem; line-height:1.4;" title="Hapus catatan">
+                            <i class="bi bi-trash"></i>
+                          </button>
+                        </form>
+                        <% } %>
+                    </div>
+                  </div>
+                  <!-- Isi catatan -->
+                  <div style="color: #333;">
+                    <%= note.note_text %>
+                  </div>
+                </div>
+                <% }) %>
+            </div>
+            <% } else { %>
+              <p class="text-muted mb-0" style="font-size: 0.85rem;"><i class="bi bi-info-circle"></i> Belum ada
+                catatan.</p>
+              <% } %>
+
         </div>
       </div>
-      
-      <!-- Signature flow checklist -->
-      <div class="card">
-        <div class="card-header bg-light"><h6 class="mb-0"><i class="bi bi-pen"></i> Status Tanda Tangan</h6></div>
-        <div class="card-body">
-          <div class="row g-2">
-            <%
-              const sigs = [
-                { field:'staff_recover', label:'FAT (Staff Recover)', sig: ba.sig_staff_recover, by: ba.sig_staff_recover_name, at: ba.sig_staff_recover_at },
-                { field:'fat',           label:'Purchasing', sig: ba.sig_fat,     by: ba.sig_fat_name,     at: ba.sig_fat_at     },
-                { field:'admin',         label:'Manager Ops', sig: ba.sig_admin,   by: ba.sig_admin_name,   at: ba.sig_admin_at   }
-              ];
-            %>
-            <% sigs.forEach(sg => { %>
-              <div class="col-12">
-                <div class="border rounded p-2 d-flex justify-content-between align-items-center bg-light">
-                  <div>
-                    <strong style="font-size: 0.85rem;"><%= sg.label %></strong>
-                    <% if (sg.sig) { %>
-                      <div class="text-success" style="font-size: 0.75rem;"><i class="bi bi-check-circle-fill"></i> <%= sg.by %></div>
-                      <div class="text-muted" style="font-size: 0.7rem;"><%= formatDate(sg.at) %></div>
-                    <% } else { %>
-                      <div class="text-muted" style="font-size: 0.75rem;"><i class="bi bi-clock"></i> Belum ditandatangani</div>
-                    <% } %>
-                  </div>
-                  <% if (sg.sig) { %>
-                    <img src="<%= sg.sig %>" style="max-height: 35px; border: 1px solid #ddd; background-color: #fff; padding: 2px;">
-                  <% } %>
-                </div>
-              </div>
-            <% }) %>
-          </div>
+
+    </div>
+  </div>
+</div>
+
+<!-- Modal Edit Catatan -->
+<div class="modal fade" id="editNoteModal" tabindex="-1" aria-labelledby="editNoteModalLabel" aria-hidden="true">
+  <div class="modal-dialog modal-dialog-centered">
+    <div class="modal-content">
+      <form id="editNoteForm" method="POST" action="">
+        <div class="modal-header">
+          <h6 class="modal-title" id="editNoteModalLabel"><i class="bi bi-pencil-square"></i> Edit Catatan</h6>
+          <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Tutup"></button>
         </div>
+        <div class="modal-body">
+          <textarea id="editNoteText" name="note_text" class="form-control" rows="4" required></textarea>
+        </div>
+        <div class="modal-footer">
+          <button type="button" class="btn btn-sm btn-secondary" data-bs-dismiss="modal">Batal</button>
+          <button type="submit" class="btn btn-sm btn-primary"><i class="bi bi-save"></i> Simpan</button>
+        </div>
+      </form>
+    </div>
+  </div>
+</div>
+
+<!-- Modal Pilihan Format Print -->
+<div class="modal fade" id="printFormatModal" tabindex="-1" aria-labelledby="printFormatModalLabel" aria-hidden="true">
+  <div class="modal-dialog modal-dialog-centered" style="max-width: 420px;">
+    <div class="modal-content" style="border-radius: 12px; overflow: hidden;">
+      <div class="modal-header" style="background: linear-gradient(135deg, #107c41, #1a9e52); color: #fff; border-bottom: none;">
+        <h6 class="modal-title" id="printFormatModalLabel">
+          <i class="bi bi-printer-fill me-2"></i>Pilih Format Print
+        </h6>
+        <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal" aria-label="Tutup"></button>
+      </div>
+      <div class="modal-body p-4">
+        <p class="text-muted mb-3" style="font-size: 0.88rem;">
+          <i class="bi bi-info-circle me-1"></i>
+          Pilih orientasi halaman untuk menghindari data terpotong saat berganti halaman.
+        </p>
+        <div class="d-flex gap-3">
+          <!-- Portrait -->
+          <button id="btnPrintPortrait" onclick="doPrint('portrait')" class="btn btn-outline-secondary flex-fill py-3 d-flex flex-column align-items-center gap-2"
+            style="border-radius: 10px; border-width: 2px; transition: all 0.2s;">
+            <svg width="36" height="48" viewBox="0 0 36 48" fill="none" xmlns="http://www.w3.org/2000/svg">
+              <rect x="1" y="1" width="34" height="46" rx="3" fill="#f8f9fa" stroke="#6c757d" stroke-width="2"/>
+              <rect x="6" y="10" width="24" height="3" rx="1" fill="#adb5bd"/>
+              <rect x="6" y="17" width="24" height="3" rx="1" fill="#adb5bd"/>
+              <rect x="6" y="24" width="24" height="3" rx="1" fill="#adb5bd"/>
+              <rect x="6" y="31" width="16" height="3" rx="1" fill="#adb5bd"/>
+            </svg>
+            <span style="font-weight: 600; font-size: 0.9rem;">Portrait</span>
+            <span class="text-muted" style="font-size: 0.75rem;">A4 Tegak (210×297mm)</span>
+          </button>
+          <!-- Landscape -->
+          <button id="btnPrintLandscape" onclick="doPrint('landscape')" class="btn btn-outline-primary flex-fill py-3 d-flex flex-column align-items-center gap-2"
+            style="border-radius: 10px; border-width: 2px; transition: all 0.2s;">
+            <svg width="48" height="36" viewBox="0 0 48 36" fill="none" xmlns="http://www.w3.org/2000/svg">
+              <rect x="1" y="1" width="46" height="34" rx="3" fill="#e8f4fd" stroke="#0d6efd" stroke-width="2"/>
+              <rect x="8" y="8" width="32" height="3" rx="1" fill="#90c2f5"/>
+              <rect x="8" y="15" width="32" height="3" rx="1" fill="#90c2f5"/>
+              <rect x="8" y="22" width="20" height="3" rx="1" fill="#90c2f5"/>
+            </svg>
+            <span style="font-weight: 600; font-size: 0.9rem;">Landscape</span>
+            <span class="text-muted" style="font-size: 0.75rem;">A4 Horizontal (297×210mm)</span>
+          </button>
+        </div>
+        <div class="mt-3 p-2 rounded" style="background: #f0faf4; border: 1px solid #c3e6cb; font-size: 0.8rem; color: #155724;">
+          <i class="bi bi-lightbulb-fill me-1"></i>
+          <strong>Tips:</strong> Pilih <em>Landscape</em> jika tabel memiliki banyak kolom agar tidak terpotong.
+        </div>
+      </div>
+      <div class="modal-footer" style="border-top: 1px solid #f0f0f0;">
+        <button type="button" class="btn btn-sm btn-outline-secondary" data-bs-dismiss="modal">Batal</button>
       </div>
     </div>
   </div>
 </div>
+
+<!-- Dynamic print orientation style tag -->
+<style id="dynamicPrintStyle"></style>
+
+<script>
+  // Buka modal pilihan print
+  function openPrintModal() {
+    const modal = new bootstrap.Modal(document.getElementById('printFormatModal'));
+    modal.show();
+  }
+
+  // Lakukan print dengan orientasi yang dipilih
+  function doPrint(orientation) {
+    // Tutup modal
+    const modal = bootstrap.Modal.getInstance(document.getElementById('printFormatModal'));
+    if (modal) modal.hide();
+
+    // Inject dynamic @page style berdasarkan pilihan
+    const styleEl = document.getElementById('dynamicPrintStyle');
+    if (orientation === 'portrait') {
+      styleEl.textContent = `
+        @media print {
+          @page { size: A4 portrait; margin: 0.8cm; }
+        }
+      `;
+    } else {
+      styleEl.textContent = `
+        @media print {
+          @page { size: A4 landscape; margin: 0.8cm; }
+        }
+      `;
+    }
+
+    // Tunggu modal benar-benar tertutup sebelum print
+    setTimeout(() => {
+      window.print();
+      // Bersihkan style setelah print
+      setTimeout(() => { styleEl.textContent = ''; }, 500);
+    }, 400);
+  }
+
+  // Isi modal edit catatan saat dibuka
+  document.getElementById('editNoteModal').addEventListener('show.bs.modal', function (e) {
+    const btn = e.relatedTarget;
+    const noteId = btn.getAttribute('data-note-id');
+    const baId = btn.getAttribute('data-ba-id');
+    const text = btn.getAttribute('data-note-text');
+
+    document.getElementById('editNoteText').value = text.replace(/&quot;/g, '"');
+    document.getElementById('editNoteForm').action = `/ba/${baId}/notes/${noteId}/edit`;
+  });
+</script>

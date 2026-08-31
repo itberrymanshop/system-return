@@ -103,8 +103,8 @@ exports.index = async (req, res, next) => {
         COALESCE(SUM(current_status = 'Refurbish'), 0) AS refurbish_returns,
         COALESCE(SUM(current_status = 'Rekondisi'), 0) AS rekondisi_returns,
         COALESCE(SUM(current_status = 'Write_Off'), 0) AS write_off_returns,
-        COALESCE(SUM(current_status = 'Supplier_Return'), 0) AS supplier_returns
-      FROM return_items
+        COALESCE(SUM(current_status = 'Supplier Lokal'), 0) AS supplier_returns
+      FROM returns
       ${returnWhere}
     `, returnParams);
 
@@ -155,8 +155,7 @@ exports.index = async (req, res, next) => {
       ${returnWhereAnd}
     `, returnParams);
 
-    // SLA alerts (returns near or past SLA deadline grouped by SKU)
-    const slaAlerts = await slaService.getSLAAlertsBySKU();
+
 
     // Role-specific quick stats
     const role = req.session.userRole;
@@ -409,7 +408,6 @@ exports.index = async (req, res, next) => {
       recentReturns,
       statusData,
       aging,
-      slaAlerts,
       roleStats,
       movementStats,
       outboundPerformance,

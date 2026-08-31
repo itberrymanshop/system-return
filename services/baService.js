@@ -165,7 +165,20 @@ async function getBAList(filters = {}) {
       sql += ` AND COALESCE(stock_agg.${statusColumn}, legacy_agg.${statusColumn}, 0) = 1`;
     }
   }
-  if (filters.vendor_id) { sql += ' AND ba.vendor_id = ?'; params.push(parseInt(filters.vendor_id)); }
+  if (filters.vendor_id) {
+    let vendorIds = [];
+    if (Array.isArray(filters.vendor_id)) {
+      vendorIds = filters.vendor_id.map(v => parseInt(v)).filter(v => !isNaN(v));
+    } else if (typeof filters.vendor_id === 'string') {
+      vendorIds = filters.vendor_id.split(',').map(v => parseInt(v.trim())).filter(v => !isNaN(v));
+    } else if (typeof filters.vendor_id === 'number') {
+      vendorIds = [filters.vendor_id];
+    }
+    if (vendorIds.length > 0) {
+      sql += ' AND (ba.vendor_id IN (?) OR ba.ba_id IN (SELECT DISTINCT s_v.ba_id FROM inventory_stock s_v WHERE s_v.vendor_id IN (?)))';
+      params.push(vendorIds, vendorIds);
+    }
+  }
   if (filters.start_date) { sql += ' AND ba.created_at >= ?'; params.push(`${filters.start_date} 00:00:00`); }
   if (filters.end_date)   { sql += ' AND ba.created_at < DATE_ADD(?, INTERVAL 1 DAY)'; params.push(filters.end_date); }
   if (filters.search) {

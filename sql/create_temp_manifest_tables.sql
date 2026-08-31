@@ -33,6 +33,9 @@ CREATE TABLE IF NOT EXISTS temp_return_manifests (
     batas_waktu_pengiriman VARCHAR(100) DEFAULT NULL,
     waktu_cetak VARCHAR(100) DEFAULT NULL,
     mata_uang VARCHAR(50) DEFAULT NULL,
+    tgl DATE DEFAULT NULL,
+    kota VARCHAR(100) DEFAULT NULL,
+    expedisi VARCHAR(100) DEFAULT NULL,
     UNIQUE INDEX idx_temp_resi_pesanan (resi_number, no_pesanan),
     INDEX idx_temp_resi_number (resi_number),
     INDEX idx_temp_no_pesanan (no_pesanan),
@@ -54,6 +57,7 @@ CREATE TABLE IF NOT EXISTS temp_return_manifest_items (
     varian_product VARCHAR(100) DEFAULT NULL,
     nomor VARCHAR(50) DEFAULT NULL,
     rak VARCHAR(100) DEFAULT NULL,
+    kondisi VARCHAR(50) DEFAULT NULL,
     FOREIGN KEY (manifest_id) REFERENCES temp_return_manifests(manifest_id) ON DELETE CASCADE,
     INDEX idx_temp_manifest_id (manifest_id)
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;

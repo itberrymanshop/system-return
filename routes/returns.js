@@ -57,15 +57,24 @@ router.get('/pending',     requireLogin,  ctrl.pending);
 
 // Create & Upload Manifests
 router.get('/manifests',           requireLogin,  ctrl.manifestsList);
+router.post('/manifests/create',   requireLogin,  ctrl.createManifest);
 router.post('/manifests/upload',   requireLogin,  uploadExcel.single('manifest_file'), ctrl.handleUpload);
 router.get('/manifests/template',  requireLogin,  ctrl.downloadTemplate);
 router.get('/manifests/export',    requireLogin,  ctrl.exportManifests);
 router.post('/manifests/delete-all-pending', requireLogin, ctrl.deleteAllPendingManifests);
 router.get('/manifests/:id/items', requireLogin,  ctrl.getManifestItems);
-const canCheckManifestItem = requireRole(['admin', 'purchasing', 'sales']);
+const canCheckManifestItem = requireRole(['admin', 'manager', 'purchasing', 'sales', 'admin_retur', 'admin_sorting', 'staff_recover', 'warehouse', 'inspector']);
 router.post('/manifests/items/:itemId/toggle-check', canCheckManifestItem, ctrl.toggleManifestItemCheck);
 router.post('/manifests/:id/toggle-check', canCheckManifestItem, ctrl.toggleManifestCheck);
+router.post('/manifests/:id/toggle-pic-check', canCheckManifestItem, ctrl.toggleManifestPicCheck);
+router.post('/manifests/:id/update', requireLogin, ctrl.updateManifest);
 router.post('/manifests/:id/delete', requireLogin, ctrl.deleteManifest);
+
+// Banding MP Routes
+router.post('/manifests/banding/create',      requireLogin, ctrl.createBandingMP);
+router.post('/manifests/banding/:id/update',  requireLogin, ctrl.updateBandingMP);
+router.post('/manifests/banding/:id/delete',  requireLogin, ctrl.deleteBandingMP);
+router.post('/manifests/banding/:id/toggle-pic-check', canCheckManifestItem, ctrl.toggleBandingPicCheck);
 
 // Redirect old upload path
 router.get('/upload',              requireLogin,  (req, res) => res.redirect('/returns/manifests'));

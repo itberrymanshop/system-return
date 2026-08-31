@@ -102,6 +102,8 @@ exports.perbaikanQueue = async (req, res, next) => {
              ri.disposition,
              ri.return_category,
              ri.item_category,
+             ri.ikut,
+             ri.ikut_wo,
              ri.perbaikan_status,
              ri.inspected_at,
              r.return_id,

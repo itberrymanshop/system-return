@@ -59,7 +59,7 @@
             <th>Nama Barang</th>
             <th>Qty</th>
             <th>Status QC</th>
-            <th>Kategori Produk</th>
+            <th><%= type === 'write_off' ? 'Ikut' : 'Kategori Produk' %></th>
             <th>SLA</th>
             <th style="width: 80px;" class="text-center">
               <input type="checkbox" id="selectAllItems" class="form-check-input">
@@ -111,12 +111,22 @@
                 </span>
               </td>
               <td>
-                <% if (item.item_category) { %>
-                  <span class="badge bg-light text-dark border font-monospace" style="font-size: 0.75rem;">
-                    <%= item.item_category %>
-                  </span>
+                <% if (type === 'write_off') { %>
+                  <% if (item.ikut) { %>
+                    <span class="badge bg-light text-dark border font-monospace" style="font-size: 0.75rem;">
+                      <%= item.ikut %><%= item.ikut_wo ? ' (' + item.ikut_wo + ')' : '' %>
+                    </span>
+                  <% } else { %>
+                    <span class="text-muted">-</span>
+                  <% } %>
                 <% } else { %>
-                  <span class="text-muted">-</span>
+                  <% if (item.item_category) { %>
+                    <span class="badge bg-light text-dark border font-monospace" style="font-size: 0.75rem;">
+                      <%= item.item_category %>
+                    </span>
+                  <% } else { %>
+                    <span class="text-muted">-</span>
+                  <% } %>
                 <% } %>
               </td>
               <td>

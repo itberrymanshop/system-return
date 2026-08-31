@@ -2,12 +2,25 @@
 const baService = require('../services/baService');
 const reportService = require('../services/reportService');
 const db = require('../config/database');
-const XLSX          = require('xlsx');
+const XLSX = require('xlsx');
 
 // ─── List ─────────────────────────────────────────────────────────────────────
 exports.list = async (req, res, next) => {
   try {
-    const docs = await baService.getBAList(req.query);
+    let selectedVendorIds = [];
+    const vParam = req.query.vendor_id || req.query['vendor_id[]'] || req.query.vendor_ids;
+    if (vParam) {
+      selectedVendorIds = Array.isArray(vParam)
+        ? vParam.map(String)
+        : String(vParam).split(',').map(s => s.trim()).filter(Boolean);
+    }
+
+    const filters = {
+      ...req.query,
+      vendor_id: selectedVendorIds.length > 0 ? selectedVendorIds : undefined
+    };
+
+    const docs = await baService.getBAList(filters);
     const vendors = await baService.getVendors();
 
     // Determine selected BA
@@ -88,6 +101,7 @@ exports.list = async (req, res, next) => {
       title: 'Berita Acara',
       docs,
       vendors,
+      selectedVendorIds,
       filters: req.query,
       ba: selectedBa,
       items
@@ -113,7 +127,7 @@ exports.view = async (req, res, next) => {
       LEFT JOIN vendors v ON s.vendor_id = v.vendor_id
       LEFT JOIN master_barang mb ON ri.item_code COLLATE utf8mb4_unicode_ci = mb.kode_barang COLLATE utf8mb4_unicode_ci
       WHERE s.ba_id = ?
-      GROUP BY  ri.item_code, ri.item_name, ri.quantity, s.category, s.status,v.vendor_name, mb.harga_beli 
+      GROUP BY  ri.item_code, ri.item_name,  s.category, s.status,v.vendor_name, mb.harga_beli 
     `, [ba.ba_id]);
 
     if (stockItems && stockItems.length > 0) {
@@ -159,7 +173,99 @@ exports.view = async (req, res, next) => {
       }));
     }
 
-    res.render('ba/view', { title: `BA – ${ba.ba_number}`, ba, items });
+    // Fetch catatan / notes
+    const [notes] = await db.query(`
+      SELECT n.note_id, n.user_id, n.note_text, n.created_at, u.full_name AS author_name, u.role AS author_role
+      FROM ba_notes n
+      JOIN users u ON n.user_id = u.user_id
+      WHERE n.ba_id = ?
+      ORDER BY n.created_at DESC
+    `, [ba.ba_id]);
+
+    res.render('ba/view', { title: `BA – ${ba.ba_number}`, ba, items, notes });
+  } catch (err) { next(err); }
+};
+
+// ─── Add Note ────────────────────────────────────────────────────────────────
+exports.addNote = async (req, res, next) => {
+  try {
+    const baId = parseInt(req.params.id);
+    const { note_text } = req.body;
+
+    if (!note_text || !note_text.trim()) {
+      req.flash('error', 'Catatan tidak boleh kosong.');
+      return res.redirect(`/ba/${baId}`);
+    }
+
+    const userId = req.session.userId;
+
+    // Waktu sekarang dalam Asia/Jakarta (UTC+7)
+    const jakartaNow = new Date(Date.now() + 7 * 60 * 60 * 1000)
+      .toISOString().slice(0, 19).replace('T', ' ');
+
+    await db.query(
+      'INSERT INTO ba_notes (ba_id, user_id, note_text, created_at) VALUES (?, ?, ?, ?)',
+      [baId, userId, note_text.trim(), jakartaNow]
+    );
+
+    req.flash('success', 'Catatan berhasil ditambahkan.');
+    res.redirect(`/ba/${baId}`);
+  } catch (err) { next(err); }
+};
+
+// ─── Edit Note ────────────────────────────────────────────────────────────────
+exports.editNote = async (req, res, next) => {
+  try {
+    const baId = parseInt(req.params.id);
+    const noteId = parseInt(req.params.noteId);
+    const { note_text } = req.body;
+
+    if (!note_text || !note_text.trim()) {
+      req.flash('error', 'Catatan tidak boleh kosong.');
+      return res.redirect(`/ba/${baId}`);
+    }
+
+    // Validasi: hanya pemilik note atau admin/manager yang boleh edit
+    const [[note]] = await db.query('SELECT user_id FROM ba_notes WHERE note_id = ? AND ba_id = ?', [noteId, baId]);
+    if (!note) {
+      req.flash('error', 'Catatan tidak ditemukan.');
+      return res.redirect(`/ba/${baId}`);
+    }
+    const isOwner = note.user_id === req.session.userId;
+    const isAdmin = ['admin', 'manager'].includes(req.session.userRole);
+    if (!isOwner && !isAdmin) {
+      req.flash('error', 'Anda tidak memiliki akses untuk mengedit catatan ini.');
+      return res.redirect(`/ba/${baId}`);
+    }
+
+    await db.query('UPDATE ba_notes SET note_text = ? WHERE note_id = ?', [note_text.trim(), noteId]);
+    req.flash('success', 'Catatan berhasil diperbarui.');
+    res.redirect(`/ba/${baId}`);
+  } catch (err) { next(err); }
+};
+
+// ─── Delete Note ──────────────────────────────────────────────────────────────
+exports.deleteNote = async (req, res, next) => {
+  try {
+    const baId = parseInt(req.params.id);
+    const noteId = parseInt(req.params.noteId);
+
+    // Validasi: hanya pemilik note atau admin/manager yang boleh hapus
+    const [[note]] = await db.query('SELECT user_id FROM ba_notes WHERE note_id = ? AND ba_id = ?', [noteId, baId]);
+    if (!note) {
+      req.flash('error', 'Catatan tidak ditemukan.');
+      return res.redirect(`/ba/${baId}`);
+    }
+    const isOwner = note.user_id === req.session.userId;
+    const isAdmin = ['admin', 'manager'].includes(req.session.userRole);
+    if (!isOwner && !isAdmin) {
+      req.flash('error', 'Anda tidak memiliki akses untuk menghapus catatan ini.');
+      return res.redirect(`/ba/${baId}`);
+    }
+
+    await db.query('DELETE FROM ba_notes WHERE note_id = ?', [noteId]);
+    req.flash('success', 'Catatan berhasil dihapus.');
+    res.redirect(`/ba/${baId}`);
   } catch (err) { next(err); }
 };
 
@@ -407,15 +513,18 @@ exports.exportExcel = async (req, res, next) => {
     let items = [];
     const [stockItems] = await db.query(`
       SELECT 
-        ri.item_code AS sku, ri.item_name, ri.quantity, 
-        s.category AS disposition, s.status AS current_status,
-        v.vendor_name
+        ri.item_code AS sku, 
+        ri.item_name, 
+        ri.quantity, 
+        s.category AS disposition, 
+        s.status AS current_status,
+        v.vendor_name,
+        mb.satuan
       FROM inventory_stock s
       JOIN return_items ri ON s.item_id = ri.item_id
       LEFT JOIN vendors v ON s.vendor_id = v.vendor_id
       LEFT JOIN master_barang mb ON ri.item_code COLLATE utf8mb4_unicode_ci = mb.kode_barang COLLATE utf8mb4_unicode_ci
       WHERE s.ba_id = ?
-      GROUP BY  ri.item_code, ri.item_name, ri.quantity, s.category, s.status,v.vendor_name, mb.harga_beli 
     `, [ba.ba_id]);
 
     if (stockItems && stockItems.length > 0) {
@@ -424,10 +533,14 @@ exports.exportExcel = async (req, res, next) => {
       // Fallback logic
       let itemSql = `
         SELECT 
-          ri.item_code AS sku, ri.item_name, ri.quantity, ri.disposition, 
+          ri.item_code AS sku, 
+          ri.item_name, 
+          ri.quantity, 
+          ri.disposition, 
           ri.disposition AS category,
           r.current_status,
           v.vendor_name,
+          mb.satuan,
           mb.harga_beli AS harga_vendor,
           ri.total_price AS harga_final
         FROM return_items ri
@@ -453,6 +566,7 @@ exports.exportExcel = async (req, res, next) => {
         sku: it.sku,
         item_name: it.item_name,
         quantity: it.quantity,
+        satuan: it.satuan,
         disposition: it.disposition,
         current_status: it.current_status,
         vendor_name: it.vendor_name,
@@ -462,86 +576,35 @@ exports.exportExcel = async (req, res, next) => {
     }
 
     const data = [];
-    
-    // Row 1: title A-H (8 columns for proper alignment)
-    data.push(['BERITA ACARA RETUR FINAL', '', '', '', '', '', '', '']);
-    
-    // Row 2: headers
-    data.push(['', '', '', 'BERRYMAN', '', 'Approved by:', '', '']);
-    
-    // Row 3: Judul
-    data.push(['', '', '', 'Judul', ba.title || 'Berita acara retur Final', 'Manager Ops', 'Purchasing', 'FAT']);
-    
-    // Row 4: Periode
-    const months = ['Januari', 'Februari', 'Maret', 'April', 'Mei', 'Juni', 'Juli', 'Agustus', 'September', 'Oktober', 'November', 'Desember'];
-    const docDate = ba.created_at ? new Date(ba.created_at) : new Date();
-    const docPeriod = `${months[docDate.getMonth()]} ${docDate.getFullYear()}`;
-    data.push([
-      '', '', '', 
-      'Periode Dokumen', docPeriod, 
-      ba.sig_admin_name || 'Nama', 
-      ba.sig_fat_name || 'Nama',
-      ba.sig_staff_recover_name || 'Nama'
-    ]);
-    
-    // Row 5: Signature placeholders
-    data.push([
-      '', '', '', 
-      '', '', 
-      ba.sig_admin ? 'SIGNED' : '', 
-      ba.sig_fat ? 'SIGNED' : '',
-      ba.sig_staff_recover ? 'SIGNED' : ''
-    ]);
-    
-    // Row 6: Column headers (8 columns)
-    data.push(['No', 'SKU', 'Nama Produk', 'QTY', 'Kategori Retur', 'Keterangan', 'Vendor', '']);
-    
-    // Rows 7+: Items
-    items.forEach((item, idx) => {
-      const catMap = { rekondisi: 'Rekondisi', refurbish: 'Refurbish', write_off: 'Write off', return_to_supplier: 'Retur Supplier' };
+
+    // Header row matching the requested structure
+    data.push(['Nama Barang', 'Kode', 'Unit', 'Kuantitas']);
+
+    // Items data rows
+    items.forEach((item) => {
+      const unitVal = (item.satuan ? item.satuan.trim() : '') || 'PCS';
       data.push([
-        idx + 1,
-        item.sku || '-',
         item.item_name || '',
-        item.quantity || 0,
-        catMap[item.disposition] || item.disposition || '-',
-        '',
-        item.vendor_name || '-',
-        ''
+        item.sku || '',
+        unitVal.toUpperCase(),
+        Number(item.quantity) || 0
       ]);
     });
-    
-    // Add empty rows up to minimum 10 item rows
-    const minRows = 10;
-    const emptyRowsCount = Math.max(0, minRows - items.length);
-    for (let i = 0; i < emptyRowsCount; i++) {
-      data.push(['', '', '', '', '', '', '', '']);
-    }
 
     const ws = XLSX.utils.aoa_to_sheet(data);
-    ws['!merges'] = [
-      { s: { r: 0, c: 0 }, e: { r: 0, c: 7 } }, // Row 1 title A-H (8 columns)
-      { s: { r: 1, c: 0 }, e: { r: 4, c: 2 } }, // Row 2-5 black box A-C
-      { s: { r: 1, c: 3 }, e: { r: 1, c: 4 } }, // Row 2 BERRYMAN header D-E
-      { s: { r: 1, c: 5 }, e: { r: 1, c: 7 } }  // Row 2 Approved by header F-H
-    ];
 
     ws['!cols'] = [
-      { wch: 6 },  // No
-      { wch: 15 }, // SKU
-      { wch: 30 }, // Nama Produk
-      { wch: 8 },  // QTY
-      { wch: 18 }, // Kategori Retur
-      { wch: 30 }, // Keterangan
-      { wch: 20 }, // Vendor
-      { wch: 5 }   // Empty column for spacing
+      { wch: 35 }, // Nama Barang
+      { wch: 20 }, // Kode
+      { wch: 10 }, // Unit
+      { wch: 15 }  // Kuantitas
     ];
 
     const wb = XLSX.utils.book_new();
     XLSX.utils.book_append_sheet(wb, ws, 'Berita Acara');
 
     const buffer = XLSX.write(wb, { type: 'buffer', bookType: 'xlsx' });
-    
+
     const safeFilename = ba.ba_number.replace(/\//g, '_');
     res.setHeader('Content-Disposition', `attachment; filename=BA_Export_${safeFilename}.xlsx`);
     res.setHeader('Content-Type', 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet');
@@ -553,7 +616,7 @@ exports.exportExcel = async (req, res, next) => {
 exports.exportAll = async (req, res, next) => {
   try {
     const docs = await baService.getBAList(req.query);
-    
+
     const baIds = docs.map(d => d.ba_id);
     let items = [];
     if (baIds.length > 0) {
@@ -602,36 +665,36 @@ exports.exportAll = async (req, res, next) => {
     }
 
     const data = [];
-    
+
     // Row 1: Merged Title A1 to I1 (9 columns)
     data.push(['BERITA ACARA RETUR FINAL - REKAPITULASI', '', '', '', '', '', '', '', '']);
-    
+
     // Row 2: Headers
     data.push(['', '', '', '', 'BERRYMAN', '', 'Approved by:', '', '']);
-    
+
     // Row 3: Judul
     data.push(['', '', '', '', 'Judul', 'Rekapitulasi Berita Acara', 'Manager Ops', 'Purchasing', 'FAT']);
-    
+
     // Row 4: Periode
     const months = ['Januari', 'Februari', 'Maret', 'April', 'Mei', 'Juni', 'Juli', 'Agustus', 'September', 'Oktober', 'November', 'Desember'];
     const docDate = new Date();
     const docPeriod = `${months[docDate.getMonth()]} ${docDate.getFullYear()}`;
     data.push([
-      '', '', '', '', 
-      'Periode Dokumen', docPeriod, 
+      '', '', '', '',
+      'Periode Dokumen', docPeriod,
       '-', '-', '-'
     ]);
-    
+
     // Row 5: Signature status
     data.push([
-      '', '', '', '', 
-      '', '', 
+      '', '', '', '',
+      '', '',
       '', '', ''
     ]);
-    
+
     // Row 6: Column headers (9 columns)
     data.push(['No', 'Nomor BA', 'SKU', 'Nama Produk', 'QTY', 'Kategori Retur', 'Keterangan', 'Vendor', '']);
-    
+
     // Rows 7+: Items list
     items.forEach((item, idx) => {
       const catMap = { rekondisi: 'Rekondisi', refurbish: 'Refurbish', write_off: 'Write off', return_to_supplier: 'Retur Supplier' };
@@ -647,7 +710,7 @@ exports.exportAll = async (req, res, next) => {
         ''
       ]);
     });
-    
+
     // Add empty rows up to minimum 10 item rows
     const minRows = 10;
     const emptyRowsCount = Math.max(0, minRows - items.length);
@@ -679,8 +742,141 @@ exports.exportAll = async (req, res, next) => {
     XLSX.utils.book_append_sheet(wb, ws, 'Rekapitulasi Berita Acara');
 
     const buffer = XLSX.write(wb, { type: 'buffer', bookType: 'xlsx' });
-    
+
     res.setHeader('Content-Disposition', `attachment; filename=BA_Rekap_Data_Export_${Date.now()}.xlsx`);
+    res.setHeader('Content-Type', 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet');
+    res.send(buffer);
+  } catch (err) { next(err); }
+};
+
+// ─── Export Supplier Lokal ───────────────────────────────────────────────────
+exports.exportSupplierLokal = async (req, res, next) => {
+  try {
+    let baIds = [];
+    if (req.query.ba_ids) {
+      if (Array.isArray(req.query.ba_ids)) {
+        baIds = req.query.ba_ids.map(id => parseInt(id)).filter(id => !isNaN(id));
+      } else {
+        baIds = String(req.query.ba_ids).split(',').map(id => parseInt(id.trim())).filter(id => !isNaN(id));
+      }
+    }
+
+    let docs = [];
+    if (baIds.length > 0) {
+      const [rows] = await db.query(`
+        SELECT ba.*, v.vendor_name 
+        FROM berita_acara ba 
+        LEFT JOIN vendors v ON ba.vendor_id = v.vendor_id 
+        WHERE ba.ba_id IN (?)
+      `, [baIds]);
+      docs = rows;
+    } else {
+      let selectedVendorIds = [];
+      const vParam = req.query.vendor_id || req.query['vendor_id[]'] || req.query.vendor_ids;
+      if (vParam) {
+        selectedVendorIds = Array.isArray(vParam)
+          ? vParam.map(String)
+          : String(vParam).split(',').map(s => s.trim()).filter(Boolean);
+      }
+
+      const queryFilters = {
+        ...req.query,
+        status: 'return_to_supplier',
+        vendor_id: selectedVendorIds.length > 0 ? selectedVendorIds : undefined
+      };
+      docs = await baService.getBAList(queryFilters);
+      baIds = docs.map(d => d.ba_id);
+    }
+
+    let items = [];
+    if (baIds.length > 0) {
+      // 1. Fetch from inventory_stock
+      const [stockItems] = await db.query(`
+        SELECT 
+          ri.item_code AS sku, 
+          ri.item_name, 
+          ri.quantity, 
+          s.category AS disposition, 
+          COALESCE(v.vendor_name, v_ba.vendor_name, v_ri.vendor_name, '-') AS vendor_name,
+          mb.satuan,
+          ba.ba_number,
+          ba.ba_id
+        FROM inventory_stock s
+        JOIN return_items ri ON s.item_id = ri.item_id
+        JOIN berita_acara ba ON s.ba_id = ba.ba_id
+        LEFT JOIN vendors v ON s.vendor_id = v.vendor_id
+        LEFT JOIN vendors v_ba ON ba.vendor_id = v_ba.vendor_id
+        LEFT JOIN vendors v_ri ON ri.vendor_id = v_ri.vendor_id
+        LEFT JOIN master_barang mb ON ri.item_code COLLATE utf8mb4_unicode_ci = mb.kode_barang COLLATE utf8mb4_unicode_ci
+        WHERE s.ba_id IN (?) AND (s.category = 'return_to_supplier' OR ba.ba_type = 'retur_supplier')
+        ORDER BY ba.ba_id DESC, ri.item_name ASC
+      `, [baIds]);
+      items = stockItems;
+
+      // 2. Fetch fallback for legacy BAs if any baIds were not present in inventory_stock
+      const foundBaIds = new Set(items.map(it => it.ba_id));
+      const missingBaIds = baIds.filter(id => !foundBaIds.has(id));
+      if (missingBaIds.length > 0) {
+        const [oldItems] = await db.query(`
+          SELECT 
+            ri.item_code AS sku, 
+            ri.item_name, 
+            ri.quantity, 
+            ri.disposition, 
+            COALESCE(v.vendor_name, v_ba.vendor_name, v_ri.vendor_name, '-') AS vendor_name,
+            mb.satuan,
+            ba.ba_number,
+            ba.ba_id
+          FROM return_items ri
+          JOIN berita_acara ba ON ri.return_id = ba.return_id
+          LEFT JOIN vendors v ON ri.vendor_id = v.vendor_id
+          LEFT JOIN vendors v_ba ON ba.vendor_id = v_ba.vendor_id
+          LEFT JOIN vendors v_ri ON ri.vendor_id = v_ri.vendor_id
+          LEFT JOIN master_barang mb ON ri.item_code COLLATE utf8mb4_unicode_ci = mb.kode_barang COLLATE utf8mb4_unicode_ci
+          WHERE ba.ba_id IN (?) AND (ri.disposition = 'return_to_supplier' OR ba.ba_type = 'retur_supplier')
+          ORDER BY ba.ba_id DESC, ri.item_name ASC
+        `, [missingBaIds]);
+        items = items.concat(oldItems);
+      }
+    }
+
+    const data = [];
+
+    // Header row matching the requested structure and image
+    data.push(['Nama Barang', 'Kode', 'Unit', 'Kuantitas', 'Supplier', 'Nomer BA', 'Berat Koli']);
+
+    // Items data rows
+    items.forEach((item) => {
+      const unitVal = (item.satuan ? item.satuan.trim() : '') || 'PCS';
+      data.push([
+        item.item_name || '',
+        item.sku || '',
+        unitVal.toUpperCase(),
+        Number(item.quantity) || 0,
+        item.vendor_name || '',
+        item.ba_number || '',
+        '' // Berat Koli is left empty
+      ]);
+    });
+
+    const ws = XLSX.utils.aoa_to_sheet(data);
+
+    ws['!cols'] = [
+      { wch: 45 }, // Nama Barang
+      { wch: 15 }, // Kode
+      { wch: 10 }, // Unit
+      { wch: 12 }, // Kuantitas
+      { wch: 25 }, // Supplier
+      { wch: 25 }, // Nomer BA
+      { wch: 15 }  // Berat Koli
+    ];
+
+    const wb = XLSX.utils.book_new();
+    XLSX.utils.book_append_sheet(wb, ws, 'Supplier Lokal');
+
+    const buffer = XLSX.write(wb, { type: 'buffer', bookType: 'xlsx' });
+
+    res.setHeader('Content-Disposition', `attachment; filename=BA_Supplier_Lokal_Export_${Date.now()}.xlsx`);
     res.setHeader('Content-Type', 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet');
     res.send(buffer);
   } catch (err) { next(err); }

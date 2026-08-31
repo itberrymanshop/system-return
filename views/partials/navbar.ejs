@@ -182,67 +182,67 @@
                                   </li>
                                   <% } %>
 
-                                    <%# ── Master Data ─────────────────────────────────────────────────── %>
-                                      <% if (canAccess('master_barang') || canAccess('master_expedisi') ||
-                                        canAccess('master_supplier') || canAccess('paket_terkirim')) { %>
+                                    <%# ── Berita Acara ────────────────────────────────────────────────── %>
+                                      <% if (canAccess('ba')) { %>
                                         <li class="nav-item">
                                           <a class="sidebar-link sidebar-dropdown-toggle collapsed"
-                                            data-bs-toggle="collapse" href="#navMaster" role="button">
-                                            <i class="bi bi-database"></i> <span>
-                                              <%= __('Master Data') %>
+                                            data-bs-toggle="collapse" href="#navBA" role="button">
+                                            <i class="bi bi-file-earmark-text"></i> <span>
+                                              <%= __('Berita Acara') %>
                                             </span>
                                             <i class="bi bi-chevron-down sidebar-chevron"></i>
                                           </a>
-                                          <div class="collapse" id="navMaster">
+                                          <div class="collapse" id="navBA">
                                             <ul class="sidebar-submenu">
-                                              <% if (canAccess('master_barang')) { %>
-                                                <li><a href="/master-barang"><i class="bi bi-box-seam-fill"></i>
-                                                    <%= __('Master Barang') %>
-                                                  </a></li>
-                                                <% } %>
-                                                  <% if (canAccess('master_expedisi')) { %>
-                                                    <li><a href="/master-expedisi"><i class="bi bi-truck"></i>
-                                                        <%= __('Master Expedisi') %>
-                                                      </a></li>
-                                                    <% } %>
-                                                      <% if (canAccess('master_supplier')) { %>
-                                                        <li><a href="/master-supplier"><i class="bi bi-building"></i>
-                                                            <%= __('Master Supplier') %>
-                                                          </a></li>
-                                                        <% } %>
-                                                          <% if (canAccess('paket_terkirim')) { %>
-                                                            <li><a href="/master-paket-terkirim"><i
-                                                                  class="bi bi-box-arrow-up"></i>
-                                                                <%= __('Master Paket Terkirim') %>
-                                                              </a></li>
-                                                            <% } %>
+                                              <li><a href="/ba"><i class="bi bi-list-ul"></i>
+                                                  <%= __('Semua BA') %>
+                                                </a></li>
+                                              <!-- <li><a href="/ba/vendors"><i class="bi bi-building"></i>
+                                                  <%= __('Manajemen Vendor') %>
+                                                </a></li> -->
                                             </ul>
                                           </div>
                                         </li>
                                         <% } %>
 
-                                          <%# ── Berita Acara ────────────────────────────────────────────────── %>
-                                            <% if (canAccess('ba')) { %>
-                                              <li class="nav-item">
-                                                <a class="sidebar-link sidebar-dropdown-toggle collapsed"
-                                                  data-bs-toggle="collapse" href="#navBA" role="button">
-                                                  <i class="bi bi-file-earmark-text"></i> <span>
-                                                    <%= __('Berita Acara') %>
-                                                  </span>
-                                                  <i class="bi bi-chevron-down sidebar-chevron"></i>
-                                                </a>
-                                                <div class="collapse" id="navBA">
-                                                  <ul class="sidebar-submenu">
-                                                    <li><a href="/ba"><i class="bi bi-list-ul"></i>
-                                                        <%= __('Semua BA') %>
-                                                      </a></li>
-                                                    <!-- <li><a href="/ba/vendors"><i class="bi bi-building"></i>
-                                                        <%= __('Manajemen Vendor') %>
-                                                      </a></li> -->
-                                                  </ul>
-                                                </div>
-                                              </li>
-                                              <% } %>
+                                      <%# ── Master Data ─────────────────────────────────────────────────── %>
+                                        <% if (canAccess('master_barang') || canAccess('master_expedisi') ||
+                                          canAccess('master_supplier') || canAccess('paket_terkirim')) { %>
+                                          <li class="nav-item">
+                                            <a class="sidebar-link sidebar-dropdown-toggle collapsed"
+                                              data-bs-toggle="collapse" href="#navMaster" role="button">
+                                              <i class="bi bi-database"></i> <span>
+                                                <%= __('Master Data') %>
+                                              </span>
+                                              <i class="bi bi-chevron-down sidebar-chevron"></i>
+                                            </a>
+                                            <div class="collapse" id="navMaster">
+                                              <ul class="sidebar-submenu">
+                                                <% if (canAccess('master_barang')) { %>
+                                                  <li><a href="/master-barang"><i class="bi bi-box-seam-fill"></i>
+                                                      <%= __('Master Barang') %>
+                                                    </a></li>
+                                                  <% } %>
+                                                    <% if (canAccess('master_expedisi')) { %>
+                                                      <li><a href="/master-expedisi"><i class="bi bi-truck"></i>
+                                                          <%= __('Master Expedisi') %>
+                                                        </a></li>
+                                                      <% } %>
+                                                        <% if (canAccess('master_supplier')) { %>
+                                                          <li><a href="/master-supplier"><i class="bi bi-building"></i>
+                                                              <%= __('Master Supplier') %>
+                                                            </a></li>
+                                                        <% } %>
+                                                            <% if (canAccess('paket_terkirim')) { %>
+                                                              <li><a href="/master-paket-terkirim"><i
+                                                                    class="bi bi-box-arrow-up"></i>
+                                                                  <%= __('Master Paket Terkirim') %>
+                                                                </a></li>
+                                                              <% } %>
+                                              </ul>
+                                            </div>
+                                          </li>
+                                          <% } %>
 
                                                 <%# ── Approvals ───────────────────────────────────────────────────────
                                                   %>

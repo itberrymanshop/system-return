@@ -1,3 +1,40 @@
+<style>
+  .table-responsive {
+    overflow-x: auto;
+    -webkit-overflow-scrolling: touch;
+  }
+  .table-sticky-queue th:first-child,
+  .table-sticky-queue td:first-child {
+    position: sticky;
+    left: 0;
+    z-index: 2;
+    background-color: #ffffff;
+    width: 48px;
+    min-width: 48px;
+    max-width: 48px;
+    text-align: center;
+    box-shadow: inset -1px 0 0 #dee2e6, 2px 0 6px rgba(0, 0, 0, 0.06);
+  }
+  .table-sticky-queue thead th:first-child {
+    z-index: 3;
+    background-color: #f8f9fa;
+  }
+  .table-sticky-queue tbody tr.table-danger td:first-child {
+    background-color: #f8d7da;
+  }
+  .table-sticky-queue tbody tr:hover td:first-child {
+    background-color: #f2f2f2;
+  }
+  .table-sticky-queue tbody tr.table-danger:hover td:first-child {
+    background-color: #f1b0b7;
+  }
+  .table-sticky-queue th,
+  .table-sticky-queue td {
+    white-space: nowrap;
+    vertical-align: middle;
+  }
+</style>
+
 <div class="container-fluid mt-5 pt-4">
   <div class="row mb-3">
     <div class="col">
@@ -13,165 +50,176 @@
   </div>
 
   <%# SLA Alerts %>
-  <% if (slaAlerts.length> 0) { %>
-    <div class="alert alert-danger mb-3">
-      <i class="bi bi-exclamation-triangle-fill"></i>
-      <strong>
-        <%= slaAlerts.length %> return
-      </strong> mendekati atau melewati batas SLA.
-    </div>
-  <% } %>
+    <% if (slaAlerts.length> 0) { %>
+      <div class="alert alert-danger mb-3">
+        <i class="bi bi-exclamation-triangle-fill"></i>
+        <strong>
+          <%= slaAlerts.length %> return
+        </strong> mendekati atau melewati batas SLA.
+      </div>
+      <% } %>
 
-  <form id="bulkSortForm" method="POST" action="/sorting/bulk">
-    <!-- Bulk Action Card -->
-    <div id="bulkActionCard" class="card mb-3 border-primary d-none">
-      <div class="card-header bg-primary text-white">
-        <h6 class="mb-0"><i class="bi bi-play-circle-fill"></i> Proses Sorting SKU Terpilih</h6>
-      </div>
-      <div class="card-body">
-        <div class="row g-3 align-items-end">
-          <div class="col-md-3">
-            <label class="form-label fw-bold small">Status QC / Disposition <span
-                class="text-danger">*</span></label>
-            <select class="form-select form-select-sm" id="bulkDisposition" name="disposition" required>
-              <option value="">-- Pilih Status QC --</option>
-              <option value="rekondisi">Rekondisi</option>
-              <option value="refurbish">Refurbish</option>
-              <option value="write_off">Write-Off</option>
-              <option value="return_to_supplier">Supplier Lokal</option>
-            </select>
-          </div>
-          <div class="col-md-3" id="bulkVendorCol" style="display: none;">
-            <label class="form-label fw-bold small">Supplier <span class="text-danger">*</span></label>
-            <select class="form-select form-select-sm" id="bulkVendorId" name="vendor_id">
-              <option value="">-- Pilih Supplier --</option>
-              <% vendors.forEach(v => { %>
-                <option value="<%= v.vendor_id %>"><%= v.vendor_name %></option>
-              <% }) %>
-            </select>
-          </div>
-          <div class="col-md-3">
-            <label class="form-label fw-bold small">Lokasi Fisik (Rak / Bin)</label>
-            <input type="text" class="form-control form-control-sm" name="physical_location"
-              placeholder="Contoh: RAK-A1">
-          </div>
-          <div class="col-md-3">
-            <button type="submit" class="btn btn-primary btn-sm w-100">
-              <i class="bi bi-check-circle"></i> Proses Sorting (<span id="selectedCount">0</span> SKU)
-            </button>
-          </div>
-        </div>
-      </div>
-    </div>
-
-    <div class="card">
-      <div class="card-header d-flex justify-content-between align-items-center">
-        <h6 class="mb-0"><i class="bi bi-list-check"></i> Daftar Antrian</h6>
-        <span class="badge bg-secondary">
-          <%= items.length %> item
-        </span>
-      </div>
-      <div class="table-responsive">
-        <table class="table table-hover datatable mb-0">
-          <thead class="table-light">
-            <tr>
-              <th style="width: 40px;"><input type="checkbox" id="selectAll"></th>
-              <th>#</th>
-              <th>Return #</th>
-              <th>Tgl Masuk</th>
-              <th>SKU</th>
-              <th>Nama Barang</th>
-              <th>Qty</th>
-              <th>Kondisi</th>
-              <th>Kategori Produk</th>
-              <th>Status QC</th>
-              <th>SLA</th>
-              <th>Aksi</th>
-            </tr>
-          </thead>
-          <tbody>
-            <% if (items.length===0) { %>
-              <tr>
-                <td colspan="12" class="text-center text-muted py-4">Antrian kosong</td>
-              </tr>
-            <% } %>
-            <% items.forEach((item, i)=> { %>
-              <tr class="<%= item.slaAlert ? 'table-danger' : '' %>">
-                <td>
-                  <input type="checkbox" name="item_ids[]" value="<%= item.item_id %>"
-                    class="item-checkbox">
-                </td>
-                <td>
-                  <%= i + 1 %>
-                </td>
-                <td>
-                  <% if (item.resi_number) { %>
-                    <small class="text-muted"><i class="bi bi-truck"></i>
-                      <%= item.resi_number %>
-                    </small>
-                  <% } else { %>
-                    <span class="text-muted">-</span>
-                  <% } %>
-                </td>
-                <td>
-                  <small>
-                    <%= formatDate(item.return_date) %>
-                  </small>
-                  <% if (item.inbound_date) { %>
-                    <br><small class="text-success"><i class="bi bi-check-circle"></i> Inbound: <%=
-                        formatDate(item.inbound_date) %></small>
-                  <% } %>
-                </td>
-                <td><a href="/sorting/<%= item.return_id %>" class="fw-bold text-decoration-none"><code><%= item.sku %></code></a></td>
-                <td><strong>
-                    <%= item.item_name %>
-                  </strong></td>
-                <td>
-                  <%= item.quantity %>
-                </td>
-                <td class="text-capitalize">
-                  <%= formatCategory(item.return_category) %>
-                </td>
-                <td>
-                  <select class="form-select form-select-sm row-category-select"
-                    name="category_<%= item.item_id %>" disabled>
-                    <option value="">-- Pilih --</option>
-                    <option value="Elektronik" <%=item.item_category==='Elektronik' ? 'selected' : '' %>
-                      >Elektronik</option>
-                    <option value="Non Elektronik" <%=item.item_category==='Non Elektronik' ? 'selected'
-                      : '' %>>Non Elektronik</option>
+        <form id="bulkSortForm" method="POST" action="/sorting/bulk">
+          <!-- Bulk Action Card -->
+          <div id="bulkActionCard" class="card mb-3 border-primary d-none">
+            <div class="card-header bg-primary text-white">
+              <h6 class="mb-0"><i class="bi bi-play-circle-fill"></i> Proses Sorting SKU Terpilih</h6>
+            </div>
+            <div class="card-body">
+              <div class="row g-3 align-items-end">
+                <div class="col-md-3">
+                  <label class="form-label fw-bold small">Status QC / Disposition <span
+                      class="text-danger">*</span></label>
+                  <select class="form-select form-select-sm" id="bulkDisposition" name="disposition" required>
+                    <option value="">-- Pilih Status QC --</option>
+                    <option value="rekondisi">Rekondisi</option>
+                    <option value="refurbish">Refurbish</option>
+                    <option value="write_off">Write-Off</option>
+                    <option value="return_to_supplier">Supplier Lokal</option>
                   </select>
-                </td>
-                <td>
-                  <span
-                    class="badge bg-<%= item.disposition === 'pending' ? 'warning' : 'success' %> text-capitalize">
-                    <%= item.disposition %>
-                  </span>
-                </td>
-                <td>
-                  <% if (item.sla_deadline) { %>
-                    <span class="badge bg-<%= item.slaInfo.color %> text-nowrap">
-                      <i class="bi bi-clock"></i>
-                      <%= item.slaInfo.label %>
-                    </span>
-                    <br><small class="text-muted">
-                      <%= formatDate(item.sla_deadline) %>
-                    </small>
-                  <% } else { %><span class="text-muted">-</span>
-                  <% } %>
-                </td>
-                <td>
-                  <button type="button" class="btn btn-sm btn-outline-primary text-nowrap single-process-btn" data-item-id="<%= item.item_id %>">
-                    <i class="bi bi-arrow-right-circle"></i> Proses
+                </div>
+                <div class="col-md-3" id="bulkVendorCol" style="display: none;">
+                  <label class="form-label fw-bold small">Supplier <span class="text-danger">*</span></label>
+                  <select class="form-select form-select-sm" id="bulkVendorId" name="vendor_id">
+                    <option value="">-- Cari & Pilih Supplier --</option>
+                    <% vendors.forEach(v=> { %>
+                      <option value="<%= v.vendor_id %>">
+                        <%= v.vendor_name %>
+                      </option>
+                      <% }) %>
+                  </select>
+                </div>
+                <div class="col-md-3">
+                  <label class="form-label fw-bold small">Lokasi Fisik (Rak / Bin)</label>
+                  <input type="text" class="form-control form-control-sm" name="physical_location"
+                    placeholder="Contoh: RAK-A1">
+                </div>
+                <div class="col-md-3">
+                  <button type="submit" class="btn btn-primary btn-sm w-100">
+                    <i class="bi bi-check-circle"></i> Proses Sorting (<span id="selectedCount">0</span> SKU)
                   </button>
-                </td>
-              </tr>
-            <% }) %>
-          </tbody>
-        </table>
-      </div>
-    </div>
-  </form>
+                </div>
+              </div>
+            </div>
+          </div>
+
+          <div class="card">
+            <div class="card-header d-flex justify-content-between align-items-center">
+              <h6 class="mb-0"><i class="bi bi-list-check"></i> Daftar Antrian</h6>
+              <span class="badge bg-secondary">
+                <%= items.length %> item
+              </span>
+            </div>
+            <div class="table-responsive">
+              <table class="table table-hover table-sticky-queue mb-0" data-order='[[1, "asc"]]'>
+                <thead class="table-light">
+                  <tr>
+                    <th style="width: 40px;"><input type="checkbox" id="selectAll"></th>
+                    <th>#</th>
+                    <th>Tgl Masuk</th>
+                    <th>SKU</th>
+                    <th>Nama Barang</th>
+                    <th>Qty</th>
+                    <th>Kondisi</th>
+                    <th>Kategori</th>
+                    <th>Ikut WO</th>
+                    <th>Status QC</th>
+                    <th>SLA</th>
+                    <th>Aksi</th>
+                  </tr>
+                </thead>
+                <tbody>
+                  <% items.forEach((item, i)=> { %>
+                        <tr class="<%= item.slaAlert ? 'table-danger' : '' %>">
+                          <td>
+                            <input type="checkbox" name="item_ids[]" value="<%= item.item_id %>" class="item-checkbox">
+                          </td>
+                          <td>
+                            <%= i + 1 %>
+                          </td>
+                          <td>
+                            <small>
+                              <%= formatDate(item.return_date) %>
+                            </small>
+                            <% if (item.inbound_date) { %>
+                              <br><small class="text-success"><i class="bi bi-check-circle"></i> Inbound: <%=
+                                  formatDate(item.inbound_date) %></small>
+                              <% } %>
+                          </td>
+                          <td><a href="/sorting/<%= item.return_id %>"
+                              class="fw-bold text-decoration-none"><code><%= item.sku %></code></a></td>
+                          <td><strong>
+                              <%= item.item_name %>
+                            </strong></td>
+                          <td>
+                            <%= item.quantity %>
+                          </td>
+                          <td class="text-capitalize">
+                            <%= formatCategory(item.return_category) %>
+                          </td>
+                          <td>
+                            <select class="form-select form-select-sm row-category-select"
+                              name="category_<%= item.item_id %>" disabled style="display: none;">
+                              <option value="">-- Pilih Kategori --</option>
+                              <option value="Elektronik" <%=item.item_category==='Elektronik' ? 'selected' : '' %>
+                                >Elektronik</option>
+                              <option value="Non Elektronik" <%=item.item_category==='Non Elektronik' ? 'selected' : ''
+                                %>>Non Elektronik</option>
+                            </select>
+                            <select class="form-select form-select-sm row-ikut-select" name="ikut_<%= item.item_id %>"
+                              disabled style="display: none;">
+                              <option value="">-- Pilih Kategori --</option>
+                              <option value="Besi" <%=item.ikut==='Besi' ? 'selected' : '' %>>Besi</option>
+                              <option value="Plastik" <%=item.ikut==='Plastik' ? 'selected' : '' %>>Plastik</option>
+                              <option value="Kaca" <%=item.ikut==='Kaca' ? 'selected' : '' %>>Kaca</option>
+                              <option value="Kain" <%=item.ikut==='Kain' ? 'selected' : '' %>>Kain</option>
+                            </select>
+                            <span class="text-muted row-placeholder-text">
+                              <%= item.item_category || item.ikut || '-' %>
+                            </span>
+                          </td>
+                          <td>
+                            <select class="form-select form-select-sm row-ikut-wo-select" name="ikut_wo_<%= item.item_id %>"
+                              disabled style="display: none;">
+                              <option value="">-- Pilih Ikut WO --</option>
+                              <option value="Ikut WO Rosok" <%=item.ikut_wo==='Ikut WO Rosok' ? 'selected' : '' %>>Ikut WO Rosok</option>
+                              <option value="Ikut WO Tri J" <%=item.ikut_wo==='Ikut WO Tri J' ? 'selected' : '' %>>Ikut WO Tri J</option>
+                            </select>
+                            <span class="text-muted row-ikut-wo-placeholder">
+                              <%= item.ikut_wo || '-' %>
+                            </span>
+                          </td>
+                          <td>
+                            <span
+                              class="badge bg-<%= item.disposition === 'pending' ? 'warning' : 'success' %> text-capitalize">
+                              <%= item.disposition %>
+                            </span>
+                          </td>
+                          <td>
+                            <% if (item.sla_deadline) { %>
+                              <span class="badge bg-<%= item.slaInfo.color %> text-nowrap">
+                                <i class="bi bi-clock"></i>
+                                <%= item.slaInfo.label %>
+                              </span>
+                              <br><small class="text-muted">
+                                <%= formatDate(item.sla_deadline) %>
+                              </small>
+                              <% } else { %><span class="text-muted">-</span>
+                                <% } %>
+                          </td>
+                          <td>
+                            <button type="button" class="btn btn-sm btn-outline-primary text-nowrap single-process-btn"
+                              data-item-id="<%= item.item_id %>">
+                              <i class="bi bi-arrow-right-circle"></i> Proses
+                            </button>
+                          </td>
+                        </tr>
+                        <% }) %>
+                </tbody>
+              </table>
+            </div>
+          </div>
+        </form>
 </div>
 
 <script>
@@ -180,6 +228,45 @@
     const bulkCard = document.getElementById('bulkActionCard');
     const selectedCountSpan = document.getElementById('selectedCount');
     const bulkDisposition = document.getElementById('bulkDisposition');
+    const bulkSortForm = document.getElementById('bulkSortForm');
+    const bulkVendorCol = document.getElementById('bulkVendorCol');
+    const bulkVendorId = document.getElementById('bulkVendorId');
+
+    if (window.$ && $.fn.DataTable) {
+      $('.table-sticky-queue').each(function () {
+        const $table = $(this);
+        if ($.fn.DataTable.isDataTable(this)) {
+          $table.DataTable().destroy();
+        }
+        $table.find('tbody tr td[colspan]').closest('tr').remove();
+        $table.DataTable({
+          pageLength: 25,
+          order: [[1, 'asc']],
+          responsive: false,
+          autoWidth: false,
+          destroy: true,
+          language: {
+            search: '_INPUT_',
+            searchPlaceholder: 'Cari antrian...',
+            emptyTable: 'Antrian kosong'
+          },
+          columnDefs: [
+            { orderable: false, targets: [0, -1] }
+          ]
+        });
+      });
+    }
+
+    function initVendorSelect2() {
+      if (window.$ && $.fn.select2) {
+        $('#bulkVendorId').select2({
+          theme: 'bootstrap-5',
+          placeholder: '-- Cari & Pilih Supplier --',
+          allowClear: true,
+          width: '100%'
+        });
+      }
+    }
 
     function updateBulkCard() {
       const checked = document.querySelectorAll('.item-checkbox:checked');
@@ -193,20 +280,84 @@
 
     function updateRowCategories() {
       const bulkDisp = bulkDisposition ? bulkDisposition.value : '';
-      const isReq = ['rekondisi', 'refurbish'].includes(bulkDisp);
+      const isCatReq = ['rekondisi', 'refurbish'].includes(bulkDisp);
+      const isIkutReq = (bulkDisp === 'write_off');
       const activeCheckboxes = document.querySelectorAll('.item-checkbox');
 
       activeCheckboxes.forEach(cb => {
         const row = cb.closest('tr');
-        const select = row.querySelector('.row-category-select');
-        if (select) {
-          if (cb.checked && isReq) {
-            select.removeAttribute('disabled');
-            select.setAttribute('required', 'true');
-          } else {
-            select.setAttribute('disabled', 'true');
-            select.removeAttribute('required');
+        const catSelect = row.querySelector('.row-category-select');
+        const ikutSelect = row.querySelector('.row-ikut-select');
+        const ikutWoSelect = row.querySelector('.row-ikut-wo-select');
+        const placeholder = row.querySelector('.row-placeholder-text');
+        const ikutWoPlaceholder = row.querySelector('.row-ikut-wo-placeholder');
+
+        if (cb.checked && isCatReq) {
+          if (catSelect) {
+            catSelect.style.display = '';
+            catSelect.removeAttribute('disabled');
+            catSelect.setAttribute('required', 'true');
           }
+          if (ikutSelect) {
+            ikutSelect.style.display = 'none';
+            ikutSelect.setAttribute('disabled', 'true');
+            ikutSelect.removeAttribute('required');
+          }
+          if (ikutWoSelect) {
+            ikutWoSelect.style.display = 'none';
+            ikutWoSelect.setAttribute('disabled', 'true');
+            ikutWoSelect.removeAttribute('required');
+            ikutWoSelect.value = '';
+          }
+          if (placeholder) placeholder.style.display = 'none';
+          if (ikutWoPlaceholder) ikutWoPlaceholder.style.display = '';
+        } else if (cb.checked && isIkutReq) {
+          if (catSelect) {
+            catSelect.style.display = 'none';
+            catSelect.setAttribute('disabled', 'true');
+            catSelect.removeAttribute('required');
+          }
+          if (ikutSelect) {
+            ikutSelect.style.display = '';
+            ikutSelect.removeAttribute('disabled');
+            ikutSelect.setAttribute('required', 'true');
+          }
+          if (placeholder) placeholder.style.display = 'none';
+
+          if (ikutSelect && ikutSelect.value === 'Plastik') {
+            if (ikutWoSelect) {
+              ikutWoSelect.style.display = '';
+              ikutWoSelect.removeAttribute('disabled');
+              ikutWoSelect.setAttribute('required', 'true');
+            }
+            if (ikutWoPlaceholder) ikutWoPlaceholder.style.display = 'none';
+          } else {
+            if (ikutWoSelect) {
+              ikutWoSelect.style.display = 'none';
+              ikutWoSelect.setAttribute('disabled', 'true');
+              ikutWoSelect.removeAttribute('required');
+              ikutWoSelect.value = '';
+            }
+            if (ikutWoPlaceholder) ikutWoPlaceholder.style.display = '';
+          }
+        } else {
+          if (catSelect) {
+            catSelect.style.display = 'none';
+            catSelect.setAttribute('disabled', 'true');
+            catSelect.removeAttribute('required');
+          }
+          if (ikutSelect) {
+            ikutSelect.style.display = 'none';
+            ikutSelect.setAttribute('disabled', 'true');
+            ikutSelect.removeAttribute('required');
+          }
+          if (ikutWoSelect) {
+            ikutWoSelect.style.display = 'none';
+            ikutWoSelect.setAttribute('disabled', 'true');
+            ikutWoSelect.removeAttribute('required');
+          }
+          if (placeholder) placeholder.style.display = '';
+          if (ikutWoPlaceholder) ikutWoPlaceholder.style.display = '';
         }
       });
     }
@@ -214,16 +365,50 @@
     if (bulkDisposition) {
       bulkDisposition.addEventListener('change', function () {
         updateRowCategories();
-        
-        const bulkVendorCol = document.getElementById('bulkVendorCol');
-        const bulkVendorId = document.getElementById('bulkVendorId');
+
         if (this.value === 'return_to_supplier') {
-          bulkVendorCol.style.display = '';
-          bulkVendorId.setAttribute('required', 'true');
+          if (bulkVendorCol) bulkVendorCol.style.display = '';
+          initVendorSelect2();
         } else {
-          bulkVendorCol.style.display = 'none';
-          bulkVendorId.removeAttribute('required');
-          bulkVendorId.value = '';
+          if (bulkVendorCol) bulkVendorCol.style.display = 'none';
+          if (window.$ && $.fn.select2) {
+            $('#bulkVendorId').val(null).trigger('change');
+          } else if (bulkVendorId) {
+            bulkVendorId.value = '';
+          }
+        }
+      });
+    }
+
+    if (bulkSortForm) {
+      bulkSortForm.addEventListener('submit', function (e) {
+        if (bulkDisposition && bulkDisposition.value === 'return_to_supplier') {
+          const vVal = bulkVendorId ? bulkVendorId.value : '';
+          if (!vVal) {
+            e.preventDefault();
+            alert('Silakan cari dan pilih Supplier terlebih dahulu.');
+            if (window.$ && $.fn.select2) {
+              $('#bulkVendorId').select2('open');
+            }
+            return false;
+          }
+        }
+
+        if (bulkDisposition && bulkDisposition.value === 'write_off') {
+          const activeCheckboxes = document.querySelectorAll('.item-checkbox:checked');
+          for (const cb of activeCheckboxes) {
+            const row = cb.closest('tr');
+            const ikutSelect = row.querySelector('.row-ikut-select');
+            const ikutWoSelect = row.querySelector('.row-ikut-wo-select');
+            if (ikutSelect && ikutSelect.value === 'Plastik' && (!ikutWoSelect || !ikutWoSelect.value)) {
+              e.preventDefault();
+              alert('Silakan pilih opsi Ikut WO (Ikut WO Rosok / Ikut WO Tri J) untuk SKU berkategori Plastik.');
+              if (ikutWoSelect) {
+                ikutWoSelect.focus();
+              }
+              return false;
+            }
+          }
         }
       });
     }
@@ -247,6 +432,28 @@
         }
         updateBulkCard();
         updateRowCategories();
+      }
+
+      if (e.target.classList.contains('row-ikut-select')) {
+        const row = e.target.closest('tr');
+        const ikutWoSelect = row.querySelector('.row-ikut-wo-select');
+        const ikutWoPlaceholder = row.querySelector('.row-ikut-wo-placeholder');
+        if (e.target.value === 'Plastik') {
+          if (ikutWoSelect) {
+            ikutWoSelect.style.display = '';
+            ikutWoSelect.removeAttribute('disabled');
+            ikutWoSelect.setAttribute('required', 'true');
+          }
+          if (ikutWoPlaceholder) ikutWoPlaceholder.style.display = 'none';
+        } else {
+          if (ikutWoSelect) {
+            ikutWoSelect.style.display = 'none';
+            ikutWoSelect.setAttribute('disabled', 'true');
+            ikutWoSelect.removeAttribute('required');
+            ikutWoSelect.value = '';
+          }
+          if (ikutWoPlaceholder) ikutWoPlaceholder.style.display = '';
+        }
       }
     });
 

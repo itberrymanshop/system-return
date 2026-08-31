@@ -62,6 +62,20 @@ async function runMigrations() {
       console.log('   - Adding index idx_vendor_id on berita_acara(vendor_id)...');
       await pool.query("ALTER TABLE berita_acara ADD INDEX idx_vendor_id (vendor_id)");
     }
+
+    // 4. Add ikut column to return_items
+    const [ikutColumns] = await pool.query("SHOW COLUMNS FROM return_items LIKE 'ikut'");
+    if (ikutColumns.length === 0) {
+      console.log('   - Adding ikut column to return_items...');
+      await pool.query("ALTER TABLE return_items ADD COLUMN ikut VARCHAR(50) DEFAULT NULL AFTER item_category");
+    }
+
+    // 5. Add ikut_wo column to return_items
+    const [ikutWoColumns] = await pool.query("SHOW COLUMNS FROM return_items LIKE 'ikut_wo'");
+    if (ikutWoColumns.length === 0) {
+      console.log('   - Adding ikut_wo column to return_items...');
+      await pool.query("ALTER TABLE return_items ADD COLUMN ikut_wo VARCHAR(50) DEFAULT NULL AFTER ikut");
+    }
     
     console.log('✅ Migrations checked and applied successfully.');
   } catch (err) {

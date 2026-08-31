@@ -374,16 +374,15 @@ exports.getUploadProgress = (req, res) => {
   }
 };
 
-// ─── API Search (JSON) ────────────────────────────────────────────────────────
 exports.apiSearch = async (req, res, next) => {
   try {
     const q = (req.query.q || '').trim();
     if (!q) return res.json([]);
 
     const [rows] = await db.query(
-      `SELECT kode_barang, nama_barang, satuan, harga_jual
+      `SELECT kode_barang, nama_barang, kategori, satuan, harga_jual
        FROM master_barang
-       WHERE status = 'active'
+       WHERE (status = 'active' OR status IS NULL)
          AND (kode_barang LIKE ? OR nama_barang LIKE ?)
        ORDER BY nama_barang ASC
        LIMIT 20`,
