@@ -7,8 +7,16 @@ const canRecover = requireRole(['admin', 'manager', 'staff_recover', 'admin_retu
 const canFAT     = requireRole(['admin', 'manager', 'purchasing']);
 
 router.get('/',                   canRecover, ctrl.queue);
-router.get('/fat-approvals',      canFAT,     ctrl.pendingApprovals);
-router.post('/fat-review',        canFAT,     ctrl.reviewPricing);
+router.get('/fat-approvals',          canFAT,     ctrl.writeOffSalesReport);
+router.get('/write-off-sales',        canFAT,     ctrl.writeOffSalesReport);
+router.get('/write-off-sales/export', canFAT,     ctrl.exportWriteOffSales);
+router.post('/write-off-sales',       canFAT,     ctrl.createWriteOffSale);
+router.put('/write-off-sales/:id',    canFAT,     ctrl.updateWriteOffSale);
+router.post('/write-off-sales/:id',   canFAT,     ctrl.updateWriteOffSale);
+router.post('/write-off-sales/:id/update', canFAT, ctrl.updateWriteOffSale);
+router.delete('/write-off-sales/:id', canFAT,     ctrl.deleteWriteOffSale);
+router.post('/write-off-sales/:id/delete', canFAT, ctrl.deleteWriteOffSale);
+router.post('/fat-review',            canFAT,     ctrl.reviewPricing);
 router.get('/item/:itemId',       canRecover, ctrl.viewItem);
 router.get('/:id',                canRecover, ctrl.view);
 router.post('/bulk-submit-pricing', canRecover, ctrl.bulkSubmitPricing);

@@ -76,6 +76,25 @@ async function runMigrations() {
       console.log('   - Adding ikut_wo column to return_items...');
       await pool.query("ALTER TABLE return_items ADD COLUMN ikut_wo VARCHAR(50) DEFAULT NULL AFTER ikut");
     }
+
+    // 6. Create write_off_sales table for Laporan Penjualan Write Off
+    console.log('   - Checking write_off_sales table...');
+    await pool.query(`
+      CREATE TABLE IF NOT EXISTS write_off_sales (
+        id INT AUTO_INCREMENT PRIMARY KEY,
+        sale_date DATE NOT NULL,
+        total_dus INT NOT NULL DEFAULT 1,
+        berat_dus DECIMAL(10, 2) NOT NULL DEFAULT 0.00,
+        kategori VARCHAR(100) NOT NULL,
+        harga DECIMAL(15, 2) NOT NULL DEFAULT 0.00,
+        notes TEXT,
+        created_by INT,
+        created_at DATETIME DEFAULT CURRENT_TIMESTAMP,
+        updated_at DATETIME DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
+        INDEX idx_sale_date (sale_date),
+        INDEX idx_kategori (kategori)
+      ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4
+    `);
     
     console.log('✅ Migrations checked and applied successfully.');
   } catch (err) {

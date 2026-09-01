@@ -352,15 +352,25 @@
                                                                 </li>
                                                                 <% } %>
 
-                                                                  <%# ── Price Approval (FAT) ── %>
+                                                                  <%# ── Laporan Penjualan ── %>
                                                                     <% if (canAccess('recovery_fat')) { %>
                                                                       <li class="nav-item">
-                                                                        <a class="sidebar-link"
-                                                                          href="/recovery/fat-approvals">
-                                                                          <i class="bi bi-patch-check"></i> <span>
-                                                                            <%= __('Approval Harga (FAT)') %>
+                                                                        <a class="sidebar-link sidebar-dropdown-toggle collapsed"
+                                                                          data-bs-toggle="collapse" href="#navPenjualan"
+                                                                          role="button">
+                                                                          <i class="bi bi-receipt"></i> <span>
+                                                                            <%= __('Laporan Penjualan') %>
                                                                           </span>
+                                                                          <i class="bi bi-chevron-down sidebar-chevron"></i>
                                                                         </a>
+                                                                        <div class="collapse" id="navPenjualan">
+                                                                          <ul class="sidebar-submenu">
+                                                                            <li><a href="/recovery/fat-approvals"><i
+                                                                                  class="bi bi-trash3"></i>
+                                                                                <%= __('Write Off') %>
+                                                                              </a></li>
+                                                                          </ul>
+                                                                        </div>
                                                                       </li>
                                                                       <% } %>
 

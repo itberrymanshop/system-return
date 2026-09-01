@@ -1,4 +1,5 @@
 'use strict';
+const XLSX = require('xlsx');
 const returnService = require('../services/returnService');
 const slaService = require('../services/slaService');
 const slaHelper = require('../services/slaHelper');
@@ -828,16 +829,273 @@ exports.bulkComplete = async (req, res, next) => {
   }
 };
 
-// ─── FAT: Pending price approvals ────────────────────────────────────────────
-exports.pendingApprovals = async (req, res, next) => {
+// Helper to ensure write_off_sales table exists
+async function ensureWriteOffSalesTable() {
+  await db.query(`
+    CREATE TABLE IF NOT EXISTS write_off_sales (
+      id INT AUTO_INCREMENT PRIMARY KEY,
+      sale_date DATE NOT NULL,
+      total_dus INT NOT NULL DEFAULT 1,
+      berat_dus DECIMAL(10, 2) NOT NULL DEFAULT 0.00,
+      kategori VARCHAR(100) NOT NULL,
+      harga DECIMAL(15, 2) NOT NULL DEFAULT 0.00,
+      notes TEXT,
+      created_by INT,
+      created_at DATETIME DEFAULT CURRENT_TIMESTAMP,
+      updated_at DATETIME DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
+      INDEX idx_sale_date (sale_date),
+      INDEX idx_kategori (kategori)
+    ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4
+  `);
+}
+
+// ─── Laporan Penjualan -> Write Off ──────────────────────────────────────────
+exports.writeOffSalesReport = async (req, res, next) => {
   try {
-    const submissions = await returnService.getPendingPricingSubmissions({ status: 'pending' });
-    const allSubmissions = await returnService.getPendingPricingSubmissions({});
-    res.render('fat/approvals', { title: 'Persetujuan Harga – FAT', submissions, allSubmissions });
-  } catch (err) { next(err); }
+    await ensureWriteOffSalesTable();
+
+    const { date_from, date_to, kategori, search } = req.query;
+
+    let query = `
+      SELECT wos.*, u.full_name AS created_by_name
+      FROM write_off_sales wos
+      LEFT JOIN users u ON wos.created_by = u.user_id
+      WHERE 1=1
+    `;
+    const params = [];
+
+    if (date_from) {
+      query += ' AND wos.sale_date >= ?';
+      params.push(date_from);
+    }
+    if (date_to) {
+      query += ' AND wos.sale_date <= ?';
+      params.push(date_to);
+    }
+    if (kategori) {
+      query += ' AND wos.kategori = ?';
+      params.push(kategori);
+    }
+    if (search) {
+      query += ' AND (wos.kategori LIKE ? OR wos.notes LIKE ?)';
+      params.push(`%${search}%`, `%${search}%`);
+    }
+
+    query += ' ORDER BY wos.sale_date DESC, wos.id DESC';
+
+    const [sales] = await db.query(query, params);
+
+    // Calculate Summary Metrics
+    let totalDus = 0;
+    let totalBerat = 0;
+    let totalHarga = 0;
+
+    for (const s of sales) {
+      totalDus += parseInt(s.total_dus, 10) || 0;
+      totalBerat += parseFloat(s.berat_dus) || 0;
+      totalHarga += parseFloat(s.harga) || 0;
+    }
+
+    // Get list of distinct categories for filter dropdown
+    const [catRows] = await db.query(
+      'SELECT DISTINCT kategori FROM write_off_sales WHERE kategori IS NOT NULL AND kategori != "" ORDER BY kategori ASC'
+    );
+    const categories = catRows.map(c => c.kategori);
+
+    res.render('fat/approvals', {
+      title: 'Laporan Penjualan – Write Off',
+      sales,
+      metrics: {
+        totalDus,
+        totalBerat,
+        totalHarga,
+        totalTransactions: sales.length
+      },
+      categories,
+      filters: req.query
+    });
+  } catch (err) {
+    next(err);
+  }
 };
 
-// ─── FAT: Approve / Reject a price submission ────────────────────────────────
+// Aliased for backwards compatibility
+exports.pendingApprovals = exports.writeOffSalesReport;
+
+// ─── Create Write Off Sale ───────────────────────────────────────────────────
+exports.createWriteOffSale = async (req, res, next) => {
+  try {
+    await ensureWriteOffSalesTable();
+
+    const { sale_date, total_dus, berat_dus, kategori, harga, notes } = req.body;
+
+    if (!sale_date) {
+      req.flash('error', 'Tanggal penjualan wajib diisi.');
+      return res.redirect('/recovery/fat-approvals');
+    }
+    if (!kategori || !kategori.trim()) {
+      req.flash('error', 'Kategori wajib diisi.');
+      return res.redirect('/recovery/fat-approvals');
+    }
+
+    const totalDusNum = parseInt(total_dus, 10) || 0;
+    const beratDusNum = parseFloat(berat_dus) || 0;
+    const hargaNum = parseFloat(harga) || 0;
+    const categoryClean = (kategori || '').trim().toUpperCase();
+
+    await db.query(`
+      INSERT INTO write_off_sales (sale_date, total_dus, berat_dus, kategori, harga, notes, created_by)
+      VALUES (?, ?, ?, ?, ?, ?, ?)
+    `, [sale_date, totalDusNum, beratDusNum, categoryClean, hargaNum, notes || null, req.session.userId || null]);
+
+    await reportService.logActivity(
+      req.session.userId,
+      'create_write_off_sale',
+      `Input penjualan write off: ${categoryClean} (${totalDusNum} Dus, ${beratDusNum} KG) - Rp ${hargaNum.toLocaleString('id-ID')}`,
+      req.ip,
+      req.headers['user-agent']
+    );
+
+    req.flash('success', 'Data penjualan write-off berhasil disimpan.');
+    res.redirect('/recovery/fat-approvals');
+  } catch (err) {
+    next(err);
+  }
+};
+
+// ─── Update Write Off Sale ───────────────────────────────────────────────────
+exports.updateWriteOffSale = async (req, res, next) => {
+  try {
+    await ensureWriteOffSalesTable();
+
+    const id = parseInt(req.params.id, 10);
+    const { sale_date, total_dus, berat_dus, kategori, harga, notes } = req.body;
+
+    if (!sale_date || !kategori) {
+      req.flash('error', 'Tanggal penjualan dan kategori wajib diisi.');
+      return res.redirect('/recovery/fat-approvals');
+    }
+
+    const totalDusNum = parseInt(total_dus, 10) || 0;
+    const beratDusNum = parseFloat(berat_dus) || 0;
+    const hargaNum = parseFloat(harga) || 0;
+    const categoryClean = (kategori || '').trim().toUpperCase();
+
+    await db.query(`
+      UPDATE write_off_sales
+      SET sale_date = ?, total_dus = ?, berat_dus = ?, kategori = ?, harga = ?, notes = ?
+      WHERE id = ?
+    `, [sale_date, totalDusNum, beratDusNum, categoryClean, hargaNum, notes || null, id]);
+
+    await reportService.logActivity(
+      req.session.userId,
+      'update_write_off_sale',
+      `Update penjualan write off #${id}: ${categoryClean} (${totalDusNum} Dus, ${beratDusNum} KG) - Rp ${hargaNum.toLocaleString('id-ID')}`,
+      req.ip,
+      req.headers['user-agent']
+    );
+
+    req.flash('success', 'Data penjualan write-off berhasil diperbarui.');
+    res.redirect('/recovery/fat-approvals');
+  } catch (err) {
+    next(err);
+  }
+};
+
+// ─── Delete Write Off Sale ───────────────────────────────────────────────────
+exports.deleteWriteOffSale = async (req, res, next) => {
+  try {
+    await ensureWriteOffSalesTable();
+
+    const id = parseInt(req.params.id, 10);
+    await db.query('DELETE FROM write_off_sales WHERE id = ?', [id]);
+
+    await reportService.logActivity(
+      req.session.userId,
+      'delete_write_off_sale',
+      `Hapus data penjualan write off #${id}`,
+      req.ip,
+      req.headers['user-agent']
+    );
+
+    req.flash('success', 'Data penjualan write-off berhasil dihapus.');
+    res.redirect('/recovery/fat-approvals');
+  } catch (err) {
+    next(err);
+  }
+};
+
+// ─── Export Write Off Sales to Excel ─────────────────────────────────────────
+exports.exportWriteOffSales = async (req, res, next) => {
+  try {
+    await ensureWriteOffSalesTable();
+
+    const { date_from, date_to, kategori, search } = req.query;
+
+    let query = `
+      SELECT wos.*, u.full_name AS created_by_name
+      FROM write_off_sales wos
+      LEFT JOIN users u ON wos.created_by = u.user_id
+      WHERE 1=1
+    `;
+    const params = [];
+
+    if (date_from) {
+      query += ' AND wos.sale_date >= ?';
+      params.push(date_from);
+    }
+    if (date_to) {
+      query += ' AND wos.sale_date <= ?';
+      params.push(date_to);
+    }
+    if (kategori) {
+      query += ' AND wos.kategori = ?';
+      params.push(kategori);
+    }
+    if (search) {
+      query += ' AND (wos.kategori LIKE ? OR wos.notes LIKE ?)';
+      params.push(`%${search}%`, `%${search}%`);
+    }
+
+    query += ' ORDER BY wos.sale_date DESC, wos.id DESC';
+
+    const [sales] = await db.query(query, params);
+
+    const headers = ['TGL PENJUALAN', 'TOTAL DUS', 'BERAT DUS', 'KATEGORI', 'HARGA', 'CATATAN'];
+    const data = [headers];
+
+    for (const s of sales) {
+      const d = new Date(s.sale_date);
+      const day = String(d.getDate()).padStart(2, '0');
+      const month = String(d.getMonth() + 1).padStart(2, '0');
+      const year = d.getFullYear();
+      const tglFormatted = `${day}/${month}/${year}`;
+
+      data.push([
+        tglFormatted,
+        parseInt(s.total_dus, 10) || 0,
+        `${s.berat_dus} KG`,
+        s.kategori,
+        parseFloat(s.harga) || 0,
+        s.notes || ''
+      ]);
+    }
+
+    const ws = XLSX.utils.aoa_to_sheet(data);
+    const wb = XLSX.utils.book_new();
+    XLSX.utils.book_append_sheet(wb, ws, 'Penjualan Write Off');
+
+    const buffer = XLSX.write(wb, { type: 'buffer', bookType: 'xlsx' });
+    const nowStr = dateHelper.getJakartaDateString();
+    res.setHeader('Content-Type', 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet');
+    res.setHeader('Content-Disposition', `attachment; filename=Laporan_Penjualan_Write_Off_${nowStr}.xlsx`);
+    res.send(buffer);
+  } catch (err) {
+    next(err);
+  }
+};
+
+// ─── FAT: Approve / Reject a price submission (Legacy) ───────────────────────
 exports.reviewPricing = async (req, res, next) => {
   try {
     const { submission_id, action, final_price, review_notes } = req.body;

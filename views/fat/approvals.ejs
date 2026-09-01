@@ -1,112 +1,415 @@
 <div class="container-fluid mt-5 pt-4">
-  <div class="row mb-3">
+  <div class="row mb-3 align-items-center">
     <div class="col">
-      <h2><i class="bi bi-patch-check"></i> Persetujuan Harga Jual – FAT / Purchasing</h2>
-      <p class="text-muted">Tinjau dan setujui pengajuan harga jual dari Staff Recover.</p>
+      <h2><i class="bi bi-receipt text-primary"></i> Laporan Penjualan &ndash; Write Off</h2>
+      <p class="text-muted mb-0">Pencatatan dan pelaporan penjualan barang/scrap write off per batch.</p>
+    </div>
+    <div class="col-auto d-flex gap-2">
+      <button class="btn btn-primary" data-bs-toggle="modal" data-bs-target="#addSaleModal">
+        <i class="bi bi-plus-circle me-1"></i> Input Penjualan
+      </button>
+      <a href="/recovery/write-off-sales/export?<%= new URLSearchParams(filters).toString() %>" class="btn btn-outline-success">
+        <i class="bi bi-file-earmark-excel me-1"></i> Export Excel
+      </a>
+      <a href="/recovery?type=write_off" class="btn btn-outline-secondary">
+        <i class="bi bi-arrow-left me-1"></i> Antrian Write-Off
+      </a>
     </div>
   </div>
 
-  <!-- Pending Submissions -->
-  <div class="card mb-4">
-    <div class="card-header bg-warning text-dark d-flex justify-content-between align-items-center">
-      <h6 class="mb-0"><i class="bi bi-hourglass-split"></i> Menunggu Persetujuan</h6>
-      <span class="badge bg-dark"><%= submissions.length %></span>
-    </div>
-    <div class="card-body p-0">
-      <% if (submissions.length === 0) { %>
-        <div class="text-center text-muted py-4">Tidak ada pengajuan yang menunggu persetujuan.</div>
-      <% } %>
-      <% submissions.forEach(s => { %>
-      <div class="p-3 border-bottom">
-        <div class="row align-items-start g-2">
-          <div class="col-md-5">
-            <% if (s.resi_number) { %>
-              <small class="text-muted"><i class="bi bi-truck"></i> Resi: <%= s.resi_number %></small>
-            <% } %>
-            <span class="text-muted ms-2"><%= s.customer_name || '-' %></span>
-            <br>
-            <a href="/recovery/item/<%= s.item_id %>" class="badge bg-light text-dark border font-monospace text-decoration-none" style="font-size: 0.75rem;"><%= s.item_code || '-' %></a>
-            <strong class="text-dark ms-1"><%= s.item_name || '-' %></strong>
-            <br>
-            <small class="text-muted">Diajukan oleh: <strong><%= s.submitted_by_name %></strong> – <%= formatDateTime(s.submission_date) %></small>
-            <% if (s.notes) { %>
-              <br><small class="text-muted fst-italic">"<%= s.notes %>"</small>
-            <% } %>
+  <!-- Metric Summary Cards -->
+  <div class="row g-3 mb-4">
+    <div class="col-md-3">
+      <div class="card shadow-sm border-0 bg-primary text-white h-100">
+        <div class="card-body d-flex align-items-center justify-content-between">
+          <div>
+            <h6 class="card-title text-white-50 mb-1">TOTAL DUS</h6>
+            <h3 class="mb-0 fw-bold"><%= (metrics.totalDus || 0).toLocaleString('id-ID') %> <small class="fs-6 fw-normal">Dus</small></h3>
           </div>
-          <div class="col-md-2 text-center">
-            <span class="badge bg-secondary text-capitalize"><%= s.product_category %></span>
-            <br><strong class="d-block mt-1"><%- formatCurrency(s.proposed_price) %></strong>
-            <small class="text-muted">harga diajukan</small>
-          </div>
-          <div class="col-md-5">
-            <form method="POST" action="/recovery/fat-review" class="d-flex gap-2 align-items-end flex-wrap">
-              <input type="hidden" name="submission_id" value="<%= s.submission_id %>">
-              <div class="flex-grow-1">
-                <label class="form-label form-label-sm">Harga Final (Rp)</label>
-                <input type="number" step="0.01" class="form-control form-control-sm" name="final_price"
-                  value="<%= s.proposed_price %>" min="0">
-              </div>
-              <div class="flex-grow-1">
-                <label class="form-label form-label-sm">Catatan</label>
-                <input type="text" class="form-control form-control-sm" name="review_notes" placeholder="Alasan / catatan">
-              </div>
-              <div class="d-flex gap-1">
-                <button type="submit" name="action" value="approve" class="btn btn-sm btn-success">
-                  <i class="bi bi-check-circle"></i> Setuju
-                </button>
-                <button type="submit" name="action" value="reject"
-                  class="btn btn-sm btn-danger"
-                  onclick="return confirm('Tolak pengajuan ini?')">
-                  <i class="bi bi-x-circle"></i> Tolak
-                </button>
-              </div>
-            </form>
-          </div>
+          <div class="fs-1 text-white-50"><i class="bi bi-boxes"></i></div>
         </div>
       </div>
-      <% }) %>
+    </div>
+    <div class="col-md-3">
+      <div class="card shadow-sm border-0 bg-info text-white h-100">
+        <div class="card-body d-flex align-items-center justify-content-between">
+          <div>
+            <h6 class="card-title text-white-50 mb-1">TOTAL BERAT</h6>
+            <h3 class="mb-0 fw-bold"><%= Number(metrics.totalBerat || 0).toLocaleString('id-ID', { minimumFractionDigits: 0, maximumFractionDigits: 2 }) %> <small class="fs-6 fw-normal">KG</small></h3>
+          </div>
+          <div class="fs-1 text-white-50"><i class="bi bi-speedometer2"></i></div>
+        </div>
+      </div>
+    </div>
+    <div class="col-md-3">
+      <div class="card shadow-sm border-0 bg-success text-white h-100">
+        <div class="card-body d-flex align-items-center justify-content-between">
+          <div>
+            <h6 class="card-title text-white-50 mb-1">TOTAL PENDAPATAN</h6>
+            <h3 class="mb-0 fw-bold"><%- formatCurrency(metrics.totalHarga || 0) %></h3>
+          </div>
+          <div class="fs-1 text-white-50"><i class="bi bi-cash-stack"></i></div>
+        </div>
+      </div>
+    </div>
+    <div class="col-md-3">
+      <div class="card shadow-sm border-0 bg-dark text-white h-100">
+        <div class="card-body d-flex align-items-center justify-content-between">
+          <div>
+            <h6 class="card-title text-white-50 mb-1">TOTAL TRANSAKSI</h6>
+            <h3 class="mb-0 fw-bold"><%= (metrics.totalTransactions || 0).toLocaleString('id-ID') %></h3>
+          </div>
+          <div class="fs-1 text-white-50"><i class="bi bi-receipt"></i></div>
+        </div>
+      </div>
     </div>
   </div>
 
-  <!-- All Submission History -->
-  <div class="card">
-    <div class="card-header">
-      <h6 class="mb-0"><i class="bi bi-clock-history"></i> Riwayat Semua Pengajuan</h6>
+  <!-- Filter & Search -->
+  <div class="card mb-4 shadow-sm border-0">
+    <div class="card-body py-3">
+      <form method="GET" action="/recovery/fat-approvals" class="row g-2 align-items-end">
+        <div class="col-md-3">
+          <label class="form-label form-label-sm fw-semibold">Tanggal Dari</label>
+          <input type="date" class="form-control form-control-sm" name="date_from" value="<%= filters.date_from || '' %>">
+        </div>
+        <div class="col-md-3">
+          <label class="form-label form-label-sm fw-semibold">Tanggal Sampai</label>
+          <input type="date" class="form-control form-control-sm" name="date_to" value="<%= filters.date_to || '' %>">
+        </div>
+        <div class="col-md-2">
+          <label class="form-label form-label-sm fw-semibold">Kategori</label>
+          <select class="form-select form-select-sm" name="kategori">
+            <option value="">Semua Kategori</option>
+            <% categories.forEach(cat => { %>
+              <option value="<%= cat %>" <%= filters.kategori === cat ? 'selected' : '' %>><%= cat %></option>
+            <% }) %>
+          </select>
+        </div>
+        <div class="col-md-2">
+          <label class="form-label form-label-sm fw-semibold">Pencarian</label>
+          <input type="text" class="form-control form-control-sm" name="search" placeholder="Cari kategori / catatan..." value="<%= filters.search || '' %>">
+        </div>
+        <div class="col-md-2 d-flex gap-1">
+          <button type="submit" class="btn btn-sm btn-primary flex-grow-1">
+            <i class="bi bi-search"></i> Filter
+          </button>
+          <a href="/recovery/fat-approvals" class="btn btn-sm btn-outline-secondary">Reset</a>
+        </div>
+      </form>
+    </div>
+  </div>
+
+  <!-- Main Table -->
+  <div class="card shadow-sm border-0">
+    <div class="card-header bg-white py-3 d-flex justify-content-between align-items-center">
+      <h6 class="mb-0 fw-bold text-dark"><i class="bi bi-table me-1"></i> Data Penjualan Write Off</h6>
+      <span class="badge bg-secondary"><%= sales.length %> Baris</span>
     </div>
     <div class="table-responsive">
-      <table class="table table-sm table-hover datatable mb-0">
+      <table class="table table-hover table-bordered align-middle mb-0 datatable text-center">
         <thead class="table-light">
           <tr>
-            <th>No Resi</th><th>Customer</th><th>SKU</th><th>Nama Barang</th><th>Kategori</th><th>Diajukan</th>
-            <th>Harga Ajuan</th><th>Status</th><th>Harga Final</th><th>Direview oleh</th>
+            <th style="width: 50px;">#</th>
+            <th class="text-center">TGL PENJUALAN</th>
+            <th class="text-center">TOTAL DUS</th>
+            <th class="text-center">BERAT DUS</th>
+            <th class="text-center">KATEGORI</th>
+            <th class="text-end pe-4">HARGA</th>
+            <th class="text-start ps-3">CATATAN</th>
+            <th style="width: 120px;" class="text-center">AKSI</th>
           </tr>
         </thead>
         <tbody>
-          <% allSubmissions.forEach(s => { %>
+          <% if (sales.length === 0) { %>
+            <tr>
+              <td colspan="8" class="text-center text-muted py-5">
+                <i class="bi bi-inbox fs-1 d-block mb-2 text-secondary opacity-50"></i>
+                Belum ada data penjualan write off. Klik tombol <strong>Input Penjualan</strong> untuk menambahkan data baru.
+              </td>
+            </tr>
+          <% } %>
+          <% sales.forEach((s, idx) => { 
+               const d = new Date(s.sale_date);
+               const day = String(d.getDate()).padStart(2, '0');
+               const month = String(d.getMonth() + 1).padStart(2, '0');
+               const year = d.getFullYear();
+               const tglPenjualanFormatted = `${day}/${month}/${year}`;
+          %>
           <tr>
+            <td><%= idx + 1 %></td>
+            <td class="fw-semibold font-monospace"><%= tglPenjualanFormatted %></td>
+            <td class="fw-bold"><%= s.total_dus %></td>
             <td>
-              <% if (s.resi_number) { %>
-                <small class="text-muted"><i class="bi bi-truck"></i> <%= s.resi_number %></small>
+              <span class="badge bg-light text-dark border px-2 py-1 fs-6 font-monospace">
+                <%= Number(s.berat_dus).toLocaleString('id-ID', { minimumFractionDigits: 0, maximumFractionDigits: 2 }) %> KG
+              </span>
+            </td>
+            <td>
+              <% 
+                const catLower = (s.kategori || '').toLowerCase();
+                let catBadgeClass = 'bg-secondary';
+                if (catLower.includes('plastik')) catBadgeClass = 'bg-primary';
+                else if (catLower.includes('besi')) catBadgeClass = 'bg-dark';
+                else if (catLower.includes('kaca')) catBadgeClass = 'bg-info text-dark';
+                else if (catLower.includes('kain')) catBadgeClass = 'bg-warning text-dark';
+              %>
+              <span class="badge <%= catBadgeClass %> px-2 py-1 text-uppercase fs-6">
+                <%= s.kategori %>
+              </span>
+            </td>
+            <td class="text-end pe-4 fw-bold text-success font-monospace fs-6">
+              <%- formatCurrency(s.harga) %>
+            </td>
+            <td class="text-start ps-3">
+              <% if (s.notes) { %>
+                <small class="text-muted"><%= s.notes %></small>
               <% } else { %>
                 <span class="text-muted">-</span>
               <% } %>
             </td>
-            <td><%= s.customer_name || '-' %></td>
-            <td><a href="/recovery/item/<%= s.item_id %>" class="fw-bold text-decoration-none"><code><%= s.item_code || '-' %></code></a></td>
-            <td><strong><%= s.item_name || '-' %></strong></td>
-            <td><span class="badge bg-secondary text-capitalize"><%= s.product_category %></span></td>
-            <td><small><%= formatDateTime(s.submission_date) %></small></td>
-            <td><%- formatCurrency(s.proposed_price) %></td>
             <td>
-              <% const sc = {pending:'warning',approved:'success',rejected:'danger'}; %>
-              <span class="badge bg-<%= sc[s.status]||'secondary' %>"><%= s.status %></span>
+              <div class="btn-group btn-group-sm" role="group">
+                <button type="button" class="btn btn-outline-primary btn-edit-sale"
+                  data-id="<%= s.id %>"
+                  data-sale-date="<%= formatDateInput(s.sale_date) %>"
+                  data-total-dus="<%= s.total_dus %>"
+                  data-berat-dus="<%= s.berat_dus %>"
+                  data-kategori="<%= s.kategori %>"
+                  data-harga="<%= s.harga %>"
+                  data-notes="<%= s.notes || '' %>"
+                  title="Edit">
+                  <i class="bi bi-pencil-square"></i>
+                </button>
+                <button type="button" class="btn btn-outline-danger btn-delete-sale"
+                  data-id="<%= s.id %>"
+                  data-kategori="<%= s.kategori %>"
+                  data-tgl="<%= tglPenjualanFormatted %>"
+                  title="Hapus">
+                  <i class="bi bi-trash3"></i>
+                </button>
+              </div>
             </td>
-            <td><%= s.final_price ? formatCurrency(s.final_price) : '-' %></td>
-            <td><small><%= s.reviewed_by_name || '-' %></small></td>
           </tr>
           <% }) %>
         </tbody>
+        <% if (sales.length > 0) { %>
+        <tfoot class="table-light fw-bold">
+          <tr>
+            <td colspan="2" class="text-end">TOTAL:</td>
+            <td class="text-center"><%= (metrics.totalDus || 0).toLocaleString('id-ID') %></td>
+            <td class="text-center font-monospace"><%= Number(metrics.totalBerat || 0).toLocaleString('id-ID', { minimumFractionDigits: 0, maximumFractionDigits: 2 }) %> KG</td>
+            <td class="text-center">-</td>
+            <td class="text-end pe-4 text-success font-monospace"><%- formatCurrency(metrics.totalHarga || 0) %></td>
+            <td colspan="2"></td>
+          </tr>
+        </tfoot>
+        <% } %>
       </table>
     </div>
   </div>
 </div>
+
+<!-- Modal: Tambah Penjualan Write Off -->
+<div class="modal fade" id="addSaleModal" tabindex="-1" aria-labelledby="addSaleModalLabel" aria-hidden="true">
+  <div class="modal-dialog modal-dialog-centered">
+    <div class="modal-content border-0 shadow">
+      <form method="POST" action="/recovery/write-off-sales">
+        <div class="modal-header bg-primary text-white">
+          <h5 class="modal-title" id="addSaleModalLabel">
+            <i class="bi bi-plus-circle me-1"></i> Input Proses Penjualan Write Off
+          </h5>
+          <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal" aria-label="Close"></button>
+        </div>
+        <div class="modal-body p-4">
+          <div class="mb-3">
+            <label class="form-label fw-semibold">TGL PENJUALAN <span class="text-danger">*</span></label>
+            <input type="date" class="form-control" name="sale_date" value="<%= formatDateInput(new Date()) %>" required>
+          </div>
+          
+          <div class="row g-3 mb-3">
+            <div class="col-md-6">
+              <label class="form-label fw-semibold">TOTAL DUS <span class="text-danger">*</span></label>
+              <input type="number" class="form-control" name="total_dus" min="1" step="1" value="1" required placeholder="Contoh: 5">
+            </div>
+            <div class="col-md-6">
+              <label class="form-label fw-semibold">BERAT DUS <span class="text-danger">*</span></label>
+              <div class="input-group">
+                <input type="number" class="form-control" name="berat_dus" min="0.01" step="0.01" required placeholder="Contoh: 21">
+                <span class="input-group-text bg-light fw-bold">KG</span>
+              </div>
+            </div>
+          </div>
+
+          <div class="mb-3">
+            <label class="form-label fw-semibold">KATEGORI <span class="text-danger">*</span></label>
+            <input type="text" class="form-control text-uppercase" name="kategori" list="kategoriOptions" required placeholder="Contoh: PLASTIK, BESI, KACA, KAIN...">
+            <datalist id="kategoriOptions">
+              <option value="PLASTIK">
+              <option value="BESI">
+              <option value="KACA">
+              <option value="KAIN">
+              <option value="KARTON/DUS">
+              <option value="CAMPUR">
+            </datalist>
+          </div>
+
+          <div class="mb-3">
+            <label class="form-label fw-semibold">HARGA (RP) <span class="text-danger">*</span></label>
+            <div class="input-group">
+              <span class="input-group-text bg-light fw-bold">Rp</span>
+              <input type="number" class="form-control font-monospace" name="harga" min="0" step="1" required placeholder="Contoh: 200000">
+            </div>
+            <small class="text-muted" id="addHargaPreview"></small>
+          </div>
+
+          <div class="mb-2">
+            <label class="form-label fw-semibold">Catatan / Keterangan</label>
+            <textarea class="form-control" name="notes" rows="2" placeholder="Catatan tambahan / pembeli / nomor dokumen (opsional)"></textarea>
+          </div>
+        </div>
+        <div class="modal-footer bg-light">
+          <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Batal</button>
+          <button type="submit" class="btn btn-primary"><i class="bi bi-save me-1"></i> Simpan Penjualan</button>
+        </div>
+      </form>
+    </div>
+  </div>
+</div>
+
+<!-- Modal: Edit Penjualan Write Off -->
+<div class="modal fade" id="editSaleModal" tabindex="-1" aria-labelledby="editSaleModalLabel" aria-hidden="true">
+  <div class="modal-dialog modal-dialog-centered">
+    <div class="modal-content border-0 shadow">
+      <form method="POST" id="editSaleForm">
+        <input type="hidden" name="_method" value="PUT">
+        <div class="modal-header bg-warning text-dark">
+          <h5 class="modal-title" id="editSaleModalLabel">
+            <i class="bi bi-pencil-square me-1"></i> Edit Penjualan Write Off
+          </h5>
+          <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+        </div>
+        <div class="modal-body p-4">
+          <div class="mb-3">
+            <label class="form-label fw-semibold">TGL PENJUALAN <span class="text-danger">*</span></label>
+            <input type="date" class="form-control" id="edit_sale_date" name="sale_date" required>
+          </div>
+          
+          <div class="row g-3 mb-3">
+            <div class="col-md-6">
+              <label class="form-label fw-semibold">TOTAL DUS <span class="text-danger">*</span></label>
+              <input type="number" class="form-control" id="edit_total_dus" name="total_dus" min="1" step="1" required>
+            </div>
+            <div class="col-md-6">
+              <label class="form-label fw-semibold">BERAT DUS <span class="text-danger">*</span></label>
+              <div class="input-group">
+                <input type="number" class="form-control" id="edit_berat_dus" name="berat_dus" min="0.01" step="0.01" required>
+                <span class="input-group-text bg-light fw-bold">KG</span>
+              </div>
+            </div>
+          </div>
+
+          <div class="mb-3">
+            <label class="form-label fw-semibold">KATEGORI <span class="text-danger">*</span></label>
+            <input type="text" class="form-control text-uppercase" id="edit_kategori" name="kategori" list="kategoriOptions" required>
+          </div>
+
+          <div class="mb-3">
+            <label class="form-label fw-semibold">HARGA (RP) <span class="text-danger">*</span></label>
+            <div class="input-group">
+              <span class="input-group-text bg-light fw-bold">Rp</span>
+              <input type="number" class="form-control font-monospace" id="edit_harga" name="harga" min="0" step="1" required>
+            </div>
+          </div>
+
+          <div class="mb-2">
+            <label class="form-label fw-semibold">Catatan / Keterangan</label>
+            <textarea class="form-control" id="edit_notes" name="notes" rows="2"></textarea>
+          </div>
+        </div>
+        <div class="modal-footer bg-light">
+          <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Batal</button>
+          <button type="submit" class="btn btn-warning"><i class="bi bi-save me-1"></i> Perbarui Data</button>
+        </div>
+      </form>
+    </div>
+  </div>
+</div>
+
+<!-- Modal: Delete Confirmation -->
+<div class="modal fade" id="deleteSaleModal" tabindex="-1" aria-labelledby="deleteSaleModalLabel" aria-hidden="true">
+  <div class="modal-dialog modal-dialog-centered modal-sm">
+    <div class="modal-content border-0 shadow">
+      <form method="POST" id="deleteSaleForm">
+        <input type="hidden" name="_method" value="DELETE">
+        <div class="modal-header bg-danger text-white">
+          <h5 class="modal-title" id="deleteSaleModalLabel"><i class="bi bi-exclamation-triangle me-1"></i> Konfirmasi Hapus</h5>
+          <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal" aria-label="Close"></button>
+        </div>
+        <div class="modal-body p-3 text-center">
+          <p class="mb-1">Hapus rekaman penjualan write-off ini?</p>
+          <strong id="deleteSaleInfo" class="text-danger d-block"></strong>
+        </div>
+        <div class="modal-footer bg-light justify-content-center">
+          <button type="button" class="btn btn-sm btn-secondary" data-bs-dismiss="modal">Batal</button>
+          <button type="submit" class="btn btn-sm btn-danger"><i class="bi bi-trash3 me-1"></i> Hapus</button>
+        </div>
+      </form>
+    </div>
+  </div>
+</div>
+
+<script>
+  document.addEventListener('DOMContentLoaded', function () {
+    // Edit Modal Binding
+    const editModalEl = document.getElementById('editSaleModal');
+    const editModal = editModalEl ? new bootstrap.Modal(editModalEl) : null;
+    const editForm = document.getElementById('editSaleForm');
+
+    document.querySelectorAll('.btn-edit-sale').forEach(btn => {
+      btn.addEventListener('click', function () {
+        const id = this.dataset.id;
+        const saleDate = this.dataset.saleDate;
+        const totalDus = this.dataset.totalDus;
+        const beratDus = this.dataset.beratDus;
+        const kategori = this.dataset.kategori;
+        const harga = this.dataset.harga;
+        const notes = this.dataset.notes;
+
+        if (editForm) {
+          editForm.action = `/recovery/write-off-sales/${id}`;
+        }
+        document.getElementById('edit_sale_date').value = saleDate;
+        document.getElementById('edit_total_dus').value = totalDus;
+        document.getElementById('edit_berat_dus').value = beratDus;
+        document.getElementById('edit_kategori').value = kategori;
+        document.getElementById('edit_harga').value = harga;
+        document.getElementById('edit_notes').value = notes;
+
+        if (editModal) editModal.show();
+      });
+    });
+
+    // Delete Modal Binding
+    const deleteModalEl = document.getElementById('deleteSaleModal');
+    const deleteModal = deleteModalEl ? new bootstrap.Modal(deleteModalEl) : null;
+    const deleteForm = document.getElementById('deleteSaleForm');
+    const deleteInfo = document.getElementById('deleteSaleInfo');
+
+    document.querySelectorAll('.btn-delete-sale').forEach(btn => {
+      btn.addEventListener('click', function () {
+        const id = this.dataset.id;
+        const kategori = this.dataset.kategori;
+        const tgl = this.dataset.tgl;
+
+        if (deleteForm) {
+          deleteForm.action = `/recovery/write-off-sales/${id}/delete`;
+        }
+        if (deleteInfo) {
+          deleteInfo.textContent = `${kategori} (${tgl})`;
+        }
+        if (deleteModal) deleteModal.show();
+      });
+    });
+  });
+</script>

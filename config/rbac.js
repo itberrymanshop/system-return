@@ -15,7 +15,7 @@ const MENUS = {
   perbaikan        : { label: 'Perbaikan',                 group: 'main' },
   perbaikan_proses : { label: 'Perbaikan → Proses Perbaikan', group: 'perbaikan' },
   recovery         : { label: 'Recovery',                  group: 'main' },
-  recovery_fat     : { label: 'Recovery → Approval FAT',   group: 'recovery' },
+  recovery_fat     : { label: 'Laporan Penjualan → Write Off', group: 'recovery' },
   inventory        : { label: 'Inventory',                 group: 'main' },
   master_barang    : { label: 'Master Barang',              group: 'main' },
   master_expedisi  : { label: 'Master Expedisi',            group: 'main' },
