@@ -7,6 +7,8 @@ const rbacService = require('./services/rbacService');
 
 const PORT = process.env.PORT || 3000;
 
+//hi im here
+
 async function runMigrations() {
   try {
     console.log('🔄 Checking database migrations...');
