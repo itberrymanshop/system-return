@@ -3,8 +3,14 @@
   <div class="row mb-3 align-items-center">
     <div class="col">
       <h2><i class="bi bi-file-earmark-text"></i> Berita Acara – <code><%= ba.ba_number %></code></h2>
-      <p class="mb-0">
-        <% const
+       <% if (ba.ba_type === 'retur_supplier') { %>
+       <div class="alert alert-secondary py-2 mt-2 mb-2">
+         <strong>Kardus:</strong> SX <%= ba.export_month || '--' %> DUS <%= ba.box_number || '---' %>
+         <span class="ms-3"><strong>Berat:</strong> <%= ba.box_weight_kg || '-' %> Kg</span>
+       </div>
+       <% } %>
+       <p class="mb-0">
+         <% const
           btColors={rekondisi:'primary',refurbish:'dark',write_off:'danger',retur_supplier:'secondary',retur_final:'primary'};
           %>
           <span class="badge bg-<%= btColors[ba.ba_type]||'dark' %>">

@@ -1,8 +1,7 @@
 <style>
-  .table-responsive {
-    overflow-x: auto;
-    -webkit-overflow-scrolling: touch;
-  }
+   .table-responsive {
+     overflow-x: hidden !important;
+   }
   .table-sticky-queue th:first-child,
   .table-sticky-queue td:first-child {
     position: sticky;
@@ -28,11 +27,39 @@
   .table-sticky-queue tbody tr.table-danger:hover td:first-child {
     background-color: #f1b0b7;
   }
-  .table-sticky-queue th,
-  .table-sticky-queue td {
-    white-space: nowrap;
-    vertical-align: middle;
-  }
+   .table-sticky-queue {
+     width: 100%;
+     table-layout: fixed;
+   }
+   .table-sticky-queue th,
+   .table-sticky-queue td {
+     white-space: normal;
+     overflow-wrap: anywhere;
+     word-break: break-word;
+     vertical-align: middle;
+   }
+   .table-sticky-queue th:nth-child(1), .table-sticky-queue td:nth-child(1) { width: 42px; }
+   .table-sticky-queue th:nth-child(2), .table-sticky-queue td:nth-child(2) { width: 42px; }
+   .table-sticky-queue th:nth-child(3), .table-sticky-queue td:nth-child(3) { width: 82px; }
+   .table-sticky-queue th:nth-child(4), .table-sticky-queue td:nth-child(4) { width: 88px; }
+   .table-sticky-queue th:nth-child(5), .table-sticky-queue td:nth-child(5) { width: 18%; }
+   .table-sticky-queue th:nth-child(6), .table-sticky-queue td:nth-child(6) { width: 52px; }
+   .table-sticky-queue th:last-child, .table-sticky-queue td:last-child { width: 76px; }
+   .table-sticky-queue thead th { background: #f8fafc; color: #475569; font-size: .75rem; letter-spacing: .04em; text-transform: uppercase; border-bottom: 2px solid #e2e8f0; }
+   .table-sticky-queue tbody td { padding-top: .8rem; padding-bottom: .8rem; }
+   .table-sticky-queue tbody tr { transition: background-color .15s ease, box-shadow .15s ease; }
+   .table-sticky-queue tbody tr:hover { background: #f8fafc; box-shadow: inset 3px 0 0 #0d6efd; }
+   .queue-sku { color: #0f172a; font-size: .82rem; }
+   .queue-qty { display: inline-flex; min-width: 2.25rem; justify-content: center; padding: .15rem .45rem; border-radius: 999px; background: #e0f2fe; color: #075985; font-weight: 700; }
+   @media (max-width: 767.98px) {
+     .table-sticky-queue { font-size: .68rem; }
+     .table-sticky-queue th, .table-sticky-queue td { padding: .35rem .2rem; }
+     .table-sticky-queue th:nth-child(3), .table-sticky-queue td:nth-child(3) { width: 62px; }
+     .table-sticky-queue th:nth-child(4), .table-sticky-queue td:nth-child(4) { width: 68px; }
+     .table-sticky-queue th:nth-child(5), .table-sticky-queue td:nth-child(5) { width: 20%; }
+     .single-process-btn { font-size: 0; padding: .35rem .4rem; }
+     .single-process-btn i { font-size: .85rem; margin: 0 !important; }
+   }
 </style>
 
 <div class="container-fluid mt-5 pt-4">
@@ -116,13 +143,13 @@
                   <tr>
                     <th style="width: 40px;"><input type="checkbox" id="selectAll"></th>
                     <th>#</th>
-                    <th>Tgl Masuk</th>
+                    <th class="sorting-date">Tgl Masuk</th>
                     <th>SKU</th>
                     <th>Nama Barang</th>
                     <th>Qty</th>
-                    <th>Kondisi</th>
-                    <th>Kategori</th>
-                    <th>Ikut WO</th>
+                    <th class="sorting-optional">Kondisi</th>
+                    <th class="sorting-optional">Kategori</th>
+                    <th class="sorting-optional">Ikut WO</th>
                     <th>Status QC</th>
                     <th>SLA</th>
                     <th>Aksi</th>
@@ -137,28 +164,26 @@
                           <td>
                             <%= i + 1 %>
                           </td>
-                          <td>
-                            <small>
-                              <%= formatDate(item.return_date) %>
+                           <td class="sorting-date">
+                             <small>
+                               <%= formatDate(item.return_date) %>
                             </small>
                             <% if (item.inbound_date) { %>
                               <br><small class="text-success"><i class="bi bi-check-circle"></i> Inbound: <%=
                                   formatDate(item.inbound_date) %></small>
                               <% } %>
                           </td>
-                          <td><a href="/sorting/<%= item.return_id %>"
-                              class="fw-bold text-decoration-none"><code><%= item.sku %></code></a></td>
+<td><a href="/sorting/<%= item.return_id %>"
+                               class="fw-bold text-decoration-none"><code class="queue-sku"><%= item.sku %></code></a></td>
                           <td><strong>
                               <%= item.item_name %>
                             </strong></td>
-                          <td>
-                            <%= item.quantity %>
+                           <td><span class="queue-qty"><%= item.quantity %></span></td>
+                           <td class="text-capitalize sorting-optional">
+                             <%= formatCategory(item.return_category) %>
                           </td>
-                          <td class="text-capitalize">
-                            <%= formatCategory(item.return_category) %>
-                          </td>
-                          <td>
-                            <select class="form-select form-select-sm row-category-select"
+                           <td class="sorting-optional">
+                             <select class="form-select form-select-sm row-category-select"
                               name="category_<%= item.item_id %>" disabled style="display: none;">
                               <option value="">-- Pilih Kategori --</option>
                               <option value="Elektronik" <%=item.item_category==='Elektronik' ? 'selected' : '' %>
@@ -240,8 +265,10 @@
         }
         $table.find('tbody tr td[colspan]').closest('tr').remove();
         $table.DataTable({
-          pageLength: 25,
-          order: [[1, 'asc']],
+           paging: false,
+           pageLength: -1,
+           lengthChange: false,
+           order: [[1, 'asc']],
           responsive: false,
           autoWidth: false,
           destroy: true,

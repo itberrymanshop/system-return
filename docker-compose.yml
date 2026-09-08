@@ -1,17 +1,34 @@
 services:
-  return-berryman: 
+  db:
+    image: mysql:8.0
+    container_name: retur-db
+    restart: unless-stopped
+    environment:
+      MYSQL_DATABASE: ${DB_NAME}
+      MYSQL_ROOT_PASSWORD: ${DB_PASSWORD}
+    volumes:
+      - mysql_data:/var/lib/mysql
+      - ./sistem_retur.sql:/docker-entrypoint-initdb.d/01-schema.sql:ro
+    networks:
+      - dokploy-network
+
+  return-berryman:
     build: .
     container_name: return-berryman
     restart: unless-stopped
     ports:
       - "${HOST_PORT:-3000}:3000"
-    networks:
-      - dokploy-network
     env_file:
       - .env
+    depends_on:
+      - db
     volumes:
       - /home/ubuntu/data/berryman/upload:/app/uploads
+    networks:
+      - dokploy-network
 
+volumes:
+  mysql_data:
 
 networks:
   dokploy-network:

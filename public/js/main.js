@@ -29,8 +29,10 @@ $(document).ready(function () {
             }
 
             $table.DataTable({
-              pageLength: 25,
-              order: customOrder,
+              paging: false,
+               pageLength: -1,
+               lengthChange: false,
+               order: customOrder,
               responsive: true,
               destroy: true,
               deferRender: true,

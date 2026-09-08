@@ -79,7 +79,20 @@ async function runMigrations() {
       await pool.query("ALTER TABLE return_items ADD COLUMN ikut_wo VARCHAR(50) DEFAULT NULL AFTER ikut");
     }
 
-    // 6. Create write_off_sales table for Laporan Penjualan Write Off
+    // 6. Add Supplier Lokal packaging fields to berita_acara
+    const [baPackagingColumns] = await pool.query("SHOW COLUMNS FROM berita_acara WHERE Field IN ('export_month', 'box_number', 'box_weight_kg')");
+    const baPackagingFields = new Set(baPackagingColumns.map(column => column.Field));
+    if (!baPackagingFields.has('export_month')) {
+      await pool.query("ALTER TABLE berita_acara ADD COLUMN export_month CHAR(2) DEFAULT NULL AFTER vendor_id");
+    }
+    if (!baPackagingFields.has('box_number')) {
+      await pool.query("ALTER TABLE berita_acara ADD COLUMN box_number CHAR(3) DEFAULT NULL AFTER export_month");
+    }
+    if (!baPackagingFields.has('box_weight_kg')) {
+      await pool.query("ALTER TABLE berita_acara ADD COLUMN box_weight_kg DECIMAL(10, 2) DEFAULT NULL AFTER box_number");
+    }
+
+    // 7. Create write_off_sales table for Laporan Penjualan Write Off
     console.log('   - Checking write_off_sales table...');
     await pool.query(`
       CREATE TABLE IF NOT EXISTS write_off_sales (

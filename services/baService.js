@@ -24,8 +24,8 @@ async function createBA(data, userId) {
   const baNumber = await generateBANumber(data.ba_type);
   const [result] = await db.query(
     `INSERT INTO berita_acara
-       (ba_number, return_id, ba_type, created_by, title, content, final_price, vendor_id, status)
-     VALUES (?, ?, ?, ?, ?, ?, ?, ?, 'draft')`,
+       (ba_number, return_id, ba_type, created_by, title, content, final_price, vendor_id, export_month, box_number, box_weight_kg, status)
+     VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, 'draft')`,
     [
       baNumber,
       data.return_id ? parseInt(data.return_id) : null,
@@ -34,7 +34,10 @@ async function createBA(data, userId) {
       data.title        || null,
       data.content      || null,
       data.final_price  || null,
-      data.vendor_id    || null
+      data.vendor_id    || null,
+      data.export_month || null,
+      data.box_number   || null,
+      data.box_weight_kg ? parseFloat(data.box_weight_kg) : null
     ]
   );
 
@@ -101,9 +104,12 @@ async function getBAList(filters = {}) {
       ba.ba_type, 
       ba.status, 
       ba.created_at,
-      ba.final_price, 
-      ba.title, 
-      ba.vendor_id,
+       ba.final_price,
+       ba.title,
+       ba.vendor_id,
+       ba.export_month,
+       ba.box_number,
+       ba.box_weight_kg,
       r.return_number,
       COALESCE(stock_agg.resi_number, r.resi_number) AS resi_number,
       r.customer_name,

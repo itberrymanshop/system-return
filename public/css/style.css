@@ -317,5 +317,13 @@ body.sidebar-open { overflow: hidden; }
 /* Responsive */
 @media (max-width: 768px) {
     .card-body { padding: 15px; }
-    .table { font-size: 0.85rem; }
+    .table-responsive { overflow-x: visible; }
+    .table { width: 100% !important; table-layout: fixed; font-size: 0.78rem; }
+    .table th, .table td { white-space: normal !important; overflow-wrap: anywhere; word-break: break-word; padding: .45rem .35rem; vertical-align: middle; }
+    .table th { font-size: .68rem; }
+    .table .btn { white-space: nowrap; padding: .25rem .4rem; }
+    .table .form-control, .table .form-select { min-width: 0; font-size: .75rem; padding: .3rem; }
+    .datatable td:last-child, .datatable th:last-child { width: 76px; }
+    .excel-ba-table { table-layout: fixed; }
+    .excel-ba-table th, .excel-ba-table td { white-space: normal !important; overflow-wrap: anywhere; padding: .35rem; font-size: .7rem; }
 }

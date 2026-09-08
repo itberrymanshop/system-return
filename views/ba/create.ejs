@@ -75,6 +75,7 @@
           <div class="col-12">
             <label class="form-label">Judul BA <span class="text-danger">*</span></label>
             <input type="text" class="form-control" name="title" required
+              value="<%= typeof defaultTitle !== 'undefined' ? defaultTitle : '' %>"
               placeholder="Contoh: BA Penjualan Refurbish – RET20260529001">
           </div>
 
@@ -82,7 +83,7 @@
             <label class="form-label">Harga Final</label>
             <div class="input-group">
               <span class="input-group-text">Rp</span>
-              <input type="number" step="0.01" class="form-control" name="final_price" min="0" placeholder="0">
+              <input type="number" step="0.01" class="form-control" name="final_price" min="0" value="<%= typeof defaultFinalPrice !== 'undefined' && defaultFinalPrice !== null ? defaultFinalPrice : '' %>" placeholder="0">
             </div>
           </div>
 
@@ -99,7 +100,7 @@
           <div class="col-12">
             <label class="form-label">Isi / Kronologi Berita Acara <span class="text-danger">*</span></label>
             <textarea class="form-control" name="content" rows="8" required
-              placeholder="Uraikan kronologi, kondisi barang, dasar penetapan harga, kesimpulan, dll."></textarea>
+              placeholder="Uraikan kronologi, kondisi barang, dasar penetapan harga, kesimpulan, dll."><%= typeof defaultContent !== 'undefined' ? defaultContent : '' %></textarea>
           </div>
 
         </div>

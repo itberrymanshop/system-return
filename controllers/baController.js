@@ -2,7 +2,7 @@
 const baService = require('../services/baService');
 const reportService = require('../services/reportService');
 const db = require('../config/database');
-const XLSX = require('xlsx');
+const XLSX = require('xlsx-js-style');
 
 // ─── List ─────────────────────────────────────────────────────────────────────
 exports.list = async (req, res, next) => {
@@ -339,35 +339,19 @@ exports.createForm = async (req, res, next) => {
       vendor_id: vendorId
     };
 
-    // Create the BA
-    const { baId, baNumber } = await baService.createBA(defaultData, req.session.userId);
-
-    // Link inventory stock items to this BA and update status to completed
-    await db.query('UPDATE inventory_stock SET ba_id = ?, status = ? WHERE stock_id IN (?) AND ba_id IS NULL', [baId, 'completed', stockIds]);
-
-    // Update return_items current_status to Completed for linked items
-    await db.query(`
-      UPDATE return_items ri
-      SET ri.current_status = ?
-      WHERE ri.item_id IN (
-        SELECT item_id FROM inventory_stock WHERE stock_id IN (?)
-      )
-    `, ['Completed', stockIds]);
-
-    // Link returns to this BA
-    await db.query(`
-      UPDATE returns 
-      SET ba_id = ? 
-      WHERE return_id IN (
-        SELECT DISTINCT return_id FROM inventory_stock WHERE stock_id IN (?)
-      )
-    `, [baId, stockIds]);
-
-    await reportService.logActivity(req.session.userId, 'create_ba',
-      `BA ${baNumber} dibuat secara otomatis dari Stok`, req.ip, req.headers['user-agent']);
-
-    req.flash('success', `Berita Acara ${baNumber} berhasil dibuat.`);
-    res.redirect(`/ba?ba_id=${baId}`);
+    const vendors = await baService.getVendors();
+    res.render('ba/create', {
+      title: 'Buat Berita Acara Baru',
+      vendors,
+      stockItems,
+      stockIdsParam,
+      returnId: firstReturnId,
+      defaultBaType: baType,
+      defaultVendorId: vendorId,
+      defaultFinalPrice: totalFinalPrice > 0 ? totalFinalPrice : null,
+      defaultTitle: defaultData.title,
+      defaultContent: defaultData.content
+    });
   } catch (err) { next(err); }
 };
 
@@ -408,6 +392,34 @@ exports.create = async (req, res, next) => {
 
     req.flash('success', `Berita Acara ${baNumber} berhasil dibuat.`);
     res.redirect(`/ba/${baId}`);
+  } catch (err) { next(err); }
+};
+
+// ─── Supplier Lokal Packaging ─────────────────────────────────────────────────
+exports.updatePackaging = async (req, res, next) => {
+  try {
+    const baId = parseInt(req.params.id);
+    const { export_month, box_number, box_weight_kg } = req.body;
+    if (!/^(0[1-9]|1[0-2])$/.test(export_month) || !/^\d{3}$/.test(box_number) || !(parseFloat(box_weight_kg) > 0)) {
+      req.flash('error', 'Bulan, nomor kardus 3 digit, dan berat koli Kg wajib valid.');
+      return res.redirect('/ba');
+    }
+
+    const [result] = await db.query(
+      `UPDATE berita_acara
+       SET export_month = ?, box_number = ?, box_weight_kg = ?
+       WHERE ba_id = ? AND ba_type = 'retur_supplier'`,
+      [export_month, box_number, parseFloat(box_weight_kg), baId]
+    );
+    if (!result.affectedRows) {
+      req.flash('error', 'BA Supplier Lokal tidak ditemukan.');
+      return res.redirect('/ba');
+    }
+
+    await reportService.logActivity(req.session.userId, 'update_ba_packaging',
+      `Kardus BA #${baId}: SX ${export_month} DUS ${box_number}`, req.ip, req.headers['user-agent']);
+    req.flash('success', 'Nomor kardus dan berat koli berhasil disimpan.');
+    res.redirect('/ba');
   } catch (err) { next(err); }
 };
 
@@ -786,11 +798,11 @@ exports.exportSupplierLokal = async (req, res, next) => {
       };
       docs = await baService.getBAList(queryFilters);
       baIds = docs.map(d => d.ba_id);
-    }
+     }
 
-    let items = [];
-    if (baIds.length > 0) {
-      // 1. Fetch from inventory_stock
+     let items = [];
+     if (baIds.length > 0) {
+       // 1. Fetch from inventory_stock
       const [stockItems] = await db.query(`
         SELECT 
           ri.item_code AS sku, 
@@ -840,35 +852,87 @@ exports.exportSupplierLokal = async (req, res, next) => {
       }
     }
 
-    const data = [];
-
-    // Header row matching the requested structure and image
-    data.push(['Nama Barang', 'Kode', 'Unit', 'Kuantitas', 'Supplier', 'Nomer BA', 'Berat Koli']);
-
-    // Items data rows
-    items.forEach((item) => {
-      const unitVal = (item.satuan ? item.satuan.trim() : '') || 'PCS';
-      data.push([
-        item.item_name || '',
-        item.sku || '',
-        unitVal.toUpperCase(),
-        Number(item.quantity) || 0,
-        item.vendor_name || '',
-        item.ba_number || '',
-        '' // Berat Koli is left empty
-      ]);
+    const packagingByBaId = new Map(docs.map(doc => [doc.ba_id, doc]));
+    const groupedItems = new Map();
+    items.forEach(item => {
+       const key = [item.ba_id, item.vendor_name || '', item.sku || ''].join('|');
+      const existing = groupedItems.get(key) || { ...item, quantity: 0 };
+      existing.quantity += Number(item.quantity) || 0;
+      groupedItems.set(key, existing);
     });
 
-    const ws = XLSX.utils.aoa_to_sheet(data);
+    const rows = [...groupedItems.values()].sort((a, b) =>
+      String(a.vendor_name || '').localeCompare(String(b.vendor_name || ''), 'id') ||
+      String(a.ba_number || '').localeCompare(String(b.ba_number || ''), 'id') ||
+      String(a.sku || '').localeCompare(String(b.sku || ''), 'id')
+    );
+    const data = [['SKU', 'Nama Barang', 'Qty', 'Supplier', 'Nomor BA', 'Nomor Kardus', 'Berat Koli (Kg)']];
+    const merges = [];
+    let rowIndex = 1;
+    let baGroupStart = 1;
+    let baGroupKey = null;
 
+    rows.forEach((item, index) => {
+      const packaging = packagingByBaId.get(item.ba_id) || {};
+      const supplierKey = item.vendor_name || '-';
+      const currentBaKey = `${supplierKey}|${item.ba_id}`;
+      if (baGroupKey !== null && baGroupKey !== currentBaKey) {
+        if (rowIndex - 1 > baGroupStart) {
+          [3, 4, 5, 6].forEach(column => merges.push({ s: { r: baGroupStart, c: column }, e: { r: rowIndex - 1, c: column } }));
+        }
+        baGroupStart = rowIndex;
+      }
+      baGroupKey = currentBaKey;
+      const unitVal = (item.satuan ? item.satuan.trim() : '') || 'PCS';
+      const boxLabel = packaging.export_month && packaging.box_number
+        ? `SX ${packaging.export_month} DUS ${packaging.box_number}`
+        : '-';
+      data.push([
+        item.sku || '',
+        item.item_name || '',
+        Number(item.quantity) || 0,
+        item.vendor_name || '-',
+        item.ba_number || '-',
+        boxLabel,
+        packaging.box_weight_kg ? Number(packaging.box_weight_kg) : '-'
+      ]);
+      rowIndex += 1;
+      if (index === rows.length - 1) {
+        if (rowIndex - 1 > baGroupStart) {
+          [3, 4, 5, 6].forEach(column => merges.push({ s: { r: baGroupStart, c: column }, e: { r: rowIndex - 1, c: column } }));
+        }
+      }
+    });
+
+     const ws = XLSX.utils.aoa_to_sheet(data);
+     const border = { style: 'thin', color: { rgb: 'B7C3D0' } };
+     const headerStyle = {
+       font: { bold: true, color: { rgb: 'FFFFFF' } },
+       fill: { fgColor: { rgb: '107C41' } },
+       alignment: { horizontal: 'center', vertical: 'center', wrapText: true },
+       border: { top: border, bottom: border, left: border, right: border }
+     };
+     const bodyStyle = {
+       alignment: { vertical: 'center', wrapText: true },
+       border: { top: border, bottom: border, left: border, right: border }
+     };
+     for (let row = 0; row < data.length; row++) {
+       for (let column = 0; column < data[row].length; column++) {
+         const cellAddress = XLSX.utils.encode_cell({ r: row, c: column });
+         if (!ws[cellAddress]) ws[cellAddress] = { v: '' };
+         ws[cellAddress].s = row === 0 ? headerStyle : bodyStyle;
+       }
+     }
+     ws['!rows'] = [{ hpt: 28 }];
+     ws['!merges'] = merges;
     ws['!cols'] = [
-      { wch: 45 }, // Nama Barang
-      { wch: 15 }, // Kode
-      { wch: 10 }, // Unit
-      { wch: 12 }, // Kuantitas
-      { wch: 25 }, // Supplier
-      { wch: 25 }, // Nomer BA
-      { wch: 15 }  // Berat Koli
+      { wch: 18 },
+      { wch: 45 },
+      { wch: 12 },
+      { wch: 25 },
+      { wch: 25 },
+      { wch: 18 },
+      { wch: 18 }
     ];
 
     const wb = XLSX.utils.book_new();

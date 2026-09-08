@@ -14,5 +14,4 @@ coverage/
 .cache
 .babelrc
 .eslintrc
-sistem_retur.sql
-sistem_retut_backup.sql
+*.sql
