@@ -184,7 +184,11 @@
     <div class="col">
       <h2><i class="bi bi-file-earmark-text"></i> Berita Acara Retur Final</h2>
     </div>
-    <div class="col-auto d-flex gap-2">
+    <div class="col-auto d-flex gap-2 align-items-center">
+      <label class="btn btn-sm btn-outline-success mb-0">
+        <input type="checkbox" class="form-check-input me-1" id="checkAllSupplierLokal" title="Pilih semua Supplier Lokal">
+        Pilih Semua
+      </label>
       <a href="/ba/vendors" class="btn btn-sm btn-outline-secondary"><i class="bi bi-building"></i> Vendor</a>
     </div>
   </div>
@@ -266,7 +270,7 @@
         const statusEntries = (categories.length ? categories : [d.ba_type]).map(category => statusMap[category] || { label: String(category || '-').replace('_', ' ').toUpperCase(), color: 'secondary' });
       %>
       <div class="col-12 col-md-6 col-xl-4">
-        <article class="ba-card h-100 <%= hasSupplierLokal ? 'ba-card-supplier ba-card-selectable' : '' %>" <% if (hasSupplierLokal) { %>data-ba-selectable="true" data-ba-number="<%= d.ba_number %>" data-ba-supplier="<%= d.vendor_name || '-' %>" data-ba-qty="<%= d.total_qty || 0 %>" data-ba-skus="<%= d.skus || '-' %>" data-ba-box="<%= d.box_number ? `SX ${d.export_month} DUS ${d.box_number}` : 'Belum diisi' %>" data-ba-weight="<%= d.box_weight_kg ? `${d.box_weight_kg} Kg` : 'Belum diisi' %>"<% } %>>
+        <article class="ba-card h-100 <%= hasSupplierLokal ? 'ba-card-supplier ba-card-selectable' : '' %>" <% if (hasSupplierLokal) { %>data-ba-selectable="true" data-ba-number="<%= d.ba_number %>" data-ba-supplier="<%= d.vendor_name || '-' %>" data-ba-qty="<%= d.total_qty || 0 %>" data-ba-skus="<%= d.skus || '-' %>" data-ba-box="<%= d.box_number || 'Belum diisi' %>" data-ba-weight="<%= d.box_weight_kg ? `${d.box_weight_kg} Kg` : 'Belum diisi' %>"<% } %>>
           <div class="ba-card-header">
             <div>
               <% if (hasSupplierLokal) { %>
@@ -289,13 +293,13 @@
             </div>
             <div class="mt-3"><span class="ba-label">SKU</span><div class="ba-sku-list"><% if (d.skus) { d.skus.split(', ').forEach(s => { %><span class="badge bg-light text-dark border font-monospace"><%= s %></span><% }) } else { %><span class="text-muted">-</span><% } %></div></div>
             <% if (hasSupplierLokal) { %>
-              <div class="ba-packaging mt-3"><div><span class="ba-label">Kardus</span><% if (d.box_number) { %><strong>SX <%= d.export_month %> DUS <%= d.box_number %></strong><% } else { %><span class="text-warning">Belum diisi</span><% } %></div><div><span class="ba-label">Berat</span><strong><%= d.box_weight_kg || '-' %> Kg</strong></div></div>
+              <div class="ba-packaging mt-3"><div><span class="ba-label">Kardus</span><% if (d.box_number) { %><strong><%= d.box_number %></strong><% } else { %><span class="text-warning">Belum diisi</span><% } %></div><div><span class="ba-label">Berat</span><strong><%= d.box_weight_kg || '-' %> Kg</strong></div></div>
             <% } %>
             <div class="text-muted small mt-3 text-truncate" title="<%= d.title || '' %>"><i class="bi bi-file-text me-1"></i><%= d.title || '-' %></div>
           </div>
           <div class="ba-card-footer">
             <span class="me-auto"></span>
-            <% if (hasSupplierLokal) { %><button type="button" class="btn btn-sm btn-outline-warning packaging-btn" data-bs-toggle="modal" data-bs-target="#packagingModal" data-ba-id="<%= d.ba_id %>" data-ba-number="<%= d.ba_number %>" data-month="<%= d.export_month || '' %>" data-box="<%= d.box_number || '' %>" data-weight="<%= d.box_weight_kg || '' %>"><i class="bi bi-box-seam"></i> Kardus</button><% } %>
+            <% if (hasSupplierLokal) { %><button type="button" class="btn btn-sm btn-outline-warning packaging-btn" data-bs-toggle="modal" data-bs-target="#packagingModal" data-ba-id="<%= d.ba_id %>" data-ba-number="<%= d.ba_number %>" data-box="<%= d.box_number || '' %>" data-weight="<%= d.box_weight_kg || '' %>"><i class="bi bi-box-seam"></i> Kardus</button><% } %>
             <a href="/ba/<%= d.ba_id %>" class="btn btn-sm btn-outline-primary"><i class="bi bi-eye"></i></a><a href="/ba/<%= d.ba_id %>/export-excel" class="btn btn-sm btn-outline-success"><i class="bi bi-file-earmark-excel"></i></a>
             <% if (['draft','pending_sign'].includes(d.status)) { %><a href="/ba/<%= d.ba_id %>/sign" class="btn btn-sm btn-outline-warning"><i class="bi bi-pen"></i></a><% } %>
           </div>
@@ -304,9 +308,7 @@
       <% }) %>
       <div class="d-none">
           <tr>
-            <th style="width: 45px;" class="text-center" data-orderable="false">
-              <input type="checkbox" class="form-check-input" id="checkAllSupplierLokal" title="Pilih Semua Supplier Lokal">
-            </th>
+            <th style="width: 45px;" class="text-center" data-orderable="false"></th>
             <th>Nomor BA</th><th>SKU</th><th>Total Qty</th><th>No Resi</th>
             <th>Supplier</th><th>Nomor Kardus</th><th>Berat Koli (Kg)</th><th>Judul</th><th>Harga Final</th><th>Status</th><th>Dibuat</th><th>Aksi</th>
           </tr>
@@ -379,8 +381,8 @@
                         <button type="button" class="btn btn-sm <%= d.box_number ? 'btn-outline-success' : 'btn-outline-warning' %> packaging-btn"
                           data-bs-toggle="modal" data-bs-target="#packagingModal"
                           data-ba-id="<%= d.ba_id %>" data-ba-number="<%= d.ba_number %>"
-                          data-month="<%= d.export_month || '' %>" data-box="<%= d.box_number || '' %>" data-weight="<%= d.box_weight_kg || '' %>">
-                          <%= d.box_number ? `SX ${d.export_month} DUS ${d.box_number}` : 'Isi Kardus' %>
+                          data-box="<%= d.box_number || '' %>" data-weight="<%= d.box_weight_kg || '' %>">
+                          <%= d.box_number || 'Isi Kardus' %>
                         </button>
                       <% } else { %>-<% } %>
                     </td>
@@ -430,17 +432,8 @@
           <div class="modal-body">
             <p class="text-muted small">BA: <strong id="packagingBaNumber"></strong></p>
             <div class="mb-3">
-              <label class="form-label">Bulan <span class="text-danger">*</span></label>
-              <select class="form-select" name="export_month" id="packagingMonth" required>
-                <option value="">Pilih bulan</option>
-                <% for (let month = 1; month <= 12; month++) { const value = String(month).padStart(2, '0'); %>
-                  <option value="<%= value %>"><%= value %></option>
-                <% } %>
-              </select>
-            </div>
-            <div class="mb-3">
               <label class="form-label">Nomor Kardus <span class="text-danger">*</span></label>
-              <input class="form-control" name="box_number" id="packagingBox" pattern="[0-9]{3}" maxlength="3" required placeholder="001">
+              <input class="form-control" name="box_number" id="packagingBox" maxlength="60" required placeholder="LSF 08 DUS 1">
             </div>
             <div>
               <label class="form-label">Berat Koli (Kg) <span class="text-danger">*</span></label>
@@ -517,7 +510,6 @@
         button.addEventListener('click', function () {
           document.getElementById('packagingBaNumber').textContent = this.dataset.baNumber;
           document.getElementById('packagingForm').action = `/ba/${this.dataset.baId}/packaging`;
-          document.getElementById('packagingMonth').value = this.dataset.month;
           document.getElementById('packagingBox').value = this.dataset.box;
           document.getElementById('packagingWeight').value = this.dataset.weight;
         });

@@ -5,7 +5,7 @@
       <h2><i class="bi bi-file-earmark-text"></i> Berita Acara – <code><%= ba.ba_number %></code></h2>
        <% if (ba.ba_type === 'retur_supplier') { %>
        <div class="alert alert-secondary py-2 mt-2 mb-2">
-         <strong>Kardus:</strong> SX <%= ba.export_month || '--' %> DUS <%= ba.box_number || '---' %>
+         <strong>Kardus:</strong> <%= ba.box_number || '---' %>
          <span class="ms-3"><strong>Berat:</strong> <%= ba.box_weight_kg || '-' %> Kg</span>
        </div>
        <% } %>

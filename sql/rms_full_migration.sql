@@ -162,7 +162,7 @@ CREATE TABLE IF NOT EXISTS berita_acara (
    final_price   DECIMAL(15,2) DEFAULT NULL,
    vendor_id     INT DEFAULT NULL,
    export_month  CHAR(2) DEFAULT NULL,
-   box_number    CHAR(3) DEFAULT NULL,
+    box_number    VARCHAR(60) DEFAULT NULL,
    box_weight_kg DECIMAL(10,2) DEFAULT NULL,
    status        ENUM('draft','pending_sign','signed','void') DEFAULT 'draft',
   -- Signatures (stored as base64 canvas data)

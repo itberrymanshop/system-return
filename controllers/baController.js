@@ -399,17 +399,17 @@ exports.create = async (req, res, next) => {
 exports.updatePackaging = async (req, res, next) => {
   try {
     const baId = parseInt(req.params.id);
-    const { export_month, box_number, box_weight_kg } = req.body;
-    if (!/^(0[1-9]|1[0-2])$/.test(export_month) || !/^\d{3}$/.test(box_number) || !(parseFloat(box_weight_kg) > 0)) {
-      req.flash('error', 'Bulan, nomor kardus 3 digit, dan berat koli Kg wajib valid.');
+    const { box_number, box_weight_kg } = req.body;
+    if (!box_number || !/^[\p{L}\p{N}][\p{L}\p{N} ._/-]{0,59}$/u.test(box_number.trim()) || !(parseFloat(box_weight_kg) > 0)) {
+      req.flash('error', 'Nomor kardus dan berat koli Kg wajib valid.');
       return res.redirect('/ba');
     }
 
     const [result] = await db.query(
       `UPDATE berita_acara
-       SET export_month = ?, box_number = ?, box_weight_kg = ?
+       SET box_number = ?, box_weight_kg = ?
        WHERE ba_id = ? AND ba_type = 'retur_supplier'`,
-      [export_month, box_number, parseFloat(box_weight_kg), baId]
+      [box_number.trim(), parseFloat(box_weight_kg), baId]
     );
     if (!result.affectedRows) {
       req.flash('error', 'BA Supplier Lokal tidak ditemukan.');
@@ -417,7 +417,7 @@ exports.updatePackaging = async (req, res, next) => {
     }
 
     await reportService.logActivity(req.session.userId, 'update_ba_packaging',
-      `Kardus BA #${baId}: SX ${export_month} DUS ${box_number}`, req.ip, req.headers['user-agent']);
+      `Kardus BA #${baId}: ${box_number.trim()}`, req.ip, req.headers['user-agent']);
     req.flash('success', 'Nomor kardus dan berat koli berhasil disimpan.');
     res.redirect('/ba');
   } catch (err) { next(err); }
@@ -884,9 +884,7 @@ exports.exportSupplierLokal = async (req, res, next) => {
       }
       baGroupKey = currentBaKey;
       const unitVal = (item.satuan ? item.satuan.trim() : '') || 'PCS';
-      const boxLabel = packaging.export_month && packaging.box_number
-        ? `SX ${packaging.export_month} DUS ${packaging.box_number}`
-        : '-';
+      const boxLabel = packaging.box_number || '-';
       data.push([
         item.sku || '',
         item.item_name || '',

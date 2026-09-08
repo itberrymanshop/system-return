@@ -86,7 +86,9 @@ async function runMigrations() {
       await pool.query("ALTER TABLE berita_acara ADD COLUMN export_month CHAR(2) DEFAULT NULL AFTER vendor_id");
     }
     if (!baPackagingFields.has('box_number')) {
-      await pool.query("ALTER TABLE berita_acara ADD COLUMN box_number CHAR(3) DEFAULT NULL AFTER export_month");
+      await pool.query("ALTER TABLE berita_acara ADD COLUMN box_number VARCHAR(60) DEFAULT NULL AFTER export_month");
+    } else {
+      await pool.query("ALTER TABLE berita_acara MODIFY COLUMN box_number VARCHAR(60) DEFAULT NULL");
     }
     if (!baPackagingFields.has('box_weight_kg')) {
       await pool.query("ALTER TABLE berita_acara ADD COLUMN box_weight_kg DECIMAL(10, 2) DEFAULT NULL AFTER box_number");
