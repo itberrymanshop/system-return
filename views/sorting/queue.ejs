@@ -7,7 +7,21 @@
    .table-sticky-queue tbody tr { display: grid; grid-template-columns: 42px 1fr 1fr 1fr 90px; gap: .35rem 1rem; padding: 1.1rem; background: #fff; border: 1px solid #e5e7eb; border-top: 4px solid #6c757d; border-radius: 14px; box-shadow: 0 4px 14px rgba(15,23,42,.06); transition: transform .18s ease, box-shadow .18s ease, border-color .18s ease; }
    .table-sticky-queue tbody tr:hover { transform: translateY(-2px); border-color: #0d6efd; box-shadow: 0 10px 24px rgba(15,23,42,.13); }
    .table-sticky-queue tbody tr.table-danger { border-top-color: #dc3545; }
-   .table-sticky-queue tbody tr.table-danger { border-color: #dc3545; }
+   .sorting-card { background: #fff; border: 1px solid #e5e7eb; border-top: 4px solid #6c757d; border-radius: 14px; box-shadow: 0 4px 14px rgba(15,23,42,.06); overflow: hidden; transition: transform .18s ease, box-shadow .18s ease, border-color .18s ease; }
+   .sorting-card:hover { transform: translateY(-3px); border-color: #0d6efd; box-shadow: 0 10px 24px rgba(15,23,42,.13); }
+   .sorting-card-danger { border-top-color: #dc3545; }
+   .sorting-card-header, .sorting-card-footer { display: flex; align-items: center; justify-content: space-between; gap: .5rem; padding: 1rem 1.1rem; background: #f8fafc; }
+   .sorting-card-header { border-bottom: 1px solid #edf0f2; }
+   .sorting-card-footer { border-top: 1px solid #edf0f2; justify-content: flex-end; }
+   .sorting-card-body { padding: 1rem 1.1rem; }
+   .sorting-select-label { display: inline-flex; align-items: center; gap: .45rem; font-size: .8rem; font-weight: 600; cursor: pointer; }
+   .sorting-select-label .form-check-input { width: 1.1rem; height: 1.1rem; margin: 0; }
+   .sorting-label { display: block; color: #6b7280; font-size: .7rem; text-transform: uppercase; letter-spacing: .04em; margin-bottom: .2rem; }
+   .sorting-meta-grid, .sorting-packaging { display: grid; grid-template-columns: 1fr 1fr; gap: .8rem; }
+   .sorting-packaging { padding: .65rem .75rem; background: #f1f5f9; border-radius: 9px; }
+   .sorting-card .row-category-select, .sorting-card .row-ikut-select, .sorting-card .row-ikut-wo-select { width: 100%; }
+   .sorting-card .queue-sku { font-size: .9rem; }
+   .sorting-card .queue-qty { display: inline-flex; min-width: 2.25rem; justify-content: center; padding: .15rem .45rem; border-radius: 999px; background: #e0f2fe; color: #075985; font-weight: 700; }
    .table-sticky-queue tbody td { display: flex; align-items: center; min-width: 0; padding: .25rem; border: 0; }
    .table-sticky-queue tbody td::before { display: block; color: #64748b; font-size: .68rem; font-weight: 700; text-transform: uppercase; margin-right: .5rem; min-width: 4.5rem; }
    .table-sticky-queue tbody td:first-child::before, .table-sticky-queue tbody td:nth-child(2)::before { display: none; }
@@ -37,7 +51,7 @@
    .table-sticky-queue tbody tr:hover { box-shadow: 0 5px 16px rgba(15,23,42,.1); }
    .table-sticky-queue tbody td select { min-width: 0; }
    @media (max-width: 600px) {
-     .table-sticky-queue tbody tr { grid-template-columns: 34px 1fr 1fr; gap: .3rem .5rem; padding: .75rem; }
+      .table-sticky-queue tbody tr, .sorting-card { grid-template-columns: 34px 1fr 1fr; gap: .3rem .5rem; padding: .75rem; }
      .table-sticky-queue tbody td:nth-child(1) { grid-column: 1; grid-row: 1; }
      .table-sticky-queue tbody td:nth-child(2) { grid-column: 3; grid-row: 1; }
      .table-sticky-queue tbody td:nth-child(3), .table-sticky-queue tbody td:nth-child(4), .table-sticky-queue tbody td:nth-child(5), .table-sticky-queue tbody td:nth-child(7), .table-sticky-queue tbody td:nth-child(8), .table-sticky-queue tbody td:nth-child(9), .table-sticky-queue tbody td:nth-child(10), .table-sticky-queue tbody td:nth-child(11) { grid-column: 1 / span 3; }
@@ -180,111 +194,88 @@
                 <%= items.length %> item
               </span>
             </div>
-            <div class="table-responsive">
-              <table class="table table-hover table-sticky-queue mb-0" data-order='[[1, "asc"]]'>
-                <thead class="table-light">
-                  <tr>
-                    <th style="width: 40px;"><input type="checkbox" id="selectAll"></th>
-                    <th>#</th>
-                    <th class="sorting-date">Tgl Masuk</th>
-                    <th>SKU</th>
-                    <th>Nama Barang</th>
-                    <th>Qty</th>
-                    <th class="sorting-optional">Kondisi</th>
-                    <th class="sorting-optional">Kategori</th>
-                    <th class="sorting-optional">Ikut WO</th>
-                    <th>Status QC</th>
-                    <th>SLA</th>
-                    <th>Aksi</th>
-                  </tr>
-                </thead>
-                <tbody>
-                  <% items.forEach((item, i)=> { %>
-                        <tr class="<%= item.slaAlert ? 'table-danger' : '' %>">
-                          <td>
-                            <input type="checkbox" name="item_ids[]" value="<%= item.item_id %>" class="item-checkbox">
-                          </td>
-                          <td>
-                            <%= i + 1 %>
-                          </td>
-                           <td class="sorting-date">
-                             <small>
-                               <%= formatDate(item.return_date) %>
-                            </small>
-                            <% if (item.inbound_date) { %>
-                              <br><small class="text-success"><i class="bi bi-check-circle"></i> Inbound: <%=
-                                  formatDate(item.inbound_date) %></small>
-                              <% } %>
-                          </td>
-<td><a href="/sorting/<%= item.return_id %>"
-                               class="fw-bold text-decoration-none"><code class="queue-sku"><%= item.sku %></code></a></td>
-                          <td><strong>
-                              <%= item.item_name %>
-                            </strong></td>
-                           <td><span class="queue-qty"><%= item.quantity %></span></td>
-                           <td class="text-capitalize sorting-optional">
-                             <%= formatCategory(item.return_category) %>
-                          </td>
-                           <td class="sorting-optional">
-                             <select class="form-select form-select-sm row-category-select"
-                              name="category_<%= item.item_id %>" disabled style="display: none;">
+            <div class="card-body">
+              <div class="d-flex justify-content-between align-items-center mb-3">
+                <label class="btn btn-sm btn-outline-primary mb-0">
+                  <input type="checkbox" id="selectAll" class="form-check-input me-1">
+                  Pilih Semua
+                </label>
+              </div>
+              <div class="row g-3 sorting-card-grid">
+                <% if (items.length === 0) { %>
+                  <div class="col-12"><div class="alert alert-light text-center mb-0">Antrian kosong.</div></div>
+                <% } %>
+                <% items.forEach((item, i)=> { %>
+                  <div class="col-12 col-lg-6 col-xxl-4">
+                    <article class="sorting-card h-100 <%= item.slaAlert ? 'sorting-card-danger' : '' %>">
+                      <div class="sorting-card-header">
+                        <label class="sorting-select-label">
+                          <input type="checkbox" name="item_ids[]" value="<%= item.item_id %>" class="form-check-input item-checkbox">
+                          <span>#<%= i + 1 %></span>
+                        </label>
+                        <div class="text-end">
+                          <span class="badge bg-<%= item.disposition === 'pending' ? 'warning' : 'success' %> text-capitalize"><%= item.disposition %></span>
+                          <% if (item.sla_deadline) { %>
+                            <span class="badge bg-<%= item.slaInfo.color %> text-nowrap ms-1"><i class="bi bi-clock"></i> <%= item.slaInfo.label %></span>
+                          <% } %>
+                        </div>
+                      </div>
+                      <div class="sorting-card-body">
+                        <div class="d-flex justify-content-between gap-3 mb-3">
+                          <div class="min-w-0">
+                            <span class="sorting-label">SKU</span>
+                            <a href="/sorting/<%= item.return_id %>" class="fw-bold text-decoration-none"><code class="queue-sku"><%= item.sku %></code></a>
+                          </div>
+                          <div class="text-end">
+                            <span class="sorting-label">Qty</span>
+                            <span class="queue-qty"><%= item.quantity %></span>
+                          </div>
+                        </div>
+                        <div class="mb-3"><span class="sorting-label">Nama Barang</span><strong><%= item.item_name %></strong></div>
+                        <div class="sorting-meta-grid">
+                          <div><span class="sorting-label">Tgl Masuk</span><small><%= formatDate(item.return_date) %></small><% if (item.inbound_date) { %><br><small class="text-success"><i class="bi bi-check-circle"></i> Inbound: <%= formatDate(item.inbound_date) %></small><% } %></div>
+                          <div><span class="sorting-label">Kondisi</span><span class="text-capitalize"><%= formatCategory(item.return_category) %></span></div>
+                        </div>
+                        <div class="sorting-packaging mt-3">
+                          <div>
+                            <span class="sorting-label">Kategori</span>
+                            <select class="form-select form-select-sm row-category-select" name="category_<%= item.item_id %>" disabled style="display: none;">
                               <option value="">-- Pilih Kategori --</option>
-                              <option value="Elektronik" <%=item.item_category==='Elektronik' ? 'selected' : '' %>
-                                >Elektronik</option>
-                              <option value="Non Elektronik" <%=item.item_category==='Non Elektronik' ? 'selected' : ''
-                                %>>Non Elektronik</option>
+                              <option value="Elektronik" <%=item.item_category==='Elektronik' ? 'selected' : '' %>>Elektronik</option>
+                              <option value="Non Elektronik" <%=item.item_category==='Non Elektronik' ? 'selected' : '' %>>Non Elektronik</option>
                             </select>
-                            <select class="form-select form-select-sm row-ikut-select" name="ikut_<%= item.item_id %>"
-                              disabled style="display: none;">
+                            <select class="form-select form-select-sm row-ikut-select" name="ikut_<%= item.item_id %>" disabled style="display: none;">
                               <option value="">-- Pilih Kategori --</option>
                               <option value="Besi" <%=item.ikut==='Besi' ? 'selected' : '' %>>Besi</option>
                               <option value="Plastik" <%=item.ikut==='Plastik' ? 'selected' : '' %>>Plastik</option>
                               <option value="Kaca" <%=item.ikut==='Kaca' ? 'selected' : '' %>>Kaca</option>
                               <option value="Kain" <%=item.ikut==='Kain' ? 'selected' : '' %>>Kain</option>
                             </select>
-                            <span class="text-muted row-placeholder-text">
-                              <%= item.item_category || item.ikut || '-' %>
-                            </span>
-                          </td>
-                          <td>
-                            <select class="form-select form-select-sm row-ikut-wo-select" name="ikut_wo_<%= item.item_id %>"
-                              disabled style="display: none;">
+                            <span class="text-muted row-placeholder-text"><%= item.item_category || item.ikut || '-' %></span>
+                          </div>
+                          <div>
+                            <span class="sorting-label">Ikut WO</span>
+                            <select class="form-select form-select-sm row-ikut-wo-select" name="ikut_wo_<%= item.item_id %>" disabled style="display: none;">
                               <option value="">-- Pilih Ikut WO --</option>
                               <option value="Ikut WO Rosok" <%=item.ikut_wo==='Ikut WO Rosok' ? 'selected' : '' %>>Ikut WO Rosok</option>
                               <option value="Ikut WO Tri J" <%=item.ikut_wo==='Ikut WO Tri J' ? 'selected' : '' %>>Ikut WO Tri J</option>
                             </select>
-                            <span class="text-muted row-ikut-wo-placeholder">
-                              <%= item.ikut_wo || '-' %>
-                            </span>
-                          </td>
-                          <td>
-                            <span
-                              class="badge bg-<%= item.disposition === 'pending' ? 'warning' : 'success' %> text-capitalize">
-                              <%= item.disposition %>
-                            </span>
-                          </td>
-                          <td>
-                            <% if (item.sla_deadline) { %>
-                              <span class="badge bg-<%= item.slaInfo.color %> text-nowrap">
-                                <i class="bi bi-clock"></i>
-                                <%= item.slaInfo.label %>
-                              </span>
-                              <br><small class="text-muted">
-                                <%= formatDate(item.sla_deadline) %>
-                              </small>
-                              <% } else { %><span class="text-muted">-</span>
-                                <% } %>
-                          </td>
-                          <td>
-                            <button type="button" class="btn btn-sm btn-outline-primary text-nowrap single-process-btn"
-                              data-item-id="<%= item.item_id %>">
-                              <i class="bi bi-arrow-right-circle"></i> Proses
-                            </button>
-                          </td>
-                        </tr>
-                        <% }) %>
-                </tbody>
-              </table>
+                            <span class="text-muted row-ikut-wo-placeholder"><%= item.ikut_wo || '-' %></span>
+                          </div>
+                        </div>
+                        <% if (item.sla_deadline) { %>
+                          <div class="text-muted small mt-3"><i class="bi bi-clock-history me-1"></i>Deadline SLA: <%= formatDate(item.sla_deadline) %></div>
+                        <% } %>
+                      </div>
+                      <div class="sorting-card-footer">
+                        <button type="button" class="btn btn-sm btn-outline-primary text-nowrap single-process-btn" data-item-id="<%= item.item_id %>">
+                          <i class="bi bi-arrow-right-circle"></i> Proses
+                        </button>
+                      </div>
+                    </article>
+                  </div>
+                <% }) %>
+              </div>
             </div>
           </div>
         </form>
@@ -300,7 +291,7 @@
     const bulkVendorCol = document.getElementById('bulkVendorCol');
     const bulkVendorId = document.getElementById('bulkVendorId');
 
-    document.querySelectorAll('.table-sticky-queue tbody tr td[colspan]').forEach(cell => cell.closest('tr').remove());
+    document.querySelectorAll('.table-sticky-queue tbody tr td[colspan]').forEach(cell => cell.closest('.sorting-card').remove());
 
     function initVendorSelect2() {
       if (window.$ && $.fn.select2) {
@@ -330,7 +321,7 @@
       const activeCheckboxes = document.querySelectorAll('.item-checkbox');
 
       activeCheckboxes.forEach(cb => {
-        const row = cb.closest('tr');
+        const row = cb.closest('.sorting-card');
         const catSelect = row.querySelector('.row-category-select');
         const ikutSelect = row.querySelector('.row-ikut-select');
         const ikutWoSelect = row.querySelector('.row-ikut-wo-select');
@@ -442,7 +433,7 @@
         if (bulkDisposition && bulkDisposition.value === 'write_off') {
           const activeCheckboxes = document.querySelectorAll('.item-checkbox:checked');
           for (const cb of activeCheckboxes) {
-            const row = cb.closest('tr');
+            const row = cb.closest('.sorting-card');
             const ikutSelect = row.querySelector('.row-ikut-select');
             const ikutWoSelect = row.querySelector('.row-ikut-wo-select');
             if (ikutSelect && ikutSelect.value === 'Plastik' && (!ikutWoSelect || !ikutWoSelect.value)) {
@@ -480,7 +471,7 @@
       }
 
       if (e.target.classList.contains('row-ikut-select')) {
-        const row = e.target.closest('tr');
+        const row = e.target.closest('.sorting-card');
         const ikutWoSelect = row.querySelector('.row-ikut-wo-select');
         const ikutWoPlaceholder = row.querySelector('.row-ikut-wo-placeholder');
         if (e.target.value === 'Plastik') {
