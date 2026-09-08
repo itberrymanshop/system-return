@@ -4,7 +4,9 @@
    }
    .table-sticky-queue { border-collapse: separate; border-spacing: 0 .75rem; }
    .table-sticky-queue thead { display: none; }
-   .table-sticky-queue tbody tr { display: grid; grid-template-columns: 42px 1fr 1fr 1fr 90px; gap: .35rem 1rem; padding: 1rem; background: #fff; border: 1px solid #e2e8f0; border-radius: 12px; box-shadow: 0 3px 12px rgba(15,23,42,.06); }
+   .table-sticky-queue tbody tr { display: grid; grid-template-columns: 42px 1fr 1fr 1fr 90px; gap: .35rem 1rem; padding: 1.1rem; background: #fff; border: 1px solid #e5e7eb; border-top: 4px solid #6c757d; border-radius: 14px; box-shadow: 0 4px 14px rgba(15,23,42,.06); transition: transform .18s ease, box-shadow .18s ease, border-color .18s ease; }
+   .table-sticky-queue tbody tr:hover { transform: translateY(-2px); border-color: #0d6efd; box-shadow: 0 10px 24px rgba(15,23,42,.13); }
+   .table-sticky-queue tbody tr.table-danger { border-top-color: #dc3545; }
    .table-sticky-queue tbody tr.table-danger { border-color: #dc3545; }
    .table-sticky-queue tbody td { display: flex; align-items: center; min-width: 0; padding: .25rem; border: 0; }
    .table-sticky-queue tbody td::before { display: block; color: #64748b; font-size: .68rem; font-weight: 700; text-transform: uppercase; margin-right: .5rem; min-width: 4.5rem; }
