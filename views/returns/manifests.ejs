@@ -644,7 +644,7 @@
                             </button>
                           </td>
                           <td class="text-nowrap">
-                            <%= m.created_at ? new Date(m.created_at).toLocaleString('id-ID', { dateStyle: 'short', timeStyle: 'short', timeZone: 'Asia/Jakarta' }) : '-' %>
+                            <%= m.created_at ? `${new Date(m.created_at).toLocaleString('id-ID', { dateStyle: 'short', timeStyle: 'short', timeZone: 'Asia/Jakarta' })} WIB` : '-' %>
                           </td>
                           <td>
                             <div class="fw-semibold text-dark">
@@ -831,7 +831,7 @@
                                       <% } %>
                                 </td>
                                 <td>
-                                   <%= m.created_at ? new Date(m.created_at).toLocaleString('id-ID', { dateStyle: 'short', timeStyle: 'short', timeZone: 'Asia/Jakarta' }) : '-' %>
+                                   <%= m.created_at ? `${new Date(m.created_at).toLocaleString('id-ID', { dateStyle: 'short', timeStyle: 'short', timeZone: 'Asia/Jakarta' })} WIB` : '-' %>
                                 </td>
 
                                 <!-- PIC SALES Checkbox for Scan Tab -->
@@ -1814,7 +1814,7 @@
                   </div>
                   <div class="card-body bg-white py-2 px-3 small">
                     <div class="row g-2">
-                      <div class="col-md-3"><strong>Tgl Upload:</strong> <span class="text-muted">${manifest.created_at ? new Date(manifest.created_at).toLocaleString('id-ID', { dateStyle: 'short', timeStyle: 'short', timeZone: 'Asia/Jakarta' }) : '-'}</span></div>
+                      <div class="col-md-3"><strong>Tgl Upload:</strong> <span class="text-muted">${manifest.created_at ? new Date(manifest.created_at).toLocaleString('id-ID', { dateStyle: 'short', timeStyle: 'short', timeZone: 'Asia/Jakarta' }) + ' WIB' : '-'}</span></div>
                       <div class="col-md-3"><strong>Nama Customer:</strong> <span class="text-muted">${manifest.customer_name || manifest.penerima || '-'}</span></div>
                       <div class="col-md-3"><strong>Kota:</strong> <span class="text-muted">${manifest.kota || '-'}</span></div>
                       <div class="col-md-3"><strong>Exspedisi:</strong> <span class="text-muted">${manifest.expedisi || manifest.metode_pengiriman || '-'}</span></div>

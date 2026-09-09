@@ -25,10 +25,20 @@
     border-bottom: none;
   }
 
-  .barang-drop-item:hover {
-    background: #f0f4ff;
-  }
+   .barang-drop-item:hover {
+     background: #f0f4ff;
+   }
+
+   .scan-toast-container {
+     position: fixed;
+     top: 1rem;
+     right: 1rem;
+     z-index: 1080;
+     width: min(360px, calc(100vw - 2rem));
+   }
 </style>
+
+<div id="scanToastContainer" class="scan-toast-container" aria-live="polite" aria-atomic="true"></div>
 
 <div class="container-fluid mt-5 pt-4">
   <div class="row mb-3">
@@ -283,6 +293,20 @@
 
 <script>
   var itemCounter = 1;
+
+  function showScanToast(message, type = 'success') {
+    const container = document.getElementById('scanToastContainer');
+    if (!container) return;
+    const toast = document.createElement('div');
+    const color = type === 'success' ? 'success' : 'danger';
+    toast.className = `toast align-items-center text-bg-${color} border-0`;
+    toast.setAttribute('role', 'alert');
+    toast.innerHTML = `<div class="d-flex"><div class="toast-body"><i class="bi bi-${type === 'success' ? 'check-circle-fill' : 'exclamation-triangle-fill'} me-2"></i>${message}</div><button type="button" class="btn-close btn-close-white me-2 m-auto" data-bs-dismiss="toast" aria-label="Tutup"></button></div>`;
+    container.appendChild(toast);
+    const instance = new bootstrap.Toast(toast, { delay: 3500 });
+    toast.addEventListener('hidden.bs.toast', () => toast.remove());
+    instance.show();
+  }
 
   function addReturnItem() {
     itemCounter++;
@@ -578,12 +602,12 @@
         // Write to cookie
         document.cookie = "scanned_manifests=" + encodeURIComponent(JSON.stringify(scannedList)) + "; path=/; max-age=31536000";
         
-        alert(`Resi ${manifest.resi_number || query} berhasil di-scan.`);
+        showScanToast(`Resi ${manifest.resi_number || query} berhasil di-scan.`);
         manifestSearchInput.value = '';
         manifestSearchInput.focus();
       })
       .catch(error => {
-        alert('Data manifest tidak ditemukan untuk resi atau nomor pesanan: ' + query);
+        showScanToast('Data manifest tidak ditemukan untuk resi atau nomor pesanan: ' + query, 'error');
       });
   }
 
