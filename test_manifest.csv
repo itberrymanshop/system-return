@@ -1,0 +1,3 @@
+resi_number,no_pesanan,customer_name,customer_contact,source_type,return_category,return_reason,notes,item_code,item_name,quantity,unit_price,serial_number,batch_number,item_description
+RESI-TEST-999,ORDER-TEST-888,Test Customer,081234567,firstmile,defective,Product broke,Staging test,SKU-991,Barang Retur Test A,2,50000,SN-001,BATCH-A,Description item A
+RESI-TEST-999,ORDER-TEST-888,Test Customer,081234567,firstmile,defective,Product broke,Staging test,SKU-992,Barang Retur Test B,1,120000,SN-002,BATCH-B,Description item B

@@ -1,0 +1,716 @@
+<div class="container-fluid mt-5 pt-4">
+  <div class="row mb-3">
+    <div class="col">
+      <h2><i class="bi bi-file-text"></i> Return Details</h2>
+      <nav aria-label="breadcrumb">
+        <ol class="breadcrumb">
+          <li class="breadcrumb-item"><a href="/dashboard">Dashboard</a></li>
+          <li class="breadcrumb-item"><a href="/returns">Returns</a></li>
+          <% if (typeof isItemDetail !=='undefined' && isItemDetail) { %>
+            <li class="breadcrumb-item"><a href="/returns/item/<%= ret.item_id %>">
+                <%= ret.return_number %>
+              </a></li>
+            <li class="breadcrumb-item active">
+              <%= ret.item_code || ret.item_name %>
+            </li>
+            <% } else { %>
+              <li class="breadcrumb-item active">
+                <%= ret.return_number %>
+              </li>
+              <% } %>
+        </ol>
+      </nav>
+    </div>
+    <div class="col-auto d-flex gap-2">
+      <% if (hasRole(['admin','manager','admin_retur']) && ret.current_status !=='Completed' ) { %>
+        <a href="/returns/<%= ret.return_id %>/edit<%= typeof isItemDetail !== 'undefined' && isItemDetail ? '?itemId=' + ret.item_id : '' %>"
+          class="btn btn-warning btn-sm">
+          <i class="bi bi-pencil"></i> Edit
+        </a>
+        <% } %>
+          <a href="/returns" class="btn btn-secondary btn-sm"><i class="bi bi-arrow-left"></i> Back</a>
+    </div>
+  </div>
+
+  <% /* Workflow stage stepper config */ const workflowStages=[ { key: 'Inbound' , label: 'Inbound' ,
+    icon: 'bi-box-arrow-in-down' }, { key: 'Sorting' , label: 'Sorting' , icon: 'bi-sort-down' }, { key: 'Rekondisi' ,
+    label: 'Rekondisi' , icon: 'bi-tools' }, { key: 'Refurbish' , label: 'Refurbish' , icon: 'bi-wrench' }, {
+    key: 'Write_Off' , label: 'Write Off' , icon: 'bi-x-circle' }, { key: 'Pricing' , label: 'Pricing' , icon: 'bi-tag'
+    }, { key: 'Recovery' , label: 'Recovery' , icon: 'bi-currency-dollar' }, { key: 'Completed' , label: 'Completed' ,
+    icon: 'bi-check-circle-fill' } ]; const branchStages=['Rekondisi','Refurbish','Write_Off']; const
+    statusOrder=['Inbound','Sorting','Rekondisi','Refurbish','Write_Off','Pricing','Recovery','Completed']; const
+    curIdx=statusOrder.indexOf(ret.current_status); const isRejected=ret.current_status==='Rejected' ||
+    ret.current_status==='Supplier_Return' ; %>
+
+    <!-- Workflow Progress Stepper -->
+    <% if (!isRejected) { %>
+      <div class="card mb-4">
+        <div class="card-header bg-light">
+          <h6 class="mb-0"><i class="bi bi-diagram-3"></i> Workflow Progress</h6>
+        </div>
+        <div class="card-body pb-2">
+          <div class="d-flex flex-wrap align-items-center gap-0">
+            <% /* Show non-branch stages before Rekondisi, then the active branch, then Pricing/Recovery/Completed */ const
+              mainBefore=['Inbound','Sorting']; const mainAfter=['Pricing','Recovery','Completed']; const
+              activeBranch=branchStages.includes(ret.current_status) ? ret.current_status : (curIdx>
+              statusOrder.indexOf('Sorting') && curIdx < statusOrder.indexOf('Pricing') ? ret.product_category
+                || 'Rekondisi' : null); const displayStages=[...mainBefore, ...(activeBranch ? [activeBranch] :
+                ['Rekondisi']), ...mainAfter]; %>
+                <% displayStages.forEach((stageKey, si)=> {
+                  const stage = workflowStages.find(s => s.key === stageKey) || { key: stageKey, label: stageKey, icon:
+                  'bi-circle' };
+                  const stageIdx = statusOrder.indexOf(stageKey);
+                  const isDone = stageIdx < curIdx; const isCur=stageKey===ret.current_status; const stepCls=isDone
+                    ? 'bg-success text-white' : isCur ? 'bg-primary text-white' : 'bg-light text-muted border' ; %>
+                    <div class="text-center" style="min-width:80px">
+                      <div class="rounded-circle d-inline-flex align-items-center justify-content-center <%= stepCls %>"
+                        style="width:44px;height:44px;font-size:1.1rem">
+                        <% if (isDone) { %><i class="bi bi-check-lg"></i>
+                          <% } else { %><i class="<%= stage.icon %>"></i>
+                            <% } %>
+                      </div>
+                      <div
+                        class="small mt-1 <%= isCur ? 'fw-bold text-primary' : isDone ? 'text-success' : 'text-muted' %>">
+                        <%= stage.label %>
+                      </div>
+                    </div>
+                    <% if (si < displayStages.length - 1) { %>
+                      <div class="flex-grow-1 border-top mx-1 mt-0 mb-3" style="min-width:16px"></div>
+                      <% } %>
+                        <% }) %>
+          </div>
+          <% if (ret.product_category) { %>
+            <div class="mt-2 small text-muted">
+              <i class="bi bi-tag"></i> Status Produk:
+              <span
+                class="badge bg-<%= ret.product_category==='rekondisi'?'primary':ret.product_category==='refurbish'?'warning':'danger' %> text-capitalize">
+                <%= ret.product_category %>
+              </span>
+              <% if (ret.sla_deadline) { %>
+                &nbsp;<i class="bi bi-clock ms-2"></i> SLA Deadline: <strong>
+                  <%= formatDate(ret.sla_deadline) %>
+                </strong>
+                <% } %>
+                  <% if (ret.vendor_name) { %>
+                    &nbsp;<i class="bi bi-building ms-2"></i> Vendor: <strong>
+                      <%= ret.vendor_name %>
+                    </strong>
+                    <% } %>
+                      <% if (ret.recovery_price) { %>
+                        &nbsp;<i class="bi bi-cash ms-2"></i> Recovery Price: <strong><%-
+                            formatCurrency(ret.recovery_price) %></strong>
+                        <% } %>
+            </div>
+            <% } %>
+        </div>
+      </div>
+      <% } else { %>
+        <div class="alert alert-danger d-flex align-items-center mb-4">
+          <i class="bi bi-x-octagon-fill me-2 fs-5"></i>
+          <div>
+            <strong>Status: <%= ret.current_status.replace(/_/g,' ') %></strong>
+      <% if (ret.current_status === ' Supplier_Return') { %>
+                — Produk dikembalikan ke supplier lokal (Purchasing akan menjadwalkan retur).
+                <% } else { %>
+                  — Retur ini ditolak / tidak lolos QC.
+                  <% } %>
+          </div>
+        </div>
+        <% } %>
+
+          <div class="row">
+            <!-- Main info -->
+            <div class="col-lg-8">
+              <!-- Header Card -->
+              <div class="card mb-4">
+                <div class="card-header d-flex justify-content-between align-items-center">
+                  <% if (typeof isItemDetail !=='undefined' && isItemDetail) { %>
+                    <h5 class="mb-0">Item: <strong class="text-primary">
+                        <%= ret.item_name %>
+                      </strong> (<code><%= ret.item_code || '-' %></code>)</h5>
+                    <% } else { %>
+                      <h5 class="mb-0"><code><%= ret.return_number %></code></h5>
+                      <% } %>
+                        <div>
+                          <%- getStatusBadge(ret.current_status) %>
+                            <span class="badge bg-<%= getAgingClass(agingDays) %> ms-1">
+                              <%= agingDays %> days old
+                            </span>
+                        </div>
+                </div>
+                <div class="card-body">
+                  <% if (typeof isItemDetail !=='undefined' && isItemDetail) { %>
+                    <!-- Item Details Section -->
+                    <div class="row mb-4 pb-3 border-bottom g-3">
+                      <div class="col-md-8">
+                        <h6 class="text-muted mb-3"><i class="bi bi-info-circle"></i> Item Specifications</h6>
+                        <div class="row g-3">
+                          <div class="col-md-6">
+                            <small class="text-muted d-block">SKU / Item Code</small>
+                            <strong>
+                              <%= ret.item_code || '-' %>
+                            </strong>
+                          </div>
+                          <div class="col-md-6">
+                            <small class="text-muted d-block">Quantity</small>
+                            <strong>
+                              <%= ret.quantity %>
+                            </strong>
+                          </div>
+                          <div class="col-md-6">
+                            <small class="text-muted d-block">Condition Received</small>
+                            <strong class="text-capitalize">
+                              <%= formatCategory(ret.return_category || ret.condition_received) %>
+                            </strong>
+                          </div>
+                          <div class="col-md-6">
+                            <small class="text-muted d-block">Inspection Result</small>
+                            <% const iMap={accept:'success',reject:'danger',rework:'warning',pending:'secondary'}; %>
+                              <span class="badge bg-<%= iMap[ret.inspection_result] || 'secondary' %> text-capitalize">
+                                <%= ret.inspection_result || 'Pending' %>
+                              </span>
+                          </div>
+                          <% if (ret.serial_number) { %>
+                            <div class="col-md-6">
+                              <small class="text-muted d-block">Serial Number</small>
+                              <strong>
+                                <%= ret.serial_number %>
+                              </strong>
+                            </div>
+                            <% } %>
+                              <% if (ret.batch_number) { %>
+                                <div class="col-md-6">
+                                  <small class="text-muted d-block">Batch Number</small>
+                                  <strong>
+                                    <%= ret.batch_number %>
+                                  </strong>
+                                </div>
+                                <% } %>
+                                  <% if (ret.disposition && ret.disposition !=='pending' ) { %>
+                                    <div class="col-md-6">
+                                      <small class="text-muted d-block">Disposition</small>
+                                      <strong class="text-capitalize text-info">
+                                        <%= ret.disposition.replace(/_/g, ' ' ) %>
+                                      </strong>
+                                    </div>
+                                    <% } %>
+                        </div>
+                      </div>
+                      <div class="col-md-4">
+                        <h6 class="text-muted mb-3"><i class="bi bi-image"></i> Item Photo</h6>
+                        <% let itemPhotos=[]; try { itemPhotos=JSON.parse(ret.image_path || '[]' ); } catch(e) { if
+                          (ret.image_path) itemPhotos=[ret.image_path]; } %>
+                          <% if (itemPhotos.length) { %>
+                            <div class="d-flex flex-wrap gap-2">
+                              <% itemPhotos.forEach(src=> { %>
+                                <a href="<%= src %>" target="_blank">
+                                  <img src="<%= src %>" alt="photo" class="hover-preview-trigger border rounded"
+                                    data-preview="<%= src %>"
+                                    style="width:80px;height:80px;object-fit:cover;cursor:pointer;">
+                                </a>
+                                <% }) %>
+                            </div>
+                            <% } else { %>
+                              <span class="text-muted small">No photo available</span>
+                              <% } %>
+                      </div>
+                    </div>
+
+                    <!-- Parent Return Details Section -->
+                    <h6 class="text-muted mb-3"><i class="bi bi-file-earmark-text"></i> Parent Return Document Details
+                    </h6>
+                    <% } %>
+
+                      <div class="row g-3">
+                        <% if (typeof isItemDetail !=='undefined' && isItemDetail) { %>
+                          <div class="col-md-4">
+                            <small class="text-muted d-block">Return #</small>
+                            <strong><code><%= ret.return_number %></code></strong>
+                          </div>
+                          <% } %>
+                            <div class="col-md-4">
+                              <small class="text-muted d-block">Return Date</small>
+                              <strong>
+                                <%= formatDate(ret.return_date) %>
+                              </strong>
+                            </div>
+                            <div class="col-md-4">
+                              <small class="text-muted d-block">Source Type</small>
+                              <strong>
+                                <%= formatSourceType(ret.source_type) %>
+                              </strong>
+                            </div>
+                            <% if (typeof isItemDetail==='undefined' || !isItemDetail) { %>
+                              <div class="col-md-4">
+                                <small class="text-muted d-block">Kondisi</small>
+                                <strong class="text-capitalize">
+                                  <%= formatCategory(ret.return_category) %>
+                                </strong>
+                              </div>
+                              <% } %>
+                                <div class="col-md-4">
+                                  <small class="text-muted d-block">Customer</small>
+                                  <strong>
+                                    <%= ret.customer_name || 'N/A' %>
+                                  </strong>
+                                </div>
+                                <div class="col-md-4">
+                                  <small class="text-muted d-block">Contact</small>
+                                  <strong>
+                                    <%= ret.customer_contact || 'N/A' %>
+                                  </strong>
+                                </div>
+                                <div class="col-md-4">
+                                  <small class="text-muted d-block">Order Number (No. Pesanan)</small>
+                                  <strong>
+                                    <%= ret.no_pesanan || '-' %>
+                                  </strong>
+                                </div>
+                                <div class="col-md-4">
+                                  <small class="text-muted d-block">Nomor Resi</small>
+                                  <strong>
+                                    <%= ret.resi_number || '-' %>
+                                  </strong>
+                                </div>
+                                <div class="col-md-4">
+                                  <small class="text-muted d-block">Courier</small>
+                                  <strong>
+                                    <%= ret.resi_courier || '-' %>
+                                  </strong>
+                                </div>
+                                <% if (ret.inbound_date) { %>
+                                  <div class="col-md-4">
+                                    <small class="text-muted d-block">Inbound Date</small>
+                                    <strong>
+                                      <%= formatDate(ret.inbound_date) %>
+                                    </strong>
+                                  </div>
+                                  <% } %>
+                                    <div class="col-md-4">
+                                      <small class="text-muted d-block">Total Value</small>
+                                      <strong class="text-success"><%- formatCurrency(ret.total_value) %></strong>
+                                    </div>
+                                    <% if (ret.return_reason) { %>
+                                      <div class="col-12">
+                                        <small class="text-muted d-block">Return Reason</small>
+                                        <p class="mb-0">
+                                          <%= ret.return_reason %>
+                                        </p>
+                                      </div>
+                                      <% } %>
+                                        <% if (ret.notes) { %>
+                                          <div class="col-12">
+                                            <small class="text-muted d-block">Notes</small>
+                                            <p class="mb-0">
+                                              <%= ret.notes %>
+                                            </p>
+                                          </div>
+                                          <% } %>
+                      </div>
+                </div>
+              </div>
+
+              <!-- Items Table -->
+              <% if (typeof isItemDetail==='undefined' || !isItemDetail) { %>
+                <div class="card mb-4">
+                  <div class="card-header">
+                    <h6 class="mb-0"><i class="bi bi-box"></i> Items (<%= ret.items.length %>)</h6>
+                  </div>
+                  <div class="table-responsive">
+                    <table class="table table-sm mb-0">
+                      <thead class="table-light">
+                        <tr>
+                          <th>#</th>
+                          <th>Code</th>
+                          <th>Name</th>
+                          <th>Qty</th>
+                          <th>Kondisi</th>
+                          <th>Inspection</th>
+                          <th>Photo</th>
+                        </tr>
+                      </thead>
+                      <tbody>
+                        <% ret.items.forEach((item, i)=> { %>
+                          <tr>
+                            <td>
+                              <%= i+1 %>
+                            </td>
+                            <td><code><%= item.item_code || '-' %></code></td>
+                            <td>
+                              <strong>
+                                <%= item.item_name %>
+                              </strong>
+                              <% if (item.serial_number) { %><br><small class="text-muted">S/N: <%= item.serial_number
+                                    %></small>
+                                <% } %>
+                            </td>
+                            <td>
+                              <%= item.quantity %>
+                            </td>
+                            <td class="text-capitalize">
+                              <%= formatCategory(item.return_category, '-' ) %>
+                            </td>
+                            <td>
+                              <% const iMap={accept:'success',reject:'danger',rework:'warning',pending:'secondary'}; %>
+                                <span class="badge bg-<%= iMap[item.inspection_result]||'secondary' %> text-capitalize">
+                                  <%= item.inspection_result %>
+                                </span>
+                            </td>
+                            <td>
+                              <% let itemPhotos=[]; try { itemPhotos=JSON.parse(item.image_path || '[]' ); } catch(e) {
+                                if (item.image_path) itemPhotos=[item.image_path]; } %>
+                                <% if (itemPhotos.length) { %>
+                                  <div class="d-flex flex-wrap gap-1">
+                                    <% itemPhotos.forEach(src=> { %>
+                                      <a href="<%= src %>" target="_blank">
+                                        <img src="<%= src %>" alt="photo" class="hover-preview-trigger"
+                                          data-preview="<%= src %>"
+                                          style="width:52px;height:52px;object-fit:cover;border-radius:4px;cursor:pointer;">
+                                      </a>
+                                      <% }) %>
+                                  </div>
+                                  <% } else { %>
+                                    <span class="text-muted">-</span>
+                                    <% } %>
+                            </td>
+                          </tr>
+                          <% }) %>
+                      </tbody>
+                    </table>
+                  </div>
+                  <% if (hasRole(['admin','manager','admin_sorting','admin_retur','staff_recover']) &&
+                    ret.current_status !=='Completed' ) { %>
+                    <div class="card-footer">
+                      <button class="btn btn-sm btn-outline-info" data-bs-toggle="collapse"
+                        data-bs-target="#inspectForm">
+                        <i class="bi bi-search"></i> Update Inspection Result
+                      </button>
+                      <div class="collapse mt-3" id="inspectForm">
+                        <form method="POST" action="/returns/<%= ret.return_id %>/inspect">
+                          <div class="row g-2">
+                            <div class="col-md-3">
+                              <label class="form-label">Item</label>
+                              <select class="form-select form-select-sm" name="item_id" required>
+                                <option value="">Select item</option>
+                                <% ret.items.forEach(item=> { %>
+                                  <option value="<%= item.item_id %>">
+                                    <%= item.item_name %>
+                                  </option>
+                                  <% }) %>
+                              </select>
+                            </div>
+                            <div class="col-md-2">
+                              <label class="form-label">Result</label>
+                              <select class="form-select form-select-sm" name="inspection_result" required>
+                                <option value="accept">Accept</option>
+                                <option value="reject">Reject</option>
+                                <option value="rework">Rework</option>
+                              </select>
+                            </div>
+                            <div class="col-md-2">
+                              <label class="form-label">Disposition</label>
+                              <select class="form-select form-select-sm" name="disposition">
+                                <option value="rekondisi">Rekondisi</option>
+                                <option value="refurbish">Refurbish</option>
+                                <option value="write_off">Write Off</option>
+                                <option value="return_to_supplier">Return to Supplier</option>
+                                <option value="back_to_grosir">Back to Grosir</option>
+                              </select>
+                            </div>
+                            <div class="col-md-3">
+                              <label class="form-label">Notes</label>
+                              <input type="text" class="form-control form-control-sm" name="inspection_notes">
+                            </div>
+                            <div class="col-md-2 d-flex align-items-end">
+                              <button type="submit" class="btn btn-sm btn-primary w-100">Save</button>
+                            </div>
+                          </div>
+                        </form>
+                      </div>
+                    </div>
+                    <% } %>
+                </div>
+                <% } %>
+
+                  <!-- Standalone Update Inspection Result Card (Item Detail View) -->
+                  <% if (typeof isItemDetail !=='undefined' && isItemDetail &&
+                    hasRole(['admin','manager','admin_sorting','admin_retur','staff_recover']) && ret.current_status
+                    !=='Completed' ) { %>
+                    <div class="card mb-4">
+                      <div class="card-header bg-light">
+                        <h6 class="mb-0"><i class="bi bi-search"></i> Update Inspection Result</h6>
+                      </div>
+                      <div class="card-body">
+                        <form method="POST" action="/returns/<%= ret.return_id %>/inspect?itemId=<%= ret.item_id %>">
+                          <input type="hidden" name="item_id" value="<%= ret.item_id %>">
+                          <div class="row g-3">
+                            <div class="col-md-3">
+                              <label class="form-label">Result</label>
+                              <select class="form-select form-select-sm" name="inspection_result" required>
+                                <option value="accept" <%=ret.inspection_result==='accept' ? 'selected' : '' %>>Accept
+                                </option>
+                                <option value="reject" <%=ret.inspection_result==='reject' ? 'selected' : '' %>>Reject
+                                </option>
+                                <option value="rework" <%=ret.inspection_result==='rework' ? 'selected' : '' %>>Rework
+                                </option>
+                              </select>
+                            </div>
+                            <div class="col-md-3">
+                              <label class="form-label">Disposition</label>
+                              <select class="form-select form-select-sm" name="disposition">
+                                <option value="rekondisi" <%=ret.disposition==='rekondisi' ? 'selected' : '' %>
+                                  >Rekondisi</option>
+                                <option value="refurbish" <%=ret.disposition==='refurbish' ? 'selected' : '' %>
+                                  >Refurbish</option>
+                                <option value="write_off" <%=ret.disposition==='write_off' ? 'selected' : '' %>>Write
+                                  Off</option>
+                                <option value="return_to_supplier" <%=ret.disposition==='return_to_supplier'
+                                  ? 'selected' : '' %>>Return to Supplier</option>
+                                <option value="back_to_grosir" <%=ret.disposition==='back_to_grosir' ? 'selected' : ''
+                                  %>>Back to Grosir</option>
+                              </select>
+                            </div>
+                            <div class="col-md-4">
+                              <label class="form-label">Notes</label>
+                              <input type="text" class="form-control form-control-sm" name="inspection_notes"
+                                value="<%= ret.inspection_notes || '' %>">
+                            </div>
+                            <div class="col-md-2 d-flex align-items-end">
+                              <button type="submit" class="btn btn-sm btn-primary w-100"><i class="bi bi-save"></i>
+                                Save</button>
+                            </div>
+                          </div>
+                        </form>
+                      </div>
+                    </div>
+                    <% } %>
+
+                      <!-- Comments -->
+                      <div class="card mb-4">
+                        <div class="card-header">
+                          <h6 class="mb-0"><i class="bi bi-chat-text"></i> Comments</h6>
+                        </div>
+                        <div class="card-body">
+                          <% if (!ret.comments.length) { %>
+                            <p class="text-muted">No comments yet.</p>
+                            <% } %>
+                              <% ret.comments.forEach(c=> { %>
+                                <div class="d-flex mb-3">
+                                  <div class="flex-shrink-0 me-2">
+                                    <div
+                                      class="bg-secondary text-white rounded-circle d-flex align-items-center justify-content-center"
+                                      style="width:35px;height:35px;font-size:.85rem">
+                                      <%= c.full_name ? c.full_name.charAt(0).toUpperCase() : '?' %>
+                                    </div>
+                                  </div>
+                                  <div class="flex-grow-1">
+                                    <div class="bg-light rounded p-2">
+                                      <strong>
+                                        <%= c.full_name %>
+                                      </strong>
+                                      <% if (c.is_internal) { %><span class="badge bg-warning ms-1">Internal</span>
+                                        <% } %>
+                                          <small class="text-muted ms-2">
+                                            <%= formatDateTime(c.created_at) %>
+                                          </small>
+                                          <p class="mb-0 mt-1">
+                                            <%= c.comment_text %>
+                                          </p>
+                                    </div>
+                                  </div>
+                                </div>
+                                <% }) %>
+
+                                  <form method="POST"
+                                    action="/returns/<%= ret.return_id %>/comment<%= typeof isItemDetail !== 'undefined' && isItemDetail ? '?itemId=' + ret.item_id : '' %>"
+                                    class="mt-3">
+                                    <div class="mb-2">
+                                      <textarea class="form-control" name="comment_text" rows="2"
+                                        placeholder="Add a comment..." required></textarea>
+                                    </div>
+                                    <div class="d-flex justify-content-between align-items-center">
+                                      <div class="form-check">
+                                        <input class="form-check-input" type="checkbox" name="is_internal"
+                                          id="isInternal">
+                                        <label class="form-check-label small" for="isInternal">Internal note</label>
+                                      </div>
+                                      <button type="submit" class="btn btn-sm btn-primary"><i class="bi bi-send"></i>
+                                        Add Comment</button>
+                                    </div>
+                                  </form>
+                        </div>
+                      </div>
+            </div>
+
+            <!-- Right sidebar -->
+            <div class="col-lg-4">
+              <!-- Assignments -->
+              <div class="card mb-4">
+                <div class="card-header">
+                  <h6 class="mb-0"><i class="bi bi-people"></i> Assignments</h6>
+                </div>
+                <div class="card-body">
+                  <div class="mb-2">
+                    <small class="text-muted">Admin Retur</small><br>
+                    <strong>
+                      <%= ret.admin_retur_name || ret.pic_name || 'Unassigned' %>
+                    </strong>
+                  </div>
+                  <div class="mb-2">
+                    <small class="text-muted">Admin Sorting</small><br>
+                    <strong>
+                      <%= ret.inspector_name || 'Unassigned' %>
+                    </strong>
+                  </div>
+                  <div class="mb-2">
+                    <small class="text-muted">Staff Recover</small><br>
+                    <strong>
+                      <%= ret.staff_recover_name || 'Unassigned' %>
+                    </strong>
+                  </div>
+                  <div class="mb-2">
+                    <small class="text-muted">Approver (Purchasing/FAT)</small><br>
+                    <strong>
+                      <%= ret.approver_name || 'Pending' %>
+                    </strong>
+                    <% if (ret.approved_date) { %><br>
+                      <small class="text-muted">
+                        <%= formatDateTime(ret.approved_date) %>
+                      </small>
+                      <% } %>
+                  </div>
+                  <div>
+                    <small class="text-muted">Created By</small><br>
+                    <strong>
+                      <%= ret.created_by_name || 'Unknown' %>
+                    </strong>
+                    <br><small class="text-muted">
+                      <%= formatDateTime(ret.created_at) %>
+                    </small>
+                  </div>
+                </div>
+              </div>
+
+              <!-- Status Update -->
+              <% if (hasRole(['admin','manager','admin_retur'])) { %>
+                <div class="card mb-4">
+                  <div class="card-header">
+                    <h6 class="mb-0"><i class="bi bi-arrow-repeat"></i> Update Status</h6>
+                  </div>
+                  <div class="card-body">
+                    <form method="POST"
+                      action="/returns/<%= ret.return_id %>/status<%= typeof isItemDetail !== 'undefined' && isItemDetail ? '?itemId=' + ret.item_id : '' %>">
+                      <div class="mb-2">
+                        <label class="form-label">New Status</label>
+                        <select class="form-select form-select-sm" name="new_status" required>
+                           <% [['Inbound','Inbound'],['Sorting','Sorting'],['Rekondisi','Rekondisi'],['Refurbish','Refurbish'],['Write_Off','Write Off'],['Pricing','Pricing'],['Recovery','Recovery'],['Completed','Completed'],['Rejected','Rejected'],['Supplier_Return','Supplier Return']].forEach(([v,l])=> { %>
+                            <option value="<%= v %>" <%=v===ret.current_status ? 'selected' : '' %>><%= l %>
+                            </option>
+                            <% }) %>
+                        </select>
+                      </div>
+                      <div class="mb-2">
+                        <label class="form-label">Reason</label>
+                        <input type="text" class="form-control form-control-sm" name="reason"
+                          placeholder="Reason for change">
+                      </div>
+                      <div class="mb-2">
+                        <label class="form-label">Comments</label>
+                        <textarea class="form-control form-control-sm" name="comments" rows="2"></textarea>
+                      </div>
+                      <button type="submit" class="btn btn-primary btn-sm w-100">Update Status</button>
+                    </form>
+                  </div>
+                </div>
+                <% } %>
+
+                  <!-- Status History -->
+                  <div class="card">
+                    <div class="card-header">
+                      <h6 class="mb-0"><i class="bi bi-clock-history"></i> History</h6>
+                    </div>
+                    <div class="card-body p-0">
+                      <% if (!ret.history.length) { %>
+                        <p class="text-muted p-3 mb-0">No history.</p>
+                        <% } %>
+                          <% ret.history.forEach((h, i)=> { %>
+                            <div class="border-bottom px-3 py-2 <%= i === 0 ? 'bg-light' : '' %>">
+                              <div class="d-flex justify-content-between">
+                                <small>
+                                  <% if (h.from_status) { %>
+                                    <span class="badge bg-secondary">
+                                      <%= h.from_status %>
+                                    </span>
+                                    <i class="bi bi-arrow-right"></i>
+                                    <% } %>
+                                      <span class="badge bg-primary">
+                                        <%= h.to_status %>
+                                      </span>
+                                </small>
+                                <small class="text-muted">
+                                  <%= formatDateTime(h.changed_at) %>
+                                </small>
+                              </div>
+                              <small class="text-muted">
+                                <%= h.full_name %>
+                              </small>
+                              <% if (h.change_reason) { %>
+                                <br><small>
+                                  <%= h.change_reason %>
+                                </small>
+                                <% } %>
+                            </div>
+                            <% }) %>
+                    </div>
+                  </div>
+            </div>
+          </div>
+</div>
+
+<!-- Hover image preview overlay -->
+<div id="imgPreviewOverlay" style="
+  display:none;
+  position:fixed;
+  z-index:9999;
+  pointer-events:none;
+  padding:6px;
+  background:#fff;
+  border:1px solid #dee2e6;
+  border-radius:8px;
+  box-shadow:0 8px 24px rgba(0,0,0,.18);
+">
+  <img id="imgPreviewImg" src="" alt="preview"
+    style="max-width:320px;max-height:320px;object-fit:contain;display:block;border-radius:4px;">
+</div>
+
+<script>
+  (function () {
+    const overlay = document.getElementById('imgPreviewOverlay');
+    const prev = document.getElementById('imgPreviewImg');
+    const PAD = 16;
+
+    function position(e) {
+      const ow = overlay.offsetWidth || 332;
+      const oh = overlay.offsetHeight || 332;
+      let x = e.clientX + PAD;
+      let y = e.clientY + PAD;
+      if (x + ow > window.innerWidth) x = e.clientX - ow - PAD;
+      if (y + oh > window.innerHeight) y = e.clientY - oh - PAD;
+      overlay.style.left = x + 'px';
+      overlay.style.top = y + 'px';
+    }
+
+    document.querySelectorAll('.hover-preview-trigger').forEach(function (img) {
+      img.addEventListener('mouseenter', function (e) {
+        prev.src = this.dataset.preview;
+        overlay.style.display = 'block';
+        position(e);
+      });
+      img.addEventListener('mousemove', position);
+      img.addEventListener('mouseleave', function () {
+        overlay.style.display = 'none';
+        prev.src = '';
+      });
+    });
+  })();
+</script>

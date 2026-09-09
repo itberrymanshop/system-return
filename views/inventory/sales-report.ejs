@@ -1,0 +1,114 @@
+<div class="container-fluid mt-5 pt-4">
+  <div class="row mb-3 align-items-center">
+    <div class="col">
+      <h2><i class="bi bi-receipt"></i> Laporan Penjualan & Closing Event</h2>
+    </div>
+    <div class="col-auto">
+      <a href="/inventory" class="btn btn-sm btn-outline-secondary"><i class="bi bi-arrow-left"></i> Kembali</a>
+    </div>
+  </div>
+
+  <!-- Filters -->
+  <div class="card mb-3">
+    <div class="card-body py-2">
+      <form method="GET" class="row g-2 align-items-end">
+        <div class="col-md-3">
+          <label class="form-label form-label-sm">Tanggal Dari</label>
+          <input type="date" class="form-control form-control-sm" name="date_from" value="<%= filters.date_from || '' %>">
+        </div>
+        <div class="col-md-3">
+          <label class="form-label form-label-sm">Tanggal Sampai</label>
+          <input type="date" class="form-control form-control-sm" name="date_to" value="<%= filters.date_to || '' %>">
+        </div>
+        <div class="col-auto">
+          <button type="submit" class="btn btn-sm btn-primary">Filter</button>
+          <a href="/inventory/sales-report" class="btn btn-sm btn-outline-secondary ms-1">Reset</a>
+        </div>
+      </form>
+    </div>
+  </div>
+
+  <!-- Summary -->
+  <div class="row g-3 mb-4">
+    <div class="col-md-4">
+      <div class="card bg-success text-white">
+        <div class="card-body text-center">
+          <h6>Total Revenue Penjualan</h6>
+          <h3><%- formatCurrency(totalRevenue) %></h3>
+        </div>
+      </div>
+    </div>
+    <div class="col-md-4">
+      <div class="card bg-primary text-white">
+        <div class="card-body text-center">
+          <h6>Jumlah Item Terjual</h6>
+          <h3><%= sales.length %></h3>
+        </div>
+      </div>
+    </div>
+    <div class="col-md-4">
+      <div class="card bg-info text-white">
+        <div class="card-body text-center">
+          <h6>Rata-rata Harga Jual</h6>
+          <h3><%- formatCurrency(sales.length ? totalRevenue / sales.length : 0) %></h3>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- Sales Table -->
+  <div class="card">
+    <div class="card-header">
+      <h6 class="mb-0"><i class="bi bi-table"></i> Detail Penjualan</h6>
+    </div>
+    <div class="table-responsive">
+      <table class="table table-hover datatable mb-0">
+        <thead class="table-light">
+          <tr>
+            <th>#</th><th>No Resi</th><th>Customer</th><th>Item</th><th>Kategori</th>
+            <th>Vendor</th><th>Harga Jual</th><th>Tgl Jual</th>
+          </tr>
+        </thead>
+        <tbody>
+          <% if (sales.length === 0) { %>
+            <tr><td colspan="8" class="text-center text-muted py-4">Tidak ada data penjualan.</td></tr>
+          <% } %>
+          <% sales.forEach((s, i) => { %>
+          <tr>
+            <td><%= i + 1 %></td>
+            <td>
+              <% if (s.resi_number) { %>
+                <small class="text-muted"><i class="bi bi-truck"></i> <%= s.resi_number %></small>
+              <% } else { %>
+                <span class="text-muted">-</span>
+              <% } %>
+            </td>
+            <td><%= s.customer_name || '-' %></td>
+            <td>
+              <strong><%= s.item_name %></strong>
+              <% if (s.sku || s.item_code) { %><br><small class="text-muted"><%= s.sku || s.item_code %></small><% } %>
+            </td>
+            <td>
+              <% const catColors = {rekondisi:'primary',refurbish:'warning',write_off:'danger',stok_utama:'success',return_to_supplier:'secondary'}; %>
+              <span class="badge bg-<%= catColors[s.category]||'secondary' %>">
+                <%= s.category === 'return_to_supplier' ? 'Supplier Lokal' : (s.category||'').replace('_','-').toUpperCase() %>
+              </span>
+            </td>
+            <td><%= s.vendor_name || '-' %></td>
+            <td><%- formatCurrency(s.sale_price) %></td>
+            <td><%= formatDate(s.sale_date) %></td>
+          </tr>
+          <% }) %>
+        </tbody>
+        <% if (sales.length > 0) { %>
+        <tfoot class="table-light">
+          <tr>
+            <td colspan="6" class="text-end fw-bold">Total Revenue:</td>
+            <td colspan="2" class="fw-bold"><%- formatCurrency(totalRevenue) %></td>
+          </tr>
+        </tfoot>
+        <% } %>
+      </table>
+    </div>
+  </div>
+</div>

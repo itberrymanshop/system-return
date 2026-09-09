@@ -1,0 +1,74 @@
+<div class="container-fluid mt-5 pt-4">
+  <div class="row mb-3">
+    <div class="col">
+      <h2><i class="bi bi-journal-text"></i> Activity Logs</h2>
+    </div>
+    <div class="col-auto">
+      <form class="d-flex flex-wrap gap-2 align-items-end" method="GET" action="/admin/logs">
+        <div>
+          <label class="form-label mb-1 small">User</label>
+          <select class="form-select form-select-sm" name="user_id" style="min-width:130px">
+            <option value="">All Users</option>
+            <% users.forEach(u => { %>
+              <option value="<%= u.user_id %>" <%= filters.user_id == u.user_id ? 'selected' : '' %>><%= u.full_name %></option>
+            <% }) %>
+          </select>
+        </div>
+        <div>
+          <label class="form-label mb-1 small">Action</label>
+          <select class="form-select form-select-sm" name="action_type">
+            <option value="">All</option>
+            <% actionTypes.forEach(t => { %>
+              <option value="<%= t %>" <%= filters.action_type === t ? 'selected' : '' %>><%= t %></option>
+            <% }) %>
+          </select>
+        </div>
+        <div>
+          <label class="form-label mb-1 small">From</label>
+          <input type="date" class="form-control form-control-sm" name="date_from" value="<%= filters.date_from || '' %>">
+        </div>
+        <div>
+          <label class="form-label mb-1 small">To</label>
+          <input type="date" class="form-control form-control-sm" name="date_to" value="<%= filters.date_to || '' %>">
+        </div>
+        <button class="btn btn-primary btn-sm">Filter</button>
+        <a href="/admin/logs" class="btn btn-outline-secondary btn-sm">Reset</a>
+      </form>
+    </div>
+  </div>
+
+  <div class="card">
+    <div class="table-responsive">
+      <table class="table table-hover datatable mb-0">
+        <thead class="table-light">
+          <tr>
+            <th>#</th><th>User</th><th>Action</th><th>Description</th>
+            <th>IP Address</th><th>Timestamp</th>
+          </tr>
+        </thead>
+        <tbody>
+          <% if (!logs.length) { %>
+            <tr><td colspan="6" class="text-center text-muted py-4">No activity logs found</td></tr>
+          <% } %>
+          <% logs.forEach((l, i) => { %>
+          <tr>
+            <td><%= i+1 %></td>
+            <td>
+              <div class="fw-semibold"><%= l.full_name || 'System' %></div>
+              <small class="text-muted"><%= l.username || '' %></small>
+            </td>
+            <td>
+              <span class="badge bg-<%= l.action_type === 'login' ? 'success' : l.action_type === 'logout' ? 'secondary' : l.action_type === 'delete' ? 'danger' : 'info' %>">
+                <%= l.action_type %>
+              </span>
+            </td>
+            <td><small><%= l.action_description %></small></td>
+            <td><code><%= l.ip_address || 'N/A' %></code></td>
+            <td><small><%= formatDateTime(l.created_at) %></small></td>
+          </tr>
+          <% }) %>
+        </tbody>
+      </table>
+    </div>
+  </div>
+</div>

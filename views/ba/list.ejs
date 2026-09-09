@@ -1,0 +1,637 @@
+<style>
+  .clickable-row {
+    cursor: pointer;
+    transition: background-color 0.2s ease;
+  }
+
+  .clickable-row:hover {
+    background-color: rgba(0, 0, 0, 0.05);
+  }
+
+  .clickable-row.table-active {
+    background-color: rgba(27, 82, 178, 0.12) !important;
+  }
+
+  /* Excel-like Berita Acara Detail Table Styles */
+  .excel-ba-header-main {
+    background-color: #107c41;
+    color: #ffffff;
+    text-align: center;
+    font-weight: bold;
+    font-size: 1.4rem;
+    letter-spacing: 1px;
+    height: 50px;
+    border-bottom: 2px solid #444 !important;
+  }
+
+  .excel-logo-block {
+    background-color: #000;
+    width: 160px;
+    text-align: center;
+    border-right: 2px solid #444 !important;
+    vertical-align: middle;
+  }
+
+  .excel-ba-title {
+    font-weight: bold;
+    font-size: 1.1rem;
+    text-align: center;
+    background-color: #000;
+    color: #fff;
+    border-bottom: 2px solid #444 !important;
+  }
+
+  .excel-ba-info-label {
+    width: 130px;
+    background-color: #0c0c0c;
+    color: #aaa;
+    font-weight: 600;
+    font-size: 0.85rem;
+  }
+
+  .excel-ba-info-value {
+    background-color: #121212;
+    color: #fff;
+    font-weight: 500;
+    font-size: 0.9rem;
+  }
+
+  .excel-ba-approval-header {
+    text-align: center;
+    font-weight: bold;
+    font-size: 0.85rem;
+    background-color: #0c0c0c;
+    color: #aaa;
+    border-bottom: 2px solid #444 !important;
+  }
+
+  .excel-ba-approval-col {
+    width: 120px;
+    text-align: center;
+    font-size: 0.8rem;
+    font-weight: bold;
+    background-color: #0c0c0c;
+    color: #fff;
+    border-bottom: 1px solid #444 !important;
+  }
+
+  .excel-ba-approval-name {
+    width: 120px;
+    height: 60px;
+    text-align: center;
+    background-color: #000;
+    font-size: 0.8rem;
+    vertical-align: middle;
+  }
+
+  .excel-ba-table {
+    width: 100%;
+    border-collapse: collapse;
+    background-color: #ffffff !important;
+    color: #333333 !important;
+    border: 2px solid #cccccc !important;
+    font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+  }
+
+  .excel-ba-table th {
+    background-color: #107c41 !important;
+    color: #ffffff !important;
+    border: 1px solid #cccccc !important;
+    padding: 10px;
+    font-weight: bold;
+    font-size: 0.85rem;
+    text-transform: none;
+    letter-spacing: 0.5px;
+  }
+
+  .excel-ba-table td {
+    background-color: #ffffff !important;
+    color: #333333 !important;
+    border: 1px solid #cccccc !important;
+    padding: 8px 10px;
+    font-size: 0.85rem;
+    vertical-align: middle;
+  }
+
+  .excel-ba-table td[style*="color: #aaa"],
+  .excel-ba-table td[style*="color: #666"] {
+    background-color: #f8f9fa !important;
+    color: #555555 !important;
+    font-weight: bold !important;
+  }
+
+  .excel-ba-table tbody tr:hover {
+    background-color: #f8f9fa !important;
+  }
+  .select2-container--bootstrap-5 .select2-selection--multiple {
+    min-height: 31px;
+    padding: 2px 6px;
+    font-size: 0.875rem;
+    border-radius: 0.25rem;
+    border-color: #dee2e6;
+  }
+  .select2-container--bootstrap-5 .select2-selection--multiple .select2-selection__rendered {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 4px;
+    margin: 0;
+    padding: 0;
+  }
+  .select2-container--bootstrap-5 .select2-selection--multiple .select2-selection__choice {
+    background-color: #0d6efd;
+    color: #fff;
+    border: none;
+    border-radius: 4px;
+    font-size: 0.75rem;
+    padding: 2px 6px;
+    margin: 0;
+  }
+  .select2-container--bootstrap-5 .select2-selection--multiple .select2-selection__choice__remove {
+    color: #fff;
+    margin-right: 4px;
+  }
+  #ba-card-grid > thead,
+  #ba-card-grid > tbody,
+  #ba-card-grid > table,
+  #ba-card-grid > .d-none { display: none !important; }
+  .ba-card { background: #fff; border: 1px solid #e5e7eb; border-radius: 14px; box-shadow: 0 4px 14px rgba(15, 23, 42, .06); overflow: hidden; transition: transform .18s ease, box-shadow .18s ease, border-color .18s ease; }
+  .ba-card-selectable { cursor: pointer; }
+  .ba-card-selectable:hover { transform: translateY(-3px); border-color: #198754; box-shadow: 0 10px 24px rgba(15, 23, 42, .13); }
+  .ba-card-selectable:focus-visible { outline: 3px solid rgba(25, 135, 84, .3); outline-offset: 2px; }
+  .ba-card-supplier { border-top: 4px solid #6c757d; }
+  .ba-card-header, .ba-card-footer { display: flex; align-items: center; justify-content: space-between; padding: 1rem 1.1rem; background: #f8fafc; }
+  .ba-card-header { border-bottom: 1px solid #edf0f2; }
+  .ba-card-body { padding: 1rem 1.1rem; }
+  .ba-card-footer { gap: .4rem; border-top: 1px solid #edf0f2; }
+  .ba-number { font-size: .9rem; }
+  .ba-select-label { display: inline-flex; align-items: center; gap: .45rem; color: #495057; font-size: .75rem; font-weight: 600; cursor: pointer; user-select: none; }
+  .ba-select-label .form-check-input { width: 1.1rem; height: 1.1rem; margin: 0; cursor: pointer; }
+  .ba-select-label .form-check-input:checked { background-color: #198754; border-color: #198754; }
+  .ba-card:has(.supplier-lokal-checkbox:checked) { border-color: #198754; box-shadow: 0 0 0 2px rgba(25, 135, 84, .15), 0 6px 18px rgba(15, 23, 42, .08); }
+  .ba-label { display: block; color: #6b7280; font-size: .72rem; text-transform: uppercase; letter-spacing: .04em; margin-bottom: .2rem; }
+  .ba-meta-grid { display: grid; grid-template-columns: 1.4fr .7fr; gap: .9rem; }
+  .ba-meta-grid > div { min-width: 0; }
+  .ba-sku-list { display: flex; flex-wrap: wrap; gap: .3rem; max-height: 68px; overflow: hidden; }
+  .ba-sku-list .badge { font-size: .72rem; font-weight: 500; }
+  .ba-packaging { display: flex; justify-content: space-between; gap: 1rem; padding: .65rem .75rem; background: #f1f5f9; border-radius: 9px; }
+  .select2-container--bootstrap-5 .select2-selection--multiple .select2-selection__choice__remove:hover {
+    color: #ffcccc;
+  }
+</style>
+
+<div class="container-fluid mt-5 pt-4">
+  <div class="row mb-3 align-items-center">
+    <div class="col">
+      <h2><i class="bi bi-file-earmark-text"></i> Berita Acara Retur Final</h2>
+    </div>
+    <div class="col-auto d-flex gap-2 align-items-center">
+      <label class="btn btn-sm btn-outline-success mb-0">
+        <input type="checkbox" class="form-check-input me-1" id="checkAllSupplierLokal" title="Pilih semua Supplier Lokal">
+        Pilih Semua
+      </label>
+      <a href="/ba/vendors" class="btn btn-sm btn-outline-secondary"><i class="bi bi-building"></i> Vendor</a>
+    </div>
+  </div>
+
+  <!-- Filters -->
+  <div class="card mb-3">
+    <div class="card-body py-3">
+      <form method="GET" id="filter-form">
+        <!-- Row 1 -->
+        <div class="row g-3 mb-3">
+          <!-- Search Keyword -->
+          <div class="col-md-4">
+            <label class="form-label form-label-sm fw-bold mb-1"><i class="bi bi-search text-muted"></i> Pencarian</label>
+            <input type="text" class="form-control form-control-sm" name="search" id="baLiveSearch" placeholder="Nomor BA, SKU, Judul, Supplier..." value="<%= filters.search || '' %>" autocomplete="off">
+          </div>
+          <!-- Supplier/Vendor -->
+          <div class="col-md-4">
+            <label class="form-label form-label-sm fw-bold mb-1"><i class="bi bi-building text-muted"></i> Supplier</label>
+            <select class="form-select form-select-sm select2-supplier-multiple" name="vendor_id" multiple="multiple" data-placeholder="-- Pilih Supplier (Bisa Lebih Dari 1) --">
+              <% vendors.forEach(v => { %>
+                <option value="<%= v.vendor_id %>" <%= (typeof selectedVendorIds !== 'undefined' && selectedVendorIds.includes(String(v.vendor_id))) ? 'selected' : '' %>><%= v.vendor_name %></option>
+              <% }) %>
+            </select>
+          </div>
+          <!-- Status -->
+          <div class="col-md-4">
+            <label class="form-label form-label-sm fw-bold mb-1"><i class="bi bi-info-circle text-muted"></i> Status</label>
+            <select class="form-select form-select-sm" name="status">
+              <option value="">Semua</option>
+              <% [
+                { value: 'rekondisi', label: 'Rekondisi' },
+                { value: 'refurbish', label: 'Refurbish' },
+                { value: 'write_off', label: 'Write Off' },
+                { value: 'return_to_supplier', label: 'Supplier Lokal' }
+              ].forEach(option => { %>
+                <option value="<%= option.value %>" <%= filters.status === option.value ? 'selected' : '' %>><%= option.label %></option>
+              <% }) %>
+            </select>
+          </div>
+        </div>
+
+        <!-- Row 2 -->
+        <div class="row g-3 align-items-end">
+          <!-- Start Date -->
+          <div class="col-md-3">
+            <label class="form-label form-label-sm fw-bold mb-1"><i class="bi bi-calendar-event text-muted"></i> Mulai Tanggal</label>
+            <input type="date" class="form-control form-control-sm" name="start_date" value="<%= filters.start_date || '' %>">
+          </div>
+          <!-- End Date -->
+          <div class="col-md-3">
+            <label class="form-label form-label-sm fw-bold mb-1"><i class="bi bi-calendar-check text-muted"></i> Sampai Tanggal</label>
+            <input type="date" class="form-control form-control-sm" name="end_date" value="<%= filters.end_date || '' %>">
+          </div>
+          <!-- Actions & Export -->
+          <div class="col-md-6 text-end">
+            <button type="submit" class="btn btn-sm btn-primary"><i class="bi bi-search"></i> Cari</button>
+            <a href="/ba" class="btn btn-sm btn-outline-secondary ms-1">Reset</a>
+            <button type="button" onclick="exportFilteredData()" class="btn btn-sm btn-outline-success ms-1">
+              <i class="bi bi-file-earmark-excel"></i> Export All Excel
+            </button>
+            <button type="button" onclick="exportSupplierLokalExcel()" class="btn btn-sm btn-success ms-1" id="btnExportSupplierLokal">
+              <i class="bi bi-file-earmark-excel"></i> Export All Excel Supplier Lokal
+            </button>
+          </div>
+        </div>
+      </form>
+    </div>
+  </div>
+
+  <!-- Berita Acara Cards -->
+  <div class="row g-3 mb-5" id="ba-card-grid">
+      <% if (docs.length === 0) { %>
+        <div class="col-12"><div class="alert alert-light text-center">Belum ada Berita Acara.</div></div>
+      <% } %>
+      <% docs.forEach((d, i) => {
+        const categories = d.item_dispositions ? [...new Set(d.item_dispositions.split(', ').filter(Boolean))] : [];
+        const hasSupplierLokal = categories.includes('return_to_supplier') || d.ba_type === 'retur_supplier';
+        const statusMap = { rekondisi: { label: 'REKONDISI', color: 'primary' }, refurbish: { label: 'REFURBISH', color: 'dark' }, write_off: { label: 'WRITE OFF', color: 'danger' }, return_to_supplier: { label: 'SUPPLIER LOKAL', color: 'secondary' }, retur_final: { label: 'RETUR FINAL', color: 'primary' } };
+        const statusEntries = (categories.length ? categories : [d.ba_type]).map(category => statusMap[category] || { label: String(category || '-').replace('_', ' ').toUpperCase(), color: 'secondary' });
+      %>
+      <div class="col-12 col-md-6 col-xl-4">
+        <article class="ba-card h-100 <%= hasSupplierLokal ? 'ba-card-supplier ba-card-selectable' : '' %>" data-ba-search="<%= [d.ba_number, d.skus, d.title, d.vendor_name].filter(Boolean).join(' ').toLowerCase() %>" <% if (hasSupplierLokal) { %>data-ba-selectable="true" data-ba-number="<%= d.ba_number %>" data-ba-supplier="<%= d.vendor_name || '-' %>" data-ba-qty="<%= d.total_qty || 0 %>" data-ba-skus="<%= d.skus || '-' %>" data-ba-box="<%= d.box_number || 'Belum diisi' %>" data-ba-weight="<%= d.box_weight_kg ? `${d.box_weight_kg} Kg` : 'Belum diisi' %>"<% } %>>
+          <div class="ba-card-header">
+            <div>
+              <% if (hasSupplierLokal) { %>
+                <label class="ba-select-label">
+                  <input type="checkbox" class="form-check-input supplier-lokal-checkbox" value="<%= d.ba_id %>" data-ba-number="<%= d.ba_number %>" title="Pilih BA untuk export">
+                  <span>Pilih untuk export</span>
+                </label>
+              <% } %>
+              <div class="text-muted small mt-2">Nomor BA</div>
+              <code class="ba-number"><%= d.ba_number %></code>
+            </div>
+            <div class="text-end"><% statusEntries.forEach(entry => { %><span class="badge bg-<%= entry.color %> ms-1"><%= entry.label %></span><% }) %><div class="text-muted small mt-2"><%= formatDate(d.created_at) %></div></div>
+          </div>
+          <div class="ba-card-body">
+            <div class="ba-meta-grid">
+              <div><span class="ba-label">Supplier</span><strong><%= d.vendor_name || '-' %></strong></div>
+              <div><span class="ba-label">Total Qty</span><strong class="fs-5"><%= d.total_qty || 0 %></strong></div>
+              <div><span class="ba-label">No Resi</span><span><%= d.resi_number || '-' %></span></div>
+              <div><span class="ba-label">Harga Final</span><span><%= d.final_price ? formatCurrency(d.final_price) : '-' %></span></div>
+            </div>
+            <div class="mt-3"><span class="ba-label">SKU</span><div class="ba-sku-list"><% if (d.skus) { d.skus.split(', ').forEach(s => { %><span class="badge bg-light text-dark border font-monospace"><%= s %></span><% }) } else { %><span class="text-muted">-</span><% } %></div></div>
+            <% if (hasSupplierLokal) { %>
+              <div class="ba-packaging mt-3"><div><span class="ba-label">Kardus</span><% if (d.box_number) { %><strong><%= d.box_number %></strong><% } else { %><span class="text-warning">Belum diisi</span><% } %></div><div><span class="ba-label">Berat</span><strong><%= d.box_weight_kg || '-' %> Kg</strong></div></div>
+            <% } %>
+            <div class="text-muted small mt-3 text-truncate" title="<%= d.title || '' %>"><i class="bi bi-file-text me-1"></i><%= d.title || '-' %></div>
+          </div>
+          <div class="ba-card-footer">
+            <span class="me-auto"></span>
+            <% if (hasSupplierLokal) { %><button type="button" class="btn btn-sm btn-outline-warning packaging-btn" data-bs-toggle="modal" data-bs-target="#packagingModal" data-ba-id="<%= d.ba_id %>" data-ba-number="<%= d.ba_number %>" data-box="<%= d.box_number || '' %>" data-weight="<%= d.box_weight_kg || '' %>"><i class="bi bi-box-seam"></i> Kardus</button><% } %>
+            <a href="/ba/<%= d.ba_id %>" class="btn btn-sm btn-outline-primary"><i class="bi bi-eye"></i></a><a href="/ba/<%= d.ba_id %>/export-excel" class="btn btn-sm btn-outline-success"><i class="bi bi-file-earmark-excel"></i></a>
+            <% if (['draft','pending_sign'].includes(d.status)) { %><a href="/ba/<%= d.ba_id %>/sign" class="btn btn-sm btn-outline-warning"><i class="bi bi-pen"></i></a><% } %>
+          </div>
+        </article>
+      </div>
+      <% }) %>
+      <div class="d-none">
+          <tr>
+            <th style="width: 45px;" class="text-center" data-orderable="false"></th>
+            <th>Nomor BA</th><th>SKU</th><th>Total Qty</th><th>No Resi</th>
+            <th>Supplier</th><th>Nomor Kardus</th><th>Berat Koli (Kg)</th><th>Judul</th><th>Harga Final</th><th>Status</th><th>Dibuat</th><th>Aksi</th>
+          </tr>
+        </thead>
+        <tbody>
+          <% if (docs.length === 0) { %>
+            <tr><td colspan="13" class="text-center text-muted py-4">Belum ada Berita Acara.</td></tr>
+          <% } %>
+          <% docs.forEach((d, i) => {%>
+          <% 
+            const categories = d.item_dispositions ? [...new Set(d.item_dispositions.split(', ').filter(Boolean))] : [];
+            const hasSupplierLokal = categories.includes('return_to_supplier') || d.ba_type === 'retur_supplier';
+            const statusMap = {
+              rekondisi: { label: 'REKONDISI', color: 'primary' },
+              refurbish: { label: 'REFURBISH', color: 'dark' },
+              write_off: { label: 'WRITE OFF', color: 'danger' },
+              return_to_supplier: { label: 'SUPPLIER LOKAL', color: 'secondary' },
+              retur_final: { label: 'RETUR FINAL', color: 'primary' }
+            };
+
+            const statusEntries = [];
+            if (categories.length) {
+              categories.forEach(category => {
+                if (statusMap[category]) statusEntries.push(statusMap[category]);
+              });
+            }
+
+            if (!statusEntries.length) {
+              statusEntries.push(statusMap[d.ba_type] || {
+                label: (d.ba_type || '-').replace('_', ' ').toUpperCase(),
+                color: 'secondary'
+              });
+            }
+
+            const statusFilterQuery = filters.status || '';
+          %>
+                  <tr class="clickable-row <%= ba && ba.ba_id === d.ba_id ? 'table-active font-weight-bold' : '' %>"
+                    onclick="if (!event.target.closest('a') && !event.target.closest('button') && !event.target.closest('form') && !event.target.closest('.form-check-input')) window.location.href='/ba?ba_id=<%= d.ba_id %>&status=<%= statusFilterQuery %>'"
+                    style="cursor: pointer;">
+                    <td class="text-center" onclick="event.stopPropagation()">
+                      <% if (hasSupplierLokal) { %>
+                        <input type="checkbox" class="form-check-input legacy-supplier-checkbox" value="<%= d.ba_id %>" data-ba-number="<%= d.ba_number %>" title="Pilih <%= d.ba_number %>">
+                      <% } else { %>
+                        <span class="text-muted small"><%= i + 1 %></span>
+                      <% } %>
+                    </td>
+                    <td><code><%= d.ba_number %></code></td>
+                    <td>
+                      <% if (d.skus) { %>
+                        <div class="d-flex flex-wrap gap-1">
+                          <% d.skus.split(', ').forEach(s => { %>
+                    <span class="badge bg-light text-dark border font-monospace" style="font-size: 0.75rem;"><%= s %></span>
+                  <% }) %>
+                </div>
+              <% } else { %>
+                <span class="text-muted">-</span>
+              <% } %>
+            </td>
+            <td><strong><%= d.total_qty || 0 %></strong></td>
+            <td>
+              <% if (d.resi_number) { %>
+                <small class="text-muted"><i class="bi bi-truck"></i> <%= d.resi_number %></small>
+              <% } else { %>
+                <span class="text-muted">-</span>
+              <% } %>
+            </td>
+                    <td><strong><%= d.vendor_name || ' -' %></strong></td>
+                    <td>
+                      <% if (hasSupplierLokal) { %>
+                        <button type="button" class="btn btn-sm <%= d.box_number ? 'btn-outline-success' : 'btn-outline-warning' %> packaging-btn"
+                          data-bs-toggle="modal" data-bs-target="#packagingModal"
+                          data-ba-id="<%= d.ba_id %>" data-ba-number="<%= d.ba_number %>"
+                          data-box="<%= d.box_number || '' %>" data-weight="<%= d.box_weight_kg || '' %>">
+                          <%= d.box_number || 'Isi Kardus' %>
+                        </button>
+                      <% } else { %>-<% } %>
+                    </td>
+                    <td><%= hasSupplierLokal && d.box_weight_kg ? `${d.box_weight_kg} Kg` : '-' %></td>
+                    <td><small>
+                        <%= d.title || '-' %>
+                      </small></td>
+                    <td>
+                      <%= d.final_price ? formatCurrency(d.final_price) : '-' %>
+                    </td>
+                    <td>
+                      <div class="d-flex flex-wrap gap-1">
+                        <% statusEntries.forEach(entry => { %>
+                          <span class="badge bg-<%= entry.color %>"><%= entry.label %></span>
+                        <% }) %>
+                      </div>
+                    </td>
+                    <td><small>
+                        <%= formatDate(d.created_at) %>
+                      </small></td>
+                    <td>
+                      <a href="/ba/<%= d.ba_id %>" class="btn btn-sm btn-outline-primary" title="Detail"><i class="bi bi-eye"></i></a>
+                      <a href="/ba/<%= d.ba_id %>/export-excel" class="btn btn-sm btn-outline-success ms-1" title="Cetak Excel"><i class="bi bi-file-earmark-excel"></i></a>
+                      <% if (['draft','pending_sign'].includes(d.status)) { %>
+                        <a href="/ba/<%= d.ba_id %>/sign" class="btn btn-sm btn-outline-warning ms-1" title="Tanda Tangan">
+                          <i class="bi bi-pen"></i>
+                        </a>
+                      <% } %>
+                    </td>
+                  </tr>
+                  <% }) %>
+                </tbody>
+              </table>
+            </div>
+          </div>
+      </div>
+    </div>
+
+  <div class="modal fade" id="packagingModal" tabindex="-1" aria-hidden="true">
+    <div class="modal-dialog modal-dialog-centered">
+      <div class="modal-content">
+        <form method="POST" id="packagingForm">
+          <div class="modal-header">
+            <h5 class="modal-title">Data Kardus Supplier Lokal</h5>
+            <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+          </div>
+          <div class="modal-body">
+            <p class="text-muted small">BA: <strong id="packagingBaNumber"></strong></p>
+            <div class="mb-3">
+              <label class="form-label">Nomor Kardus <span class="text-danger">*</span></label>
+              <input class="form-control" name="box_number" id="packagingBox" maxlength="60" required placeholder="LSF 08 DUS 1">
+            </div>
+            <div>
+              <label class="form-label">Berat Koli (Kg) <span class="text-danger">*</span></label>
+              <input type="number" class="form-control" name="box_weight_kg" id="packagingWeight" min="0.01" step="0.01" required>
+            </div>
+          </div>
+          <div class="modal-footer">
+            <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Batal</button>
+            <button type="submit" class="btn btn-primary">Simpan</button>
+          </div>
+        </form>
+      </div>
+    </div>
+  </div>
+
+  <div class="modal fade" id="selectBaModal" tabindex="-1" aria-hidden="true">
+    <div class="modal-dialog modal-dialog-centered">
+      <div class="modal-content border-0 shadow">
+        <div class="modal-header bg-success text-white">
+          <div><h5 class="modal-title mb-1"><i class="bi bi-check2-square me-2"></i>Pilih Berita Acara</h5><small id="selectBaActionText">BA akan dipilih untuk export.</small></div>
+          <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal"></button>
+        </div>
+        <div class="modal-body">
+          <div class="p-3 rounded bg-light mb-3"><div class="text-muted small">Nomor BA</div><code id="selectBaNumber" class="fs-5"></code></div>
+          <div class="row g-3">
+            <div class="col-6"><div class="text-muted small">Supplier</div><strong id="selectBaSupplier">-</strong></div>
+            <div class="col-6"><div class="text-muted small">Total Qty</div><strong id="selectBaQty">-</strong></div>
+            <div class="col-12"><div class="text-muted small">SKU</div><div id="selectBaSkus" class="small text-break">-</div></div>
+            <div class="col-6"><div class="text-muted small">Nomor Kardus</div><strong id="selectBaBox">-</strong></div>
+            <div class="col-6"><div class="text-muted small">Berat Koli</div><strong id="selectBaWeight">-</strong></div>
+          </div>
+        </div>
+        <div class="modal-footer"><button type="button" class="btn btn-outline-secondary" data-bs-dismiss="modal">Batal</button><button type="button" class="btn btn-success" id="confirmSelectBa"><i class="bi bi-check-lg me-1"></i>Pilih BA</button></div>
+      </div>
+    </div>
+  </div>
+
+  <script>
+    document.addEventListener('DOMContentLoaded', function () {
+      const liveSearch = document.getElementById('baLiveSearch');
+      let liveSearchTimer;
+      if (liveSearch) {
+        liveSearch.addEventListener('input', function () {
+          clearTimeout(liveSearchTimer);
+          liveSearchTimer = setTimeout(() => {
+            const keyword = this.value.trim().toLowerCase();
+            document.querySelectorAll('#ba-card-grid > .col-12, #ba-card-grid > .col-md-6, #ba-card-grid > .col-xl-4').forEach(wrapper => {
+              const card = wrapper.querySelector('[data-ba-search]');
+              if (card) wrapper.classList.toggle('d-none', Boolean(keyword) && !card.dataset.baSearch.includes(keyword));
+            });
+          }, 150);
+        });
+      }
+
+      let pendingBaCard = null;
+      let selectBaModal = null;
+      const selectBaModalElement = document.getElementById('selectBaModal');
+      if (selectBaModalElement && window.bootstrap) selectBaModal = new bootstrap.Modal(selectBaModalElement);
+
+      document.querySelectorAll('[data-ba-selectable="true"]').forEach(card => {
+        card.addEventListener('click', function (event) {
+          if (event.target.closest('a, button, input, label, form')) return;
+          const checkbox = card.querySelector('.supplier-lokal-checkbox');
+          if (!checkbox || !selectBaModal) return;
+          pendingBaCard = card;
+          const isSelected = checkbox.checked;
+          document.getElementById('selectBaActionText').textContent = isSelected ? 'BA akan dikeluarkan dari pilihan export.' : 'BA akan dipilih untuk export.';
+          document.getElementById('selectBaNumber').textContent = card.dataset.baNumber;
+          document.getElementById('selectBaSupplier').textContent = card.dataset.baSupplier;
+          document.getElementById('selectBaQty').textContent = card.dataset.baQty;
+          document.getElementById('selectBaSkus').textContent = card.dataset.baSkus.split(', ').join(' · ');
+          document.getElementById('selectBaBox').textContent = card.dataset.baBox;
+          document.getElementById('selectBaWeight').textContent = card.dataset.baWeight;
+          document.getElementById('confirmSelectBa').innerHTML = isSelected ? '<i class="bi bi-x-lg me-1"></i>Batalkan Pilihan' : '<i class="bi bi-check-lg me-1"></i>Pilih BA';
+          selectBaModal.show();
+        });
+      });
+
+      document.getElementById('confirmSelectBa').addEventListener('click', function () {
+        if (!pendingBaCard) return;
+        const checkbox = pendingBaCard.querySelector('.supplier-lokal-checkbox');
+        checkbox.checked = !checkbox.checked;
+        checkbox.dispatchEvent(new Event('change', { bubbles: true }));
+        selectBaModal.hide();
+        pendingBaCard = null;
+      });
+
+      document.querySelectorAll('.packaging-btn').forEach(button => {
+        button.addEventListener('click', function () {
+          document.getElementById('packagingBaNumber').textContent = this.dataset.baNumber;
+          document.getElementById('packagingForm').action = `/ba/${this.dataset.baId}/packaging`;
+          document.getElementById('packagingBox').value = this.dataset.box;
+          document.getElementById('packagingWeight').value = this.dataset.weight;
+        });
+      });
+    });
+
+    function updateSupplierLokalCheckAllState() {
+      let total = 0;
+      let checked = 0;
+
+      if (false) {
+        const table = $('.datatable').DataTable();
+        const rows = table.rows({ search: 'applied' }).nodes();
+        const $cbs = $('input.supplier-lokal-checkbox', rows);
+        total = $cbs.length;
+        checked = $cbs.filter(':checked').length;
+      } else {
+        const $cbs = $('.supplier-lokal-checkbox');
+        total = $cbs.length;
+        checked = $cbs.filter(':checked').length;
+      }
+
+      $('#checkAllSupplierLokal').prop('checked', total > 0 && total === checked);
+
+      const $btn = $('#btnExportSupplierLokal');
+      if (checked > 0) {
+        $btn.html(`<i class="bi bi-file-earmark-excel"></i> Export Excel Supplier Lokal (${checked})`);
+      } else {
+        $btn.html(`<i class="bi bi-file-earmark-excel"></i> Export All Excel Supplier Lokal`);
+      }
+    }
+
+    $(document).ready(function() {
+      if (window.$ && $.fn.select2) {
+        $('.select2-supplier-multiple').select2({
+          theme: 'bootstrap-5',
+          placeholder: '-- Pilih Supplier (Bisa Lebih Dari 1) --',
+          allowClear: true,
+          width: '100%',
+          closeOnSelect: false
+        });
+      }
+
+      // Handle Check All click
+      $(document).on('click change', '#checkAllSupplierLokal', function (e) {
+        const isChecked = $(this).is(':checked');
+        if (false) {
+          const table = $('.datatable').DataTable();
+          const rows = table.rows({ search: 'applied' }).nodes();
+          $('input.supplier-lokal-checkbox', rows).prop('checked', isChecked);
+        } else {
+          $('.supplier-lokal-checkbox').prop('checked', isChecked);
+        }
+        updateSupplierLokalCheckAllState();
+      });
+
+      // Handle individual checkbox change
+      $(document).on('change', '.supplier-lokal-checkbox', function () {
+        updateSupplierLokalCheckAllState();
+      });
+
+      // When DataTables redraws
+      $(document).on('draw.dt', '.datatable', function () {
+        updateSupplierLokalCheckAllState();
+      });
+    });
+
+    function exportFilteredData() {
+      const form = document.getElementById('filter-form');
+      const formData = new FormData(form);
+      const params = new URLSearchParams();
+      for (const [key, value] of formData.entries()) {
+        if (value) {
+          params.append(key, value);
+        }
+      }
+      window.location.href = '/ba/export-all?' + params.toString();
+    }
+
+    function exportSupplierLokalExcel() {
+      let selectedIds = [];
+      if (false) {
+        const table = $('.datatable').DataTable();
+        const rows = table.rows().nodes();
+        $('input.supplier-lokal-checkbox:checked', rows).each(function () {
+          selectedIds.push($(this).val());
+        });
+      } else {
+        $('.supplier-lokal-checkbox:checked').each(function () {
+          selectedIds.push($(this).val());
+        });
+      }
+
+      if (selectedIds.length > 0) {
+        window.location.href = '/ba/export-supplier-lokal?ba_ids=' + selectedIds.join(',');
+      } else {
+        const form = document.getElementById('filter-form');
+        const formData = new FormData(form);
+        const params = new URLSearchParams();
+        for (const [key, value] of formData.entries()) {
+          if (value) {
+            params.append(key, value);
+          }
+        }
+        params.set('status', 'return_to_supplier');
+        window.location.href = '/ba/export-supplier-lokal?' + params.toString();
+      }
+    }
+  </script>
+</div>

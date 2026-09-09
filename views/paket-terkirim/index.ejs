@@ -1,0 +1,106 @@
+<div class="container-fluid mt-5 pt-4">
+
+  <%# ── Page Header ─────────────────────────────────────────────────────────── %>
+  <div class="row mb-3 align-items-center">
+    <div class="col">
+      <h2><i class="bi bi-box-arrow-up text-primary"></i> Master Paket Terkirim</h2>
+      <p class="text-muted mb-0">Kelola daftar total paket terkirim per periode untuk ringkasan analisis retur.</p>
+    </div>
+    <div class="col-auto">
+      <a href="/master-paket-terkirim/create" class="btn btn-primary btn-sm">
+        <i class="bi bi-plus-circle"></i> Tambah Paket Terkirim
+      </a>
+    </div>
+  </div>
+
+  <%# ── Filter / Search ─────────────────────────────────────────────────────── %>
+  <div class="card mb-3">
+    <div class="card-body py-2">
+      <form method="GET" action="/master-paket-terkirim" class="row g-2 align-items-end">
+        <div class="col-md-4">
+          <label class="form-label form-label-sm mb-1">Bulan</label>
+          <select name="search_month" class="form-select form-select-sm">
+            <option value="">Semua Bulan</option>
+            <% monthsList.forEach(m => { %>
+              <option value="<%= m.value %>" <%= filters.search_month == m.value ? 'selected' : '' %>><%= m.name %></option>
+            <% }) %>
+          </select>
+        </div>
+        <div class="col-md-4">
+          <label class="form-label form-label-sm mb-1">Tahun</label>
+          <select name="search_year" class="form-select form-select-sm">
+            <option value="">Semua Tahun</option>
+            <% yearsList.forEach(y => { %>
+              <option value="<%= y %>" <%= filters.search_year == y ? 'selected' : '' %>><%= y %></option>
+            <% }) %>
+          </select>
+        </div>
+        <div class="col-auto">
+          <button type="submit" class="btn btn-sm btn-outline-primary">
+            <i class="bi bi-search"></i> Filter
+          </button>
+          <a href="/master-paket-terkirim" class="btn btn-sm btn-outline-secondary ms-1">
+            <i class="bi bi-x-circle"></i> Reset
+          </a>
+        </div>
+      </form>
+    </div>
+  </div>
+
+  <%# ── Data Table ──────────────────────────────────────────────────────────── %>
+  <div class="card">
+    <div class="card-header d-flex justify-content-between align-items-center">
+      <h6 class="mb-0"><i class="bi bi-table"></i> Daftar Master Paket Terkirim</h6>
+      <span class="badge bg-secondary"><%= items.length %> data</span>
+    </div>
+    <div class="table-responsive">
+      <table class="table table-hover datatable mb-0">
+        <thead class="table-light">
+          <tr>
+            <th>#</th>
+            <th>Periode</th>
+            <th>Total Paket Terkirim</th>
+            <th>Dibuat Pada</th>
+            <th class="text-center">Aksi</th>
+          </tr>
+        </thead>
+        <tbody>
+          <% if (items.length === 0) { %>
+            <tr>
+              <td colspan="5" class="text-center text-muted py-5">
+                <i class="bi bi-box fs-2 d-block mb-2"></i>
+                Belum ada data paket terkirim.
+              </td>
+            </tr>
+          <% } %>
+          <% items.forEach((item, i) => { %>
+          <tr>
+            <td><%= i + 1 %></td>
+            <td><strong><%= getMonthName(item.bulan) %> <%= item.tahun %></strong></td>
+            <td><span class="fw-bold"><%= item.total_terkirim.toLocaleString('id-ID') %></span> paket</td>
+            <td>
+              <small class="text-muted">
+                <%= formatDate(item.created_at) %>
+              </small>
+            </td>
+            <td class="text-center">
+              <div class="btn-group btn-group-sm">
+                <a href="/master-paket-terkirim/<%= item.id %>/edit"
+                   class="btn btn-outline-warning" title="Edit">
+                  <i class="bi bi-pencil"></i>
+                </a>
+                <form action="/master-paket-terkirim/<%= item.id %>?_method=DELETE" method="POST"
+                      onsubmit="return confirm('Hapus data paket terkirim periode <%= getMonthName(item.bulan) %> <%= item.tahun %>?')">
+                  <button type="submit" class="btn btn-outline-danger" title="Hapus">
+                    <i class="bi bi-trash3"></i>
+                  </button>
+                </form>
+              </div>
+            </td>
+          </tr>
+          <% }) %>
+        </tbody>
+      </table>
+    </div>
+  </div>
+</div>

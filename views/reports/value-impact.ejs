@@ -1,0 +1,142 @@
+<div class="container-fluid mt-5 pt-4">
+  <div class="row mb-3">
+    <div class="col">
+      <h2><i class="bi bi-currency-dollar"></i> Value Impact Report</h2>
+    </div>
+    <div class="col-auto">
+      <form class="d-flex gap-2 align-items-end" method="GET" action="/reports/value-impact">
+        <div>
+          <label class="form-label mb-1 small">From</label>
+          <input type="date" class="form-control form-control-sm" name="date_from" value="<%= dateFrom || '' %>">
+        </div>
+        <div>
+          <label class="form-label mb-1 small">To</label>
+          <input type="date" class="form-control form-control-sm" name="date_to" value="<%= dateTo || '' %>">
+        </div>
+        <button class="btn btn-primary btn-sm">Filter</button>
+        <a href="/reports/value-impact" class="btn btn-outline-secondary btn-sm">Reset</a>
+      </form>
+    </div>
+  </div>
+
+  <!-- Value tiles -->
+  <div class="row g-3 mb-4">
+    <div class="col-md-3">
+      <div class="card border-primary text-center">
+        <div class="card-body">
+          <div class="fs-5 fw-bold text-primary"><%- formatCurrency(totals.total_value || 0) %></div>
+          <div class="text-muted small">Total Return Value</div>
+        </div>
+      </div>
+    </div>
+    <div class="col-md-3">
+      <div class="card border-success text-center">
+        <div class="card-body">
+          <div class="fs-5 fw-bold text-success"><%- formatCurrency(totals.recovered_value || 0) %></div>
+          <div class="text-muted small">Recovered</div>
+        </div>
+      </div>
+    </div>
+    <div class="col-md-3">
+      <div class="card border-danger text-center">
+        <div class="card-body">
+          <div class="fs-5 fw-bold text-danger"><%- formatCurrency(totals.lost_value || 0) %></div>
+          <div class="text-muted small">Written Off / Lost</div>
+        </div>
+      </div>
+    </div>
+    <div class="col-md-3">
+      <div class="card border-info text-center">
+        <div class="card-body">
+          <div class="fs-5 fw-bold text-info"><%- formatCurrency(totals.approved_value || 0) %></div>
+          <div class="text-muted small">Approved (In Progress)</div>
+        </div>
+      </div>
+    </div>
+    <div class="col-md-3">
+      <div class="card border-warning text-center">
+        <div class="card-body">
+          <div class="fs-5 fw-bold text-warning"><%- formatCurrency(totals.open_value || 0) %></div>
+          <div class="text-muted small">Open / Pending</div>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <div class="row g-4 mb-4">
+    <!-- By Category -->
+    <div class="col-md-6">
+      <div class="card h-100">
+        <div class="card-header fw-semibold">Value by Category</div>
+        <div class="table-responsive">
+          <table class="table table-sm mb-0">
+            <thead class="table-light"><tr><th>Category</th><th>Count</th><th>Total Value</th></tr></thead>
+            <tbody>
+              <% byCategory.forEach(r => { %>
+              <tr>
+                <td class="text-capitalize"><%= formatCategory(r.return_category, 'N/A') %></td>
+                <td><%= r.count %></td>
+                <td><%- formatCurrency(r.total_value) %></td>
+              </tr>
+              <% }) %>
+            </tbody>
+          </table>
+        </div>
+      </div>
+    </div>
+    <!-- By Disposition -->
+    <% if (dispositionValue && dispositionValue.length) { %>
+    <div class="col-md-6">
+      <div class="card h-100">
+        <div class="card-header fw-semibold">Value by Disposition</div>
+        <div class="table-responsive">
+          <table class="table table-sm mb-0">
+            <thead class="table-light"><tr><th>Disposition</th><th>Count</th><th>Total Value</th></tr></thead>
+            <tbody>
+              <% dispositionValue.forEach(r => { %>
+              <tr>
+                <td class="text-capitalize"><%= r.disposition === 'return_to_supplier' ? 'Supplier Lokal' : (r.disposition ? r.disposition.replace(/_/g,' ') : 'N/A') %></td>
+                <td><%= r.count %></td>
+                <td><%- formatCurrency(r.total_price) %></td>
+              </tr>
+              <% }) %>
+            </tbody>
+          </table>
+        </div>
+      </div>
+    </div>
+    <% } %>
+  </div>
+
+  <!-- Top Returns by Value -->
+  <% if (topReturns && topReturns.length) { %>
+  <div class="card">
+    <div class="card-header fw-semibold">Top Returns by Value</div>
+    <div class="table-responsive">
+      <table class="table table-hover mb-0">
+        <thead class="table-light">
+          <tr><th>#</th><th>No Resi</th><th>Description</th><th>Category</th><th>Status</th><th>Value</th></tr>
+        </thead>
+        <tbody>
+          <% topReturns.forEach((r, i) => { %>
+          <tr>
+            <td><%= i+1 %></td>
+            <td>
+              <% if (r.resi_number) { %>
+                <small class="text-muted"><i class="bi bi-truck"></i> <%= r.resi_number %></small>
+              <% } else { %>
+                <span class="text-muted">-</span>
+              <% } %>
+            </td>
+            <td><%= r.return_description ? r.return_description.substring(0,60) : '-' %></td>
+            <td class="text-capitalize"><%= formatCategory(r.return_category) %></td>
+            <td><%- getStatusBadge(r.return_status) %></td>
+            <td><%- formatCurrency(r.total_value) %></td>
+          </tr>
+          <% }) %>
+        </tbody>
+      </table>
+    </div>
+  </div>
+  <% } %>
+</div>

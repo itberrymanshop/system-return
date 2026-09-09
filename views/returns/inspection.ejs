@@ -1,0 +1,121 @@
+<div class="container-fluid mt-5 pt-4">
+  <div class="row mb-3">
+    <div class="col">
+      <h2><i class="bi bi-sort-down"></i> Sorting Queue</h2>
+      <nav aria-label="breadcrumb">
+        <ol class="breadcrumb">
+          <li class="breadcrumb-item"><a href="/dashboard">Dashboard</a></li>
+          <li class="breadcrumb-item">Returns</li>
+          <li class="breadcrumb-item active">Sorting</li>
+        </ol>
+      </nav>
+    </div>
+  </div>
+
+  <div class="row g-3 mb-4">
+    <div class="col-md-4">
+      <div class="card border-info text-center">
+        <div class="card-body">
+          <h6 class="text-muted mb-1">Returns in Sorting</h6>
+          <h2 class="mb-0"><%= returns.length %></h2>
+        </div>
+      </div>
+    </div>
+    <div class="col-md-4">
+      <div class="card border-warning text-center">
+        <div class="card-body">
+          <h6 class="text-muted mb-1">Items Pending Sorting</h6>
+          <h2 class="mb-0"><%= items.length %></h2>
+        </div>
+      </div>
+    </div>
+    <div class="col-md-4">
+      <div class="card border-success text-center">
+        <div class="card-body">
+          <h6 class="text-muted mb-1">Assigned to You</h6>
+          <h2 class="mb-0"><%= myCount %></h2>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <div class="card mb-4">
+    <div class="card-header bg-info text-white"><h6 class="mb-0"><i class="bi bi-list-check"></i> Returns in Sorting</h6></div>
+    <div class="table-responsive">
+      <table class="table table-hover datatable mb-0">
+        <thead class="table-light">
+          <tr>
+            <th>No Resi</th><th>Date</th><th>Category</th>
+            <th>Items</th><th>Value</th><th>Aging</th><th>Inspector</th><th>Actions</th>
+          </tr>
+        </thead>
+        <tbody>
+          <% if (!returns.length) { %>
+            <tr><td colspan="9" class="text-center text-muted py-4">No returns in sorting queue</td></tr>
+          <% } %>
+          <% returns.forEach(r => { %>
+            <% const aging = parseInt(r.aging_days) || 0; %>
+            <tr>
+              <td>
+                <% if (r.resi_number) { %>
+                  <small class="text-muted"><i class="bi bi-truck"></i> <%= r.resi_number %></small>
+                <% } %>
+                <% if (r.no_pesanan) { %>
+                  <br><small class="text-muted"><i class="bi bi-receipt"></i> <%= r.no_pesanan %></small>
+                <% } %>
+                <% if (!r.resi_number && !r.no_pesanan) { %>
+                  <span class="text-muted">-</span>
+                <% } %>
+              </td>
+              <td><%= formatDate(r.return_date) %></td>
+              <td class="text-capitalize"><%= formatCategory(r.return_category) %></td>
+
+              <td class="text-center"><%= r.total_items %></td>
+              <td><%- formatCurrency(r.total_value) %></td>
+              <td><span class="badge bg-<%= getAgingClass(aging) %>"><%= aging %>d</span></td>
+              <td><%= r.inspector_name %></td>
+              <td><a href="/returns/<%= r.return_id %>" class="btn btn-sm btn-outline-primary"><i class="bi bi-eye"></i> Sorting</a></td>
+            </tr>
+          <% }) %>
+        </tbody>
+      </table>
+    </div>
+  </div>
+
+  <div class="card">
+    <div class="card-header bg-warning text-dark"><h6 class="mb-0"><i class="bi bi-box-seam"></i> Items Pending Sorting</h6></div>
+    <div class="table-responsive">
+      <table class="table table-hover datatable mb-0">
+        <thead class="table-light">
+          <tr>
+            <th>No Resi</th><th>Item Name</th><th>Qty</th><th>Condition</th><th>Actions</th>
+          </tr>
+        </thead>
+        <tbody>
+          <% if (!items.length) { %>
+            <tr><td colspan="6" class="text-center text-muted py-4">No items pending sorting</td></tr>
+          <% } %>
+          <% items.forEach(item => { %>
+            <tr>
+              <td>
+                <% if (item.resi_number) { %>
+                  <small class="text-muted"><i class="bi bi-truck"></i> <%= item.resi_number %></small>
+                <% } %>
+                <% if (item.no_pesanan) { %>
+                  <br><small class="text-muted"><i class="bi bi-receipt"></i> <%= item.no_pesanan %></small>
+                <% } %>
+                <% if (!item.resi_number && !item.no_pesanan) { %>
+                  <span class="text-muted">-</span>
+                <% } %>
+              </td>
+              <td><strong><%= item.item_name %></strong></td>
+              <td><%= item.quantity %></td>
+              <td class="text-capitalize"><%= item.condition_received %></td>
+              <td><a href="/returns/<%= item.return_id %>" class="btn btn-sm btn-outline-info"><i class="bi bi-search"></i> Sorting</a></td>
+            </tr>
+          <% }) %>
+        </tbody>
+      </table>
+    </div>
+  </div>
+</div>
