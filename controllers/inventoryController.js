@@ -73,6 +73,46 @@ exports.salesReport = async (req, res, next) => {
   } catch (err) { next(err); }
 };
 
+// ─── Cancel Supplier Lokal Stock ─────────────────────────────────────────────
+exports.cancelSupplierStock = async (req, res, next) => {
+  try {
+    const { stockId } = req.params;
+    const reason = String(req.body.reason || '').trim();
+    const redirectUrl = req.get('Referrer') || '/inventory/category/return_to_supplier';
+    if (!reason) {
+      req.flash('error', 'Alasan pembatalan wajib diisi.');
+      return res.redirect(redirectUrl);
+    }
+
+    const cancelled = await inventoryService.cancelSupplierStock(
+      stockId, reason, req.session.userId, req.ip, req.headers['user-agent']
+    );
+    req.flash(cancelled ? 'success' : 'error', cancelled
+      ? 'Stok dibatalkan dan dikembalikan ke antrian sorting.'
+      : 'Stok tidak ditemukan atau sudah diproses.');
+    return res.redirect(redirectUrl);
+  } catch (err) { next(err); }
+};
+
+// ─── Bulk Cancel Supplier Lokal Stock ─────────────────────────────────────────
+exports.cancelSupplierStockBulk = async (req, res, next) => {
+  try {
+    const reason = String(req.body.reason || '').trim();
+    const stockIds = String(req.body.stock_ids || '').split(',').filter(Boolean);
+    if (!reason || !stockIds.length) {
+      req.flash('error', 'Pilih item dan isi alasan pembatalan.');
+      return res.redirect('/inventory/category/return_to_supplier');
+    }
+    const count = await inventoryService.cancelSupplierStockBulk(
+      stockIds, reason, req.session.userId, req.ip, req.headers['user-agent']
+    );
+    req.flash(count ? 'success' : 'error', count
+      ? `${count} stok dibatalkan dan dikembalikan ke antrian sorting.`
+      : 'Tidak ada stok tersedia yang dapat dibatalkan.');
+    return res.redirect('/inventory/category/return_to_supplier');
+  } catch (err) { next(err); }
+};
+
 // ─── Change Stock Category (e.g. Rekondisi -> Refurbish / Write Off) ─────────
 exports.changeCategory = async (req, res, next) => {
   try {

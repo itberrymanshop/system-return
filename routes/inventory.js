@@ -9,6 +9,8 @@ const canManage = requireRole(['admin', 'manager', 'admin_retur', 'staff_recover
 router.get('/',                       canView, ctrl.index);
 router.get('/sales-report',           canView, ctrl.salesReport);
 router.get('/category/:category',     canView, ctrl.byCategory);
+router.post('/cancel-supplier/:stockId', canManage, ctrl.cancelSupplierStock);
+router.post('/cancel-supplier-bulk', canManage, ctrl.cancelSupplierStockBulk);
 router.post('/change-category/:stockId', canManage, ctrl.changeCategory);
 router.post('/bulk-change-category',     canManage, ctrl.bulkChangeCategory);
 

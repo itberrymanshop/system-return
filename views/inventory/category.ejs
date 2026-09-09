@@ -54,7 +54,10 @@
             </div>
             <% } %>
               <% if (['rekondisi', 'refurbish' , 'write_off' , 'return_to_supplier' ].includes(category)) { %>
-                <button id="btn-bulk-ba" class="btn btn-sm btn-primary d-none" onclick="submitBulkBA()">
+                 <button id="btn-bulk-cancel" class="btn btn-sm btn-outline-danger d-none" onclick="openBulkCancelSupplierModal()">
+                   <i class="bi bi-arrow-counterclockwise"></i> Batalkan Terpilih (<span id="cancel-selected-count">0</span>)
+                 </button>
+                 <button id="btn-bulk-ba" class="btn btn-sm btn-primary d-none" onclick="submitBulkBA()">
                   <i class="bi bi-file-earmark-plus"></i> Buat Berita Acara (<span id="selected-count">0</span>)
                 </button>
                 <% } %>
@@ -186,9 +189,11 @@
                                 <td><small>
                                     <%= item.item_created_at ? formatDate(item.item_created_at) : '-' %>
                                   </small></td>
-                                <td><small>
-                                    <%= item.vendor_name || '-' %>
-                                  </small></td>
+                           <td><small>
+                                     <%= item.vendor_name || '-' %>
+                                   </small>
+
+                                 </td>
                                 <% } else if (['rekondisi', 'refurbish' ].includes(category)) { %>
                                   <td class="text-capitalize">
                                     <%= formatCategory(item.return_category) %>
@@ -322,11 +327,33 @@
       </div>
 </div>
 
+<div class="modal fade" id="cancelSupplierModal" tabindex="-1" aria-hidden="true">
+  <div class="modal-dialog modal-dialog-centered">
+    <div class="modal-content border-0 shadow">
+      <div class="modal-header bg-danger text-white">
+        <div><h5 class="modal-title mb-1"><i class="bi bi-arrow-counterclockwise me-2"></i>Batalkan Stok Supplier Lokal</h5><small>Item akan dikembalikan ke antrian sorting.</small></div>
+        <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal" aria-label="Tutup"></button>
+      </div>
+      <form method="POST" id="cancelSupplierForm">
+        <input type="hidden" name="stock_ids" id="cancelSupplierStockIds">
+        <div class="modal-body">
+          <div class="alert alert-warning d-flex gap-2 align-items-start"><i class="bi bi-exclamation-triangle-fill"></i><span>Stok tidak dihapus. Item dapat diproses ulang dari halaman sorting.</span></div>
+          <div class="mb-3"><label class="form-label fw-semibold">Item terpilih</label><div id="cancelSupplierItem" class="form-control bg-light"></div></div>
+          <div><label for="cancelSupplierReason" class="form-label fw-semibold">Alasan pembatalan <span class="text-danger">*</span></label><textarea class="form-control" id="cancelSupplierReason" name="reason" rows="3" required placeholder="Contoh: SKU salah input atau supplier tidak sesuai"></textarea></div>
+        </div>
+        <div class="modal-footer"><button type="button" class="btn btn-light" data-bs-dismiss="modal">Batal</button><button type="submit" class="btn btn-danger"><i class="bi bi-check2-circle me-1"></i>Konfirmasi Pembatalan</button></div>
+      </form>
+    </div>
+  </div>
+</div>
+
 <% if (['rekondisi', 'refurbish' , 'write_off' , 'return_to_supplier' ].includes(category)) { %>
   <script>
     document.addEventListener('DOMContentLoaded', function () {
       const checkAll = document.getElementById('check-all-items');
       const bulkButton = document.getElementById('btn-bulk-ba');
+      const cancelButton = document.getElementById('btn-bulk-cancel');
+      const cancelSelectedCount = document.getElementById('cancel-selected-count');
       const bulkStatusGroup = document.getElementById('bulk-status-group');
       const selectedCount = document.getElementById('selected-count');
       const table = document.querySelector('.datatable') || document.querySelector('table');
@@ -339,15 +366,15 @@
         if (selectedCount) selectedCount.textContent = count;
         document.querySelectorAll('.selected-count-span').forEach(el => el.textContent = count);
 
-        if (bulkButton) {
-          if (count > 0) {
-            bulkButton.classList.remove('d-none');
-          } else {
-            bulkButton.classList.add('d-none');
-          }
-        }
+         if (bulkButton) {
+           bulkButton.classList.toggle('d-none', count === 0);
+         }
+         if (cancelButton) {
+           cancelButton.classList.toggle('d-none', '<%= category %>' !== 'return_to_supplier' || count === 0);
+         }
+         if (cancelSelectedCount) cancelSelectedCount.textContent = count;
 
-        if (bulkStatusGroup) {
+         if (bulkStatusGroup) {
           if (count > 0) {
             bulkStatusGroup.classList.remove('d-none');
           } else {
@@ -431,6 +458,18 @@
         });
       }
     });
+
+    function openBulkCancelSupplierModal() {
+      const stockIds = Array.from(document.querySelectorAll('.item-checkbox:checked')).map(cb => cb.dataset.stockId);
+      if (!stockIds.length) return;
+      const modalElement = document.getElementById('cancelSupplierModal');
+      const form = document.getElementById('cancelSupplierForm');
+      document.getElementById('cancelSupplierItem').textContent = `${stockIds.length} item stok terpilih`;
+      document.getElementById('cancelSupplierStockIds').value = stockIds.join(',');
+      document.getElementById('cancelSupplierReason').value = '';
+      form.action = '/inventory/cancel-supplier-bulk';
+      bootstrap.Modal.getOrCreateInstance(modalElement).show();
+    }
 
     function handleStockCategoryChange(selectEl) {
       const stockId = selectEl.getAttribute('data-stock-id');

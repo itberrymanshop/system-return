@@ -119,6 +119,110 @@ async function getSalesReport(dateFrom, dateTo) {
 /**
  * Change stock category (e.g. rekondisi -> refurbish / write_off).
  */
+async function cancelSupplierStock(stockId, reason, userId, ip, userAgent) {
+  const conn = await db.getConnection();
+  try {
+    await conn.beginTransaction();
+    const [[stock]] = await conn.query(
+      `SELECT stock_id, return_id, item_id, category, status
+       FROM inventory_stock
+       WHERE stock_id = ? AND category = 'return_to_supplier'`,
+      [stockId]
+    );
+
+    if (!stock || stock.status !== 'tersedia') {
+      await conn.rollback();
+      conn.release();
+      return false;
+    }
+
+    await conn.query(
+      `UPDATE inventory_stock
+       SET status = 'void', notes = ?, updated_at = NOW()
+       WHERE stock_id = ?`,
+      [reason, stockId]
+    );
+    await conn.query(
+      `UPDATE return_items
+       SET disposition = 'pending', current_status = 'Sorting', qc_status = 'belum_cek',
+           perbaikan_status = NULL, item_category = NULL, ikut = NULL, ikut_wo = NULL,
+           updated_at = NOW()
+       WHERE item_id = ?`,
+      [stock.item_id]
+    );
+    await conn.commit();
+    conn.release();
+
+    try {
+      const reportService = require('./reportService');
+      await reportService.logActivity(
+        userId || 1,
+        'cancel_supplier_stock',
+        `Batalkan stok Supplier Lokal #${stockId}, Item #${stock.item_id}: ${reason}`,
+        ip,
+        userAgent
+      );
+    } catch (logErr) {
+      console.error('Error logging cancel_supplier_stock activity:', logErr);
+    }
+    return true;
+  } catch (err) {
+    await conn.rollback();
+    conn.release();
+    throw err;
+  }
+}
+
+async function cancelSupplierStockBulk(stockIds, reason, userId, ip, userAgent) {
+  const ids = stockIds.map(id => parseInt(id, 10)).filter(id => !isNaN(id));
+  if (!ids.length) return 0;
+
+  const conn = await db.getConnection();
+  try {
+    await conn.beginTransaction();
+    const [stocks] = await conn.query(
+      `SELECT stock_id, item_id FROM inventory_stock
+       WHERE stock_id IN (?) AND category = 'return_to_supplier' AND status = 'tersedia'`,
+      [ids]
+    );
+    if (!stocks.length) {
+      await conn.rollback();
+      conn.release();
+      return 0;
+    }
+
+    const validIds = stocks.map(stock => stock.stock_id);
+    const itemIds = stocks.map(stock => stock.item_id);
+    await conn.query(
+      `UPDATE inventory_stock SET status = 'void', notes = ?, updated_at = NOW() WHERE stock_id IN (?)`,
+      [reason, validIds]
+    );
+    await conn.query(
+      `UPDATE return_items
+       SET disposition = 'pending', current_status = 'Sorting', qc_status = 'belum_cek',
+           perbaikan_status = NULL, item_category = NULL, ikut = NULL, ikut_wo = NULL,
+           updated_at = NOW()
+       WHERE item_id IN (?)`,
+      [itemIds]
+    );
+    await conn.commit();
+    conn.release();
+
+    try {
+      const reportService = require('./reportService');
+      await reportService.logActivity(userId || 1, 'cancel_supplier_stock_bulk',
+        `Batalkan ${validIds.length} stok Supplier Lokal: ${reason}`, ip, userAgent);
+    } catch (logErr) {
+      console.error('Error logging cancel_supplier_stock_bulk activity:', logErr);
+    }
+    return validIds.length;
+  } catch (err) {
+    await conn.rollback();
+    conn.release();
+    throw err;
+  }
+}
+
 async function changeStockCategory(stockId, targetCategory, userId, ip, userAgent) {
   if (!['rekondisi', 'refurbish', 'write_off'].includes(targetCategory)) {
     throw new Error('Invalid target category');
@@ -287,6 +391,8 @@ module.exports = {
   recordStockSale,
   updateLocation,
   getSalesReport,
+  cancelSupplierStock,
+  cancelSupplierStockBulk,
   changeStockCategory,
   bulkChangeStockCategory
 };
