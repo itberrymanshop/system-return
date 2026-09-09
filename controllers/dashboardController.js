@@ -81,7 +81,7 @@ exports.index = async (req, res, next) => {
     const baWhereAnd = baWhereClauses.length > 0 ? 'AND ' + baWhereClauses.join(' AND ') : '';
 
     // Build WHERE clauses for return_status_history with alias 'h'
-    let historyWhereClauses = ["h.to_status IN ('Completed', 'Rejected', 'Supplier_Return')"];
+    let historyWhereClauses = ["h.to_status IN ('Completed', 'Rejected', 'Supplier_Return', 'Supplier Lokal')"];
     let historyParams = [];
     if (selectedYear) {
       historyWhereClauses.push('YEAR(h.changed_at) = ?');
@@ -98,7 +98,7 @@ exports.index = async (req, res, next) => {
       SELECT
         COUNT(*)                                                          AS total_returns,
         COALESCE(SUM(current_status = 'Inbound'), 0)                      AS pending_returns,
-        COALESCE(SUM(current_status IN ('Inbound')), 0) AS inspecting_returns,
+         COALESCE(SUM(current_status = 'Sorting'), 0) AS inspecting_returns,
         COALESCE(SUM(current_status IN ('Pricing','Recovery')), 0)        AS recovery_returns,
         COALESCE(SUM(current_status = 'Refurbish'), 0) AS refurbish_returns,
         COALESCE(SUM(current_status = 'Rekondisi'), 0) AS rekondisi_returns,
@@ -108,17 +108,31 @@ exports.index = async (req, res, next) => {
       ${returnWhere}
     `, returnParams);
 
+    const [[sortingQueueStats]] = await db.query(`
+      SELECT COUNT(*) AS count
+      FROM return_items ri
+      JOIN returns r ON r.return_id = ri.return_id
+      WHERE r.current_status IN ('Inbound','Sorting','Rekondisi','Refurbish','Write_Off','Pricing','Recovery')
+        AND ri.disposition = 'pending'
+        ${rWhereClauses.length > 0 ? 'AND ' + rWhereClauses.join(' AND ') : ''}
+    `, rParams);
+    totals.inspecting_returns = sortingQueueStats.count;
+
     // 1b. Item-level disposition stats (Refurbish, Rekondisi, Supplier Return, Write Off) using master_barang.harga_jual
     const [[dispositionStats]] = await db.query(`
       SELECT 
-        COALESCE(SUM(CASE WHEN ri.disposition = 'refurbish' THEN ri.quantity ELSE 0 END), 0) AS refurbish_qty,
-        COALESCE(SUM(CASE WHEN ri.disposition = 'refurbish' THEN ri.quantity * COALESCE(mb.harga_jual, 0) ELSE 0 END), 0) AS refurbish_val,
-        COALESCE(SUM(CASE WHEN ri.disposition = 'rekondisi' THEN ri.quantity ELSE 0 END), 0) AS rekondisi_qty,
-        COALESCE(SUM(CASE WHEN ri.disposition = 'rekondisi' THEN ri.quantity * COALESCE(mb.harga_jual, 0) ELSE 0 END), 0) AS rekondisi_val,
-        COALESCE(SUM(CASE WHEN ri.disposition = 'return_to_supplier' THEN ri.quantity ELSE 0 END), 0) AS supplier_qty,
-        COALESCE(SUM(CASE WHEN ri.disposition = 'return_to_supplier' THEN ri.quantity * COALESCE(mb.harga_jual, 0) ELSE 0 END), 0) AS supplier_val,
-        COALESCE(SUM(CASE WHEN ri.disposition = 'write_off' THEN ri.quantity ELSE 0 END), 0) AS write_off_qty,
-        COALESCE(SUM(CASE WHEN ri.disposition = 'write_off' THEN ri.quantity * COALESCE(mb.harga_jual, 0) ELSE 0 END), 0) AS write_off_val
+         COUNT(DISTINCT CASE WHEN ri.disposition = 'refurbish' THEN r.return_id END) AS refurbish_returns,
+         COALESCE(SUM(CASE WHEN ri.disposition = 'refurbish' THEN ri.quantity ELSE 0 END), 0) AS refurbish_qty,
+         COALESCE(SUM(CASE WHEN ri.disposition = 'refurbish' THEN ri.quantity * COALESCE(mb.harga_jual, 0) ELSE 0 END), 0) AS refurbish_val,
+         COUNT(DISTINCT CASE WHEN ri.disposition = 'rekondisi' THEN r.return_id END) AS rekondisi_returns,
+         COALESCE(SUM(CASE WHEN ri.disposition = 'rekondisi' THEN ri.quantity ELSE 0 END), 0) AS rekondisi_qty,
+         COALESCE(SUM(CASE WHEN ri.disposition = 'rekondisi' THEN ri.quantity * COALESCE(mb.harga_jual, 0) ELSE 0 END), 0) AS rekondisi_val,
+         COUNT(DISTINCT CASE WHEN ri.disposition = 'return_to_supplier' THEN r.return_id END) AS supplier_returns,
+         COALESCE(SUM(CASE WHEN ri.disposition = 'return_to_supplier' THEN ri.quantity ELSE 0 END), 0) AS supplier_qty,
+         COALESCE(SUM(CASE WHEN ri.disposition = 'return_to_supplier' THEN ri.quantity * COALESCE(mb.harga_jual, 0) ELSE 0 END), 0) AS supplier_val,
+         COUNT(DISTINCT CASE WHEN ri.disposition = 'write_off' THEN r.return_id END) AS write_off_returns,
+         COALESCE(SUM(CASE WHEN ri.disposition = 'write_off' THEN ri.quantity ELSE 0 END), 0) AS write_off_qty,
+         COALESCE(SUM(CASE WHEN ri.disposition = 'write_off' THEN ri.quantity * COALESCE(mb.harga_jual, 0) ELSE 0 END), 0) AS write_off_val
       FROM return_items ri
       JOIN returns r ON ri.return_id = r.return_id
       LEFT JOIN master_barang mb ON ri.item_code = mb.kode_barang COLLATE utf8mb4_general_ci
@@ -161,14 +175,7 @@ exports.index = async (req, res, next) => {
     const role = req.session.userRole;
     let roleStats = {};
 
-    if (role === 'admin_sorting') {
-      const [[s]] = await db.query(`
-        SELECT COUNT(*) AS count FROM returns
-        WHERE current_status IN ('Inbound','Sorting')
-        ${returnWhereAnd}
-      `, returnParams);
-      roleStats.sortingQueue = s.count;
-    }
+    roleStats.sortingQueue = totals.inspecting_returns;
     if (role === 'admin_retur') {
       const [[s]] = await db.query(`
         SELECT COUNT(*) AS count FROM returns
@@ -198,11 +205,11 @@ exports.index = async (req, res, next) => {
         COUNT(*) AS total_inbound,
         COALESCE(SUM(inbound_date IS NOT NULL), 0) AS confirmed_inbound,
         COALESCE(SUM(current_status = 'Inbound'), 0) AS pending_inbound,
-        COALESCE(SUM(current_status IN ('Completed', 'Rejected', 'Supplier_Return')), 0) AS total_outbound,
+        COALESCE(SUM(current_status IN ('Completed', 'Rejected', 'Supplier_Return', 'Supplier Lokal')), 0) AS total_outbound,
         COALESCE(SUM(current_status = 'Completed'), 0) AS outbound_completed,
-        COALESCE(SUM(current_status = 'Supplier_Return'), 0) AS outbound_supplier_return,
+        COALESCE(SUM(current_status IN ('Supplier_Return', 'Supplier Lokal')), 0) AS outbound_supplier_return,
         COALESCE(SUM(current_status = 'Rejected'), 0) AS outbound_rejected,
-        COALESCE(SUM(CASE WHEN current_status IN ('Completed', 'Rejected', 'Supplier_Return') THEN total_value ELSE 0 END), 0) AS outbound_value
+        COALESCE(SUM(CASE WHEN current_status IN ('Completed', 'Rejected', 'Supplier_Return', 'Supplier Lokal') THEN total_value ELSE 0 END), 0) AS outbound_value
       FROM returns
       ${returnWhere}
     `, returnParams);
@@ -214,7 +221,7 @@ exports.index = async (req, res, next) => {
         u.role AS staff_role,
         COUNT(DISTINCT h.return_id) AS total_finalized,
         COUNT(DISTINCT CASE WHEN h.to_status = 'Completed' THEN h.return_id END) AS completed_count,
-        COUNT(DISTINCT CASE WHEN h.to_status = 'Supplier_Return' THEN h.return_id END) AS supplier_return_count,
+        COUNT(DISTINCT CASE WHEN h.to_status IN ('Supplier_Return', 'Supplier Lokal') THEN h.return_id END) AS supplier_return_count,
         COUNT(DISTINCT CASE WHEN h.to_status = 'Rejected' THEN h.return_id END) AS rejected_count
       FROM return_status_history h
       JOIN users u ON h.changed_by = u.user_id
@@ -261,7 +268,7 @@ exports.index = async (req, res, next) => {
     const [outboundTrend] = await db.query(`
       SELECT DATE_FORMAT(COALESCE(completed_date, updated_at), '%Y-%m') AS month, COUNT(*) AS count
       FROM returns
-      WHERE current_status IN ('Completed', 'Rejected', 'Supplier_Return')
+      WHERE current_status IN ('Completed', 'Rejected', 'Supplier_Return', 'Supplier Lokal')
         AND (
           (completed_date BETWEEN ? AND ?) OR
           (completed_date IS NULL AND updated_at BETWEEN ? AND ?)

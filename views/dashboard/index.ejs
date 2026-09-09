@@ -62,12 +62,12 @@
 
 
       <%# ── Role-Specific Quick Actions ──────────────────────────────────────────── %>
-        <% if (hasRole('admin_sorting')) { %>
+        <% if (hasRole(['admin', 'manager', 'admin_sorting', 'admin_retur', 'staff_recover'])) { %>
           <div class="alert alert-info mb-4">
             <i class="bi bi-upc-scan"></i> <strong>Antrian Sorting:</strong>
             <strong class="ms-1">
               <%= roleStats.sortingQueue || 0 %>
-            </strong> return menunggu proses sorting.
+            </strong> SKU menunggu proses sorting.
             <a href="/sorting" class="btn btn-sm btn-info ms-3">Buka Antrian <i class="bi bi-arrow-right"></i></a>
           </div>
           <% } %>
@@ -184,7 +184,7 @@
                                       <span class="text-muted fw-bold text-uppercase small"><i
                                           class="bi bi-arrow-repeat text-primary me-1"></i>Rekondisi</span>
                                       <span class="badge bg-primary">
-                                        <%= stats.rekondisi_returns || 0 %> Retur
+                                        <%= dispositionStats.rekondisi_returns || 0 %> Retur
                                       </span>
                                     </div>
                                     <div class="d-flex align-items-baseline gap-2 mb-2">
@@ -208,7 +208,7 @@
                                       <span class="text-muted fw-bold text-uppercase small"><i
                                           class="bi bi-tools text-info me-1"></i>Refurbish</span>
                                       <span class="badge bg-info text-dark">
-                                        <%= stats.refurbish_returns || 0 %> Retur
+                                        <%= dispositionStats.refurbish_returns || 0 %> Retur
                                       </span>
                                     </div>
                                     <div class="d-flex align-items-baseline gap-2 mb-2">
@@ -232,7 +232,7 @@
                                       <span class="text-muted fw-bold text-uppercase small"><i
                                           class="bi bi-truck text-secondary me-1"></i>Retur Supplier Lokal</span>
                                       <span class="badge bg-secondary">
-                                        <%= stats.supplier_returns || 0 %> Retur
+                                        <%= dispositionStats.supplier_returns || 0 %> Retur
                                       </span>
                                     </div>
                                     <div class="d-flex align-items-baseline gap-2 mb-2">
@@ -256,7 +256,7 @@
                                       <span class="text-muted fw-bold text-uppercase small"><i
                                           class="bi bi-trash3 text-danger me-1"></i>Write Off</span>
                                       <span class="badge bg-danger">
-                                        <%= stats.write_off_returns || 0 %> Retur
+                                        <%= dispositionStats.write_off_returns || 0 %> Retur
                                       </span>
                                     </div>
                                     <div class="d-flex align-items-baseline gap-2 mb-2">
