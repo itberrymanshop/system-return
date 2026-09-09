@@ -578,8 +578,8 @@
         // Write to cookie
         document.cookie = "scanned_manifests=" + encodeURIComponent(JSON.stringify(scannedList)) + "; path=/; max-age=31536000";
         
-        // Redirect to Manifest Dashboard
-        window.location.href = '/returns/manifests';
+        manifestSearchInput.value = '';
+        manifestSearchInput.focus();
       })
       .catch(error => {
         alert('Data manifest tidak ditemukan untuk resi atau nomor pesanan: ' + query);
