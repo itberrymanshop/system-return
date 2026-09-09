@@ -30,9 +30,20 @@
   }
 
   .toggle-items {
-    padding: 0.15rem 0.35rem;
-    font-size: 0.75rem;
-  }
+     padding: 0.15rem 0.35rem;
+     font-size: 0.75rem;
+   }
+
+   .manifest-top-scroll {
+     overflow-x: auto;
+     overflow-y: hidden;
+     height: 16px;
+     margin-bottom: 0.25rem;
+   }
+
+   .manifest-top-scroll-inner {
+     height: 1px;
+   }
 
   /* Autocomplete Dropdown for Master Barang */
   .barang-dropdown {
@@ -414,7 +425,10 @@
             </div>
           </div>
 
-          <div class="table-responsive">
+          <div class="manifest-top-scroll" id="manifestTopScroll" aria-label="Scroll horizontal tabel manifest">
+            <div class="manifest-top-scroll-inner" id="manifestTopScrollInner"></div>
+          </div>
+          <div class="table-responsive" id="manifestTableScroll">
             <table class="table table-hover align-middle small" id="manifestsTable" style="width: 100%;">
               <thead class="table-light">
                 <% if (activeTab === 'banding') { %>
@@ -1433,6 +1447,29 @@
 </div>
 
 <script>
+  const manifestTopScroll = document.getElementById('manifestTopScroll');
+  const manifestTopScrollInner = document.getElementById('manifestTopScrollInner');
+  const manifestTableScroll = document.getElementById('manifestTableScroll');
+  const manifestsTable = document.getElementById('manifestsTable');
+
+  function syncManifestScrollbars() {
+    if (!manifestTopScroll || !manifestTopScrollInner || !manifestTableScroll || !manifestsTable) return;
+    manifestTopScrollInner.style.width = `${manifestsTable.scrollWidth}px`;
+    manifestTopScroll.style.display = manifestsTable.scrollWidth > manifestTableScroll.clientWidth ? 'block' : 'none';
+  }
+
+  if (manifestTopScroll && manifestTableScroll) {
+    manifestTopScroll.addEventListener('scroll', () => {
+      manifestTableScroll.scrollLeft = manifestTopScroll.scrollLeft;
+    });
+    manifestTableScroll.addEventListener('scroll', () => {
+      manifestTopScroll.scrollLeft = manifestTableScroll.scrollLeft;
+    });
+    window.addEventListener('resize', syncManifestScrollbars);
+    window.addEventListener('load', syncManifestScrollbars);
+    setTimeout(syncManifestScrollbars, 100);
+  }
+
   // ── Tambah Data Manifest: dynamic item rows ─────────────────────────────────
   var manifestItemCounter = 0;
   var editManifestItemCounter = 0;
