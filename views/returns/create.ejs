@@ -578,6 +578,7 @@
         // Write to cookie
         document.cookie = "scanned_manifests=" + encodeURIComponent(JSON.stringify(scannedList)) + "; path=/; max-age=31536000";
         
+        alert(`Resi ${manifest.resi_number || query} berhasil di-scan.`);
         manifestSearchInput.value = '';
         manifestSearchInput.focus();
       })

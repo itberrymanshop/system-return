@@ -188,9 +188,14 @@ async function getBAList(filters = {}) {
   if (filters.start_date) { sql += ' AND ba.created_at >= ?'; params.push(`${filters.start_date} 00:00:00`); }
   if (filters.end_date)   { sql += ' AND ba.created_at < DATE_ADD(?, INTERVAL 1 DAY)'; params.push(filters.end_date); }
   if (filters.search) {
-    sql += ' AND (ba.ba_number LIKE ? OR ba.title LIKE ? OR v.vendor_name LIKE ?)';
+    sql += ` AND (
+      ba.ba_number LIKE ?
+      OR ba.title LIKE ?
+      OR v.vendor_name LIKE ?
+      OR COALESCE(stock_agg.skus, legacy_agg.skus) LIKE ?
+    )`;
     const lk = `%${filters.search}%`;
-    params.push(lk, lk, lk);
+    params.push(lk, lk, lk, lk);
   }
   sql += ' ORDER BY ba.created_at DESC';
   const [rows] = await db.query(sql, params);
