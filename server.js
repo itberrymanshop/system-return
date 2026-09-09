@@ -34,6 +34,23 @@ async function runMigrations() {
       }
     }
 
+    const [cancelReasonColumn] = await pool.query("SHOW COLUMNS FROM inventory_stock LIKE 'cancel_reason'");
+    if (cancelReasonColumn.length === 0) {
+      await pool.query("ALTER TABLE inventory_stock ADD COLUMN cancel_reason TEXT DEFAULT NULL AFTER notes");
+    }
+    const [cancelledByColumn] = await pool.query("SHOW COLUMNS FROM inventory_stock LIKE 'cancelled_by'");
+    if (cancelledByColumn.length === 0) {
+      await pool.query("ALTER TABLE inventory_stock ADD COLUMN cancelled_by INT DEFAULT NULL AFTER cancel_reason");
+    }
+    const [cancelledAtColumn] = await pool.query("SHOW COLUMNS FROM inventory_stock LIKE 'cancelled_at'");
+    if (cancelledAtColumn.length === 0) {
+      await pool.query("ALTER TABLE inventory_stock ADD COLUMN cancelled_at DATETIME DEFAULT NULL AFTER cancelled_by");
+    }
+    const [cancelledByIndex] = await pool.query("SHOW INDEX FROM inventory_stock WHERE Key_name = 'idx_inventory_stock_cancelled_by'");
+    if (cancelledByIndex.length === 0) {
+      await pool.query("ALTER TABLE inventory_stock ADD INDEX idx_inventory_stock_cancelled_by (cancelled_by)");
+    }
+
     const [stockBaIndex] = await pool.query("SHOW INDEX FROM inventory_stock WHERE Key_name = 'idx_inventory_stock_ba_id'");
     if (stockBaIndex.length === 0) {
       console.log('   - Adding index idx_inventory_stock_ba_id on inventory_stock(ba_id)...');

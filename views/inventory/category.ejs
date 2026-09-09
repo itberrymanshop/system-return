@@ -185,6 +185,15 @@
                                     <span class="badge bg-<%= stColors[item.status]||'secondary' %>">
                                       <%= item.status %>
                                     </span>
+                                    <% if (item.status === 'void') { %>
+                                      <button type="button" class="btn btn-sm btn-outline-secondary ms-1 void-detail-btn"
+                                        data-sku="<%= item.sku || item.item_code || '-' %>"
+                                        data-reason="<%= item.cancel_reason || item.notes || '-' %>"
+                                        data-user="<%= item.cancelled_full_name || item.cancelled_username || 'Tidak diketahui' %>"
+                                        data-time="<%= item.cancelled_at_wib ? `${item.cancelled_at_wib} WIB` : '-' %>">
+                                        <i class="bi bi-info-circle me-1"></i>Detail Void
+                                      </button>
+                                    <% } %>
                                 </td>
                                 <td><small>
                                     <%= item.item_created_at ? formatDate(item.item_created_at) : '-' %>
@@ -327,6 +336,23 @@
       </div>
 </div>
 
+<div class="modal fade" id="voidDetailModal" tabindex="-1" aria-hidden="true">
+  <div class="modal-dialog modal-dialog-centered">
+    <div class="modal-content border-0 shadow">
+      <div class="modal-header bg-secondary text-white"><h5 class="modal-title"><i class="bi bi-info-circle me-2"></i>Detail Void SKU</h5><button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal"></button></div>
+      <div class="modal-body">
+        <dl class="row mb-0">
+          <dt class="col-4">SKU</dt><dd class="col-8" id="voidDetailSku">-</dd>
+          <dt class="col-4">Alasan</dt><dd class="col-8" id="voidDetailReason">-</dd>
+          <dt class="col-4">Dibatalkan oleh</dt><dd class="col-8" id="voidDetailUser">-</dd>
+          <dt class="col-4">Waktu void</dt><dd class="col-8" id="voidDetailTime">-</dd>
+        </dl>
+      </div>
+      <div class="modal-footer"><button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Tutup</button></div>
+    </div>
+  </div>
+</div>
+
 <div class="modal fade" id="cancelSupplierModal" tabindex="-1" aria-hidden="true">
   <div class="modal-dialog modal-dialog-centered">
     <div class="modal-content border-0 shadow">
@@ -360,6 +386,16 @@
       const selectedStockIds = new Set();
 
       window.selectedStockIds = selectedStockIds;
+
+      document.querySelectorAll('.void-detail-btn').forEach(button => {
+        button.addEventListener('click', function () {
+          document.getElementById('voidDetailSku').textContent = this.dataset.sku;
+          document.getElementById('voidDetailReason').textContent = this.dataset.reason;
+          document.getElementById('voidDetailUser').textContent = this.dataset.user;
+          document.getElementById('voidDetailTime').textContent = this.dataset.time;
+          bootstrap.Modal.getOrCreateInstance(document.getElementById('voidDetailModal')).show();
+        });
+      });
 
       function updateBulkButton() {
         const count = selectedStockIds.size;

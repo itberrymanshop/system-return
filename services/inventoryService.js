@@ -37,13 +37,16 @@ async function getInventoryByCategory(category) {
       ri.sticker_tag, ri.unit_price, ri.quantity, ri.return_category,
       ri.ikut, ri.ikut_wo, ri.item_category,
       ri.created_at AS item_created_at,
-      r.return_number, r.return_date, r.customer_name, r.resi_number, r.sla_deadline,
-      v.vendor_name
+       r.return_number, r.return_date, r.customer_name, r.resi_number, r.sla_deadline,
+       v.vendor_name,
+       cu.username AS cancelled_username, cu.full_name AS cancelled_full_name,
+       DATE_FORMAT(COALESCE(s.cancelled_at, CASE WHEN s.status = 'void' THEN s.updated_at END), '%Y-%m-%d %H:%i:%s') AS cancelled_at_wib
     FROM inventory_stock s
     JOIN return_items ri ON s.item_id  = ri.item_id
     JOIN returns      r  ON s.return_id = r.return_id
-    LEFT JOIN vendors v  ON s.vendor_id = v.vendor_id
-    WHERE s.category = ?
+     LEFT JOIN vendors v  ON s.vendor_id = v.vendor_id
+     LEFT JOIN users cu ON s.cancelled_by = cu.user_id
+     WHERE s.category = ?
       ${hideSelectedBA ? "AND s.status != 'completed'" : ''}
       ${requirePerbaikanDone ? "AND (ri.perbaikan_status IS NULL OR ri.perbaikan_status != 'pending')" : ''}
     ORDER BY ${orderBy}
@@ -137,10 +140,10 @@ async function cancelSupplierStock(stockId, reason, userId, ip, userAgent) {
     }
 
     await conn.query(
-      `UPDATE inventory_stock
-       SET status = 'void', notes = ?, updated_at = NOW()
-       WHERE stock_id = ?`,
-      [reason, stockId]
+       `UPDATE inventory_stock
+        SET status = 'void', notes = ?, cancel_reason = ?, cancelled_by = ?, cancelled_at = NOW(), updated_at = NOW()
+        WHERE stock_id = ?`,
+       [reason, reason, userId || null, stockId]
     );
     await conn.query(
       `UPDATE return_items
@@ -194,8 +197,8 @@ async function cancelSupplierStockBulk(stockIds, reason, userId, ip, userAgent) 
     const validIds = stocks.map(stock => stock.stock_id);
     const itemIds = stocks.map(stock => stock.item_id);
     await conn.query(
-      `UPDATE inventory_stock SET status = 'void', notes = ?, updated_at = NOW() WHERE stock_id IN (?)`,
-      [reason, validIds]
+       `UPDATE inventory_stock SET status = 'void', notes = ?, cancel_reason = ?, cancelled_by = ?, cancelled_at = NOW(), updated_at = NOW() WHERE stock_id IN (?)`,
+       [reason, reason, userId || null, validIds]
     );
     await conn.query(
       `UPDATE return_items
