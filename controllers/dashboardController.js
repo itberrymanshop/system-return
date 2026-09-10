@@ -286,8 +286,9 @@ exports.index = async (req, res, next) => {
         COALESCE(SUM(status = 'signed'), 0) AS signed_count,
         COALESCE(SUM(status = 'void'), 0) AS void_count,
         COALESCE(SUM(CASE WHEN status != 'void' THEN final_price ELSE 0 END), 0) AS total_ba_value
-      FROM berita_acara ba
-      ${baWhere}
+       FROM berita_acara ba
+       WHERE ba.status != 'void'
+       ${baWhereClauses.length > 0 ? 'AND ' + baWhereClauses.join(' AND ') : ''}
     `, baParams);
 
     // 2. Aggregated item stats from Berita Acara

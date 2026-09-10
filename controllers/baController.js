@@ -627,7 +627,7 @@ exports.exportExcel = async (req, res, next) => {
 // ─── Export All ───────────────────────────────────────────────────────────────
 exports.exportAll = async (req, res, next) => {
   try {
-    const docs = await baService.getBAList(req.query);
+    const docs = await baService.getBAList({ ...req.query, exclude_void: true });
 
     const baIds = docs.map(d => d.ba_id);
     let items = [];
@@ -779,9 +779,10 @@ exports.exportSupplierLokal = async (req, res, next) => {
         SELECT ba.*, v.vendor_name 
         FROM berita_acara ba 
         LEFT JOIN vendors v ON ba.vendor_id = v.vendor_id 
-        WHERE ba.ba_id IN (?)
+        WHERE ba.ba_id IN (?) AND ba.status != 'void'
       `, [baIds]);
       docs = rows;
+      baIds = docs.map(doc => doc.ba_id);
     } else {
       let selectedVendorIds = [];
       const vParam = req.query.vendor_id || req.query['vendor_id[]'] || req.query.vendor_ids;
@@ -794,6 +795,7 @@ exports.exportSupplierLokal = async (req, res, next) => {
       const queryFilters = {
         ...req.query,
         status: 'return_to_supplier',
+        exclude_void: true,
         vendor_id: selectedVendorIds.length > 0 ? selectedVendorIds : undefined
       };
       docs = await baService.getBAList(queryFilters);

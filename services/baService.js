@@ -163,9 +163,10 @@ async function getBAList(filters = {}) {
        AND ${legacyDispositionCondition}
       GROUP BY ba_legacy.ba_id
     ) legacy_agg ON legacy_agg.ba_id = ba.ba_id AND stock_agg.ba_id IS NULL
-    WHERE 1=1
-  `;
-  if (filters.status)  {
+     WHERE 1=1
+   `;
+   if (filters.exclude_void) sql += " AND ba.status != 'void'";
+   if (filters.status)  {
     const statusColumn = statusColumnMap[filters.status];
     if (statusColumn) {
       sql += ` AND COALESCE(stock_agg.${statusColumn}, legacy_agg.${statusColumn}, 0) = 1`;
