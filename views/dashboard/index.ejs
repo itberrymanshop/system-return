@@ -1,7 +1,7 @@
 <style>
   @page {
     size: A4 portrait;
-    margin: 12mm;
+    margin: 15mm 12mm 14mm;
   }
 
   @media print {
@@ -19,7 +19,7 @@
       top: 0;
       width: 100%;
       margin: 0;
-      padding: 0;
+      padding: 0 2mm;
       color: #111827 !important;
       background: #fff !important;
     }
@@ -1189,13 +1189,28 @@
                           });
 
                           function printBADashboard() {
+                            const originalTitle = document.title;
+                            const now = new Date();
+                            const timestamp = [
+                              now.getFullYear(),
+                              String(now.getMonth() + 1).padStart(2, '0'),
+                              String(now.getDate()).padStart(2, '0')
+                            ].join('-') + '_' + [
+                              String(now.getHours()).padStart(2, '0'),
+                              String(now.getMinutes()).padStart(2, '0'),
+                              String(now.getSeconds()).padStart(2, '0')
+                            ].join('-');
+                            document.title = `Laporan_Dashboard_BA_${timestamp}`;
                             document.body.classList.add('print-ba-dashboard');
                             const baTab = document.getElementById('ba-tab');
                             if (baTab && window.bootstrap) bootstrap.Tab.getOrCreateInstance(baTab).show();
                             setTimeout(() => {
                               if (typeof chartInstances !== 'undefined') Object.values(chartInstances).forEach(chart => chart && chart.resize());
+                              window.addEventListener('afterprint', () => {
+                                document.body.classList.remove('print-ba-dashboard');
+                                document.title = originalTitle;
+                              }, { once: true });
                               window.print();
-                              window.addEventListener('afterprint', () => document.body.classList.remove('print-ba-dashboard'), { once: true });
                             }, 150);
                           }
                         </script>
