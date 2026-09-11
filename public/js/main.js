@@ -28,8 +28,8 @@ $(document).ready(function () {
               }
             }
 
-            $table.DataTable({
-              paging: false,
+             const dataTable = $table.DataTable({
+               paging: false,
                pageLength: -1,
                lengthChange: false,
                order: customOrder,
@@ -45,8 +45,17 @@ $(document).ready(function () {
                 emptyTable: 'No data available'
               },
               columnDefs: [{ orderable: false, targets: -1 }]
-            });
-          } catch (e) {
+             });
+
+             if ($table.attr('data-vendor-search') === 'true') {
+               const vendorColumn = headerCols - 1;
+               const searchInput = $(dataTable.table().container()).find('.dataTables_filter input');
+               searchInput.off('input.vendorSearch').on('input.vendorSearch', function () {
+                 dataTable.search('').columns().search('');
+                 dataTable.column(vendorColumn).search(this.value, false, false).draw();
+               });
+             }
+           } catch (e) {
             console.error('DataTables init error:', e);
           }
         }
