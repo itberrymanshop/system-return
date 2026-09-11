@@ -33,7 +33,10 @@ $(document).ready(function () {
                pageLength: -1,
                lengthChange: false,
                order: customOrder,
-              responsive: true,
+               search: {
+                 smart: $table.attr('data-search-smart') !== 'false'
+               },
+               responsive: true,
               destroy: true,
               deferRender: true,
               language: {

@@ -76,12 +76,12 @@
       <div class="card">
         <div class="card-header d-flex justify-content-between">
           <h6 class="mb-0">Daftar Stok</h6>
-          <span class="badge bg-secondary">
-            <%= items.length %> item
-          </span>
+<span class="badge bg-secondary" id="inventory-item-count">
+             <%= items.length %> item
+           </span>
         </div>
         <div class="table-responsive">
-          <table class="table table-hover datatable mb-0">
+          <table class="table table-hover datatable mb-0" data-search-smart="false">
             <thead class="table-light">
               <tr>
                 <% if (['rekondisi', 'refurbish' , 'write_off' , 'return_to_supplier' ].includes(category)) { %>
@@ -383,6 +383,7 @@
       const bulkStatusGroup = document.getElementById('bulk-status-group');
       const selectedCount = document.getElementById('selected-count');
       const table = document.querySelector('.datatable') || document.querySelector('table');
+      const itemCountBadge = document.getElementById('inventory-item-count');
       const selectedStockIds = new Set();
 
       window.selectedStockIds = selectedStockIds;
@@ -417,6 +418,12 @@
             bulkStatusGroup.classList.add('d-none');
           }
         }
+      }
+
+      function updateVisibleItemCount() {
+        if (!itemCountBadge || !table || !window.$ || !$.fn.DataTable || !$.fn.DataTable.isDataTable(table)) return;
+        const dataTable = $(table).DataTable();
+        itemCountBadge.textContent = `${dataTable.rows({ search: 'applied' }).count()} item`;
       }
 
       function syncCheckAllState() {
@@ -488,11 +495,13 @@
         });
       }
 
-      if (window.$ && table) {
-        $(table).on('draw.dt', function () {
-          syncVisibleCheckboxes();
-        });
-      }
+       if (window.$ && table) {
+         $(table).on('draw.dt', function () {
+           syncVisibleCheckboxes();
+           updateVisibleItemCount();
+         });
+         setTimeout(updateVisibleItemCount, 150);
+       }
     });
 
     function openBulkCancelSupplierModal() {

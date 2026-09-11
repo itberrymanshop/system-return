@@ -28,6 +28,7 @@ async function getInventoryByCategory(category) {
     : 's.stock_id DESC';
 
   const hideSelectedBA = ['rekondisi', 'refurbish', 'write_off', 'return_to_supplier'].includes(category);
+  const hideVoid = category === 'return_to_supplier';
   const requirePerbaikanDone = ['rekondisi', 'refurbish', 'write_off'].includes(category);
 
   const [rows] = await db.query(`
@@ -47,7 +48,8 @@ async function getInventoryByCategory(category) {
      LEFT JOIN vendors v  ON s.vendor_id = v.vendor_id
      LEFT JOIN users cu ON s.cancelled_by = cu.user_id
      WHERE s.category = ?
-      ${hideSelectedBA ? "AND s.status != 'completed'" : ''}
+       ${hideSelectedBA ? "AND s.status != 'completed'" : ''}
+       ${hideVoid ? "AND s.status != 'void'" : ''}
       ${requirePerbaikanDone ? "AND (ri.perbaikan_status IS NULL OR ri.perbaikan_status != 'pending')" : ''}
     ORDER BY ${orderBy}
   `, [category]);
