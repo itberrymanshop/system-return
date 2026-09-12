@@ -22,6 +22,30 @@ async function getInventorySummary() {
 /**
  * List stock entries for a specific category with item / return details.
  */
+async function getSupplierLokalExport(vendorSearch = '') {
+  const params = ['return_to_supplier'];
+  let vendorClause = '';
+  if (vendorSearch.trim()) {
+    vendorClause = ' AND LOWER(TRIM(v.vendor_name)) = LOWER(TRIM(?))';
+    params.push(vendorSearch.trim());
+  }
+
+  const [rows] = await db.query(`
+    SELECT r.resi_number, ri.item_name, ri.sku, ri.item_code,
+           ri.return_category, ri.quantity, s.status, s.entry_date,
+           v.vendor_name
+    FROM inventory_stock s
+    JOIN return_items ri ON s.item_id = ri.item_id
+    JOIN returns r ON s.return_id = r.return_id
+    LEFT JOIN vendors v ON s.vendor_id = v.vendor_id
+    WHERE s.category = ?
+      AND s.status NOT IN ('void', 'completed')
+      ${vendorClause}
+    ORDER BY v.vendor_name, ri.sku, s.entry_date DESC
+  `, params);
+  return rows;
+}
+
 async function getInventoryByCategory(category) {
   const orderBy = ['rekondisi', 'refurbish', 'write_off', 'return_to_supplier'].includes(category)
     ? 's.entry_date DESC, s.stock_id DESC'
@@ -391,6 +415,7 @@ async function bulkChangeStockCategory(stockIds, targetCategory, userId, ip, use
 
 module.exports = {
   getInventorySummary,
+  getSupplierLokalExport,
   getInventoryByCategory,
   addInventoryEntry,
   recordStockSale,

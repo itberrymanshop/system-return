@@ -1,3 +1,29 @@
+<style>
+  .vendor-search-suggestions {
+    position: absolute;
+    top: 100%;
+    left: 0;
+    right: 0;
+    z-index: 1060;
+    max-height: 240px;
+    overflow-y: auto;
+    background: #fff;
+    border: 1px solid #dee2e6;
+    border-radius: 0 0 .375rem .375rem;
+    box-shadow: 0 .35rem .8rem rgba(0, 0, 0, .12);
+  }
+  .vendor-search-suggestions button {
+    display: block;
+    width: 100%;
+    padding: .5rem .75rem;
+    border: 0;
+    border-bottom: 1px solid #f1f3f5;
+    background: #fff;
+    text-align: left;
+  }
+  .vendor-search-suggestions button:hover { background: #f0f4ff; }
+</style>
+
 <div class="container-fluid mt-5 pt-4">
   <div class="row mb-3 align-items-center">
     <div class="col">
@@ -75,13 +101,20 @@
 
       <div class="card">
         <div class="card-header d-flex justify-content-between">
-          <h6 class="mb-0">Daftar Stok</h6>
-<span class="badge bg-secondary" id="inventory-item-count">
+          <div class="d-flex align-items-center gap-2 flex-wrap">
+            <h6 class="mb-0">Daftar Stok</h6>
+            <% if (category === 'return_to_supplier') { %>
+              <a href="/inventory/category/return_to_supplier/export" id="supplierExportButton" class="btn btn-sm btn-outline-success">
+                <i class="bi bi-file-earmark-excel me-1"></i>Download Excel
+              </a>
+            <% } %>
+          </div>
+          <span class="badge bg-secondary" id="inventory-item-count">
              <%= items.length %> item
            </span>
         </div>
         <div class="table-responsive">
-          <table class="table table-hover datatable mb-0" data-search-smart="false" data-vendor-search="true">
+          <table class="table table-hover datatable mb-0" data-search-smart="false" <%= category === 'return_to_supplier' ? 'data-vendor-search="true"' : '' %>>
             <thead class="table-light">
               <tr>
                 <% if (['rekondisi', 'refurbish' , 'write_off' , 'return_to_supplier' ].includes(category)) { %>
