@@ -60,7 +60,7 @@ exports.byCategory = async (req, res, next) => {
 // ─── Export Supplier Lokal Stock ──────────────────────────────────────────────
 exports.exportSupplierLokal = async (req, res, next) => {
   try {
-    const rows = await inventoryService.getSupplierLokalExport(req.query.vendor || '');
+    const rows = await inventoryService.getSupplierLokalExport(req.query.search || '');
     const data = [
       ['No', 'No Resi', 'Nama Barang', 'SKU', 'Kondisi', 'Qty', 'Status', 'Tanggal Input', 'Vendor']
     ];
@@ -94,6 +94,41 @@ exports.exportSupplierLokal = async (req, res, next) => {
     const now = new Date();
     const timestamp = `${now.getFullYear()}-${String(now.getMonth() + 1).padStart(2, '0')}-${String(now.getDate()).padStart(2, '0')}_${String(now.getHours()).padStart(2, '0')}${String(now.getMinutes()).padStart(2, '0')}${String(now.getSeconds()).padStart(2, '0')}`;
     res.setHeader('Content-Disposition', `attachment; filename=Stok_Supplier_Lokal_${timestamp}.xlsx`);
+    res.setHeader('Content-Type', 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet');
+    res.send(buffer);
+  } catch (err) { next(err); }
+};
+
+exports.exportWriteOff = async (req, res, next) => {
+  try {
+    const rows = await inventoryService.getWriteOffExport(req.query.search || '');
+    const data = [['No', 'No Resi', 'Nama Barang', 'SKU', 'Kondisi', 'Qty', 'Ikut', 'Status', 'Tanggal Input']];
+    rows.forEach((row, index) => data.push([
+      index + 1,
+      row.resi_number || '-',
+      row.item_name || '-',
+      row.sku || row.item_code || '-',
+      row.return_category || '-',
+      Number(row.quantity) || 0,
+      row.ikut || '-',
+      row.status || '-',
+      row.entry_date ? new Date(row.entry_date).toLocaleDateString('id-ID', { timeZone: 'Asia/Jakarta' }) : '-'
+    ]));
+
+    const ws = XLSX.utils.aoa_to_sheet(data);
+    ws['!cols'] = [
+      { wch: 6 }, { wch: 18 }, { wch: 35 }, { wch: 16 }, { wch: 14 },
+      { wch: 8 }, { wch: 20 }, { wch: 16 }, { wch: 16 }
+    ];
+    data[0].forEach((_, col) => {
+      const cell = ws[XLSX.utils.encode_cell({ r: 0, c: col })];
+      if (cell) cell.s = { font: { bold: true, color: { rgb: 'FFFFFF' } }, fill: { fgColor: { rgb: '0B2240' } } };
+    });
+
+    const wb = XLSX.utils.book_new();
+    XLSX.utils.book_append_sheet(wb, ws, 'Stok Write Off');
+    const buffer = XLSX.write(wb, { type: 'buffer', bookType: 'xlsx' });
+    res.setHeader('Content-Disposition', `attachment; filename=Stok_Write_Off_${Date.now()}.xlsx`);
     res.setHeader('Content-Type', 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet');
     res.send(buffer);
   } catch (err) { next(err); }

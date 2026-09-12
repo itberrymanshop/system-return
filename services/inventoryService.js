@@ -22,26 +22,87 @@ async function getInventorySummary() {
 /**
  * List stock entries for a specific category with item / return details.
  */
-async function getSupplierLokalExport(vendorSearch = '') {
+async function getSupplierLokalExport(search = '') {
   const params = ['return_to_supplier'];
-  let vendorClause = '';
-  if (vendorSearch.trim()) {
-    vendorClause = ' AND LOWER(TRIM(v.vendor_name)) = LOWER(TRIM(?))';
-    params.push(vendorSearch.trim());
+  let searchClause = '';
+  if (search.trim()) {
+    searchClause = ` AND (
+      r.resi_number LIKE ?
+      OR ri.item_name LIKE ?
+      OR ri.sku LIKE ?
+      OR ri.item_code LIKE ?
+      OR ri.return_category LIKE ?
+      OR s.status LIKE ?
+      OR DATE_FORMAT(s.entry_date, '%Y-%m-%d') LIKE ?
+      OR v.vendor_name LIKE ?
+    )`;
+    const value = `%${search.trim()}%`;
+    params.push(value, value, value, value, value, value, value, value);
   }
 
   const [rows] = await db.query(`
-    SELECT r.resi_number, ri.item_name, ri.sku, ri.item_code,
-           ri.return_category, ri.quantity, s.status, s.entry_date,
-           v.vendor_name
+    SELECT
+      GROUP_CONCAT(DISTINCT r.resi_number ORDER BY r.resi_number SEPARATOR ', ') AS resi_number,
+      MAX(ri.item_name) AS item_name,
+      COALESCE(NULLIF(ri.sku, ''), ri.item_code) AS sku,
+      MAX(ri.item_code) AS item_code,
+      GROUP_CONCAT(DISTINCT ri.return_category ORDER BY ri.return_category SEPARATOR ', ') AS return_category,
+      SUM(ri.quantity) AS quantity,
+      GROUP_CONCAT(DISTINCT s.status ORDER BY s.status SEPARATOR ', ') AS status,
+      MAX(s.entry_date) AS entry_date,
+      GROUP_CONCAT(DISTINCT v.vendor_name ORDER BY v.vendor_name SEPARATOR ', ') AS vendor_name
     FROM inventory_stock s
     JOIN return_items ri ON s.item_id = ri.item_id
     JOIN returns r ON s.return_id = r.return_id
     LEFT JOIN vendors v ON s.vendor_id = v.vendor_id
     WHERE s.category = ?
-      AND s.status NOT IN ('void', 'completed')
-      ${vendorClause}
-    ORDER BY v.vendor_name, ri.sku, s.entry_date DESC
+       AND s.status NOT IN ('void', 'completed')
+       ${searchClause}
+    GROUP BY COALESCE(NULLIF(ri.sku, ''), ri.item_code)
+    ORDER BY sku
+
+  `, params);
+  return rows;
+}
+
+async function getWriteOffExport(search = '') {
+  const params = ['write_off'];
+  let searchClause = '';
+  if (search.trim()) {
+    searchClause = ` AND (
+      r.resi_number LIKE ?
+      OR ri.item_name LIKE ?
+      OR ri.sku LIKE ?
+      OR ri.item_code LIKE ?
+      OR ri.return_category LIKE ?
+      OR ri.ikut LIKE ?
+      OR ri.ikut_wo LIKE ?
+      OR s.status LIKE ?
+      OR DATE_FORMAT(s.entry_date, '%Y-%m-%d') LIKE ?
+    )`;
+    const value = `%${search.trim()}%`;
+    params.push(value, value, value, value, value, value, value, value, value);
+  }
+
+  const [rows] = await db.query(`
+    SELECT
+      GROUP_CONCAT(DISTINCT r.resi_number ORDER BY r.resi_number SEPARATOR ', ') AS resi_number,
+      MAX(ri.item_name) AS item_name,
+      COALESCE(NULLIF(ri.sku, ''), ri.item_code) AS sku,
+      MAX(ri.item_code) AS item_code,
+      GROUP_CONCAT(DISTINCT ri.return_category ORDER BY ri.return_category SEPARATOR ', ') AS return_category,
+      SUM(ri.quantity) AS quantity,
+      GROUP_CONCAT(DISTINCT CONCAT_WS(' ', ri.ikut, CONCAT('(', ri.ikut_wo, ')')) ORDER BY ri.ikut SEPARATOR ', ') AS ikut,
+      GROUP_CONCAT(DISTINCT s.status ORDER BY s.status SEPARATOR ', ') AS status,
+      MAX(s.entry_date) AS entry_date
+    FROM inventory_stock s
+    JOIN return_items ri ON s.item_id = ri.item_id
+    JOIN returns r ON s.return_id = r.return_id
+    WHERE s.category = ?
+       AND s.status NOT IN ('void', 'completed')
+       ${searchClause}
+    GROUP BY COALESCE(NULLIF(ri.sku, ''), ri.item_code)
+    ORDER BY sku
   `, params);
   return rows;
 }
@@ -416,6 +477,7 @@ async function bulkChangeStockCategory(stockIds, targetCategory, userId, ip, use
 module.exports = {
   getInventorySummary,
   getSupplierLokalExport,
+  getWriteOffExport,
   getInventoryByCategory,
   addInventoryEntry,
   recordStockSale,

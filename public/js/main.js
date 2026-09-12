@@ -2,6 +2,36 @@
 
 $(document).ready(function () {
 
+  let supplierSearchValue = '';
+
+  function updateSupplierTotalQty(dataTable) {
+    const totalQty = dataTable.rows({ search: 'applied' }).data().toArray().reduce((total, row) => {
+      const qty = String(row[5] || '').replace(/<[^>]*>/g, '').trim();
+      return total + (parseFloat(qty.replace(',', '.')) || 0);
+    }, 0);
+    $('#inventory-total-qty').text(`Total Qty: ${totalQty}`);
+  }
+
+  function applySupplierSearch() {
+    const table = $('.custom-inventory-search .datatable');
+    if (!table.length || !$.fn.DataTable.isDataTable(table[0])) return;
+    supplierSearchValue = $('#supplierCustomSearch').val().trim();
+    table.DataTable().search(supplierSearchValue, false, false).draw();
+  }
+
+  $(document).on('click.inventorySearch', '#supplierCustomSearchButton', applySupplierSearch);
+  $(document).on('keydown.supplierSearch', '#supplierCustomSearch', function (event) {
+    if (event.key === 'Enter') {
+      event.preventDefault();
+      applySupplierSearch();
+    }
+  });
+
+  $(document).on('click.inventoryExport', '#inventoryExportButton', function (event) {
+    event.preventDefault();
+    window.location.href = `${this.pathname}?search=${encodeURIComponent(supplierSearchValue)}`;
+  });
+
   // ── DataTables ──────────────────────────────────────────────────────────────
   setTimeout(function () {
     if ($('.datatable').length) {
@@ -33,80 +63,31 @@ $(document).ready(function () {
                pageLength: -1,
                lengthChange: false,
                order: customOrder,
+                searching: true,
+
                search: {
                  smart: $table.attr('data-search-smart') !== 'false'
                },
                responsive: true,
               destroy: true,
               deferRender: true,
-              language: {
-                search: '_INPUT_',
-                searchPlaceholder: 'Search...',
-                emptyTable: 'No data available'
-              },
+                language: {
+                 search: '_INPUT_',
+                 searchPlaceholder: 'Search...',
+                 emptyTable: 'No data available'
+               },
+
               columnDefs: [{ orderable: false, targets: -1 }]
-             });
+              });
 
-             if ($table.attr('data-vendor-search') === 'true') {
-               const vendorColumn = headerCols - 1;
-                               const searchInput = $(dataTable.table().container()).find('.dataTables_filter input');
-                const exportButton = document.getElementById('supplierExportButton');
-                const filterContainer = $(dataTable.table().container()).find('.dataTables_filter');
-                filterContainer.css('position', 'relative');
-                const searchButton = $('<button type="button" class="btn btn-sm btn-primary ms-1">Cari</button>').appendTo(filterContainer);
-                let activeVendorSearch = '';
+              if ($table.closest('.custom-inventory-search').length) {
+                const updateTotal = () => updateSupplierTotalQty(dataTable);
+                $table.on('draw.dt', updateTotal);
+                updateTotal();
+              }
 
-                function applyVendorSearch(value) {
-                  activeVendorSearch = value.trim();
-                  searchInput.val(activeVendorSearch);
-                  dataTable.search('').columns().search('');
-                  dataTable.column(vendorColumn).search(activeVendorSearch, false, false).draw();
-                  if (exportButton) exportButton.href = `/inventory/category/return_to_supplier/export?vendor=${encodeURIComponent(activeVendorSearch)}`;
-                }
+            } catch (e) {
 
-                searchButton.on('click', function () {
-                  applyVendorSearch(searchInput.val());
-                  suggestions.hide();
-                });
-                searchInput.on('keydown.vendorSearch', function (event) {
-                  if (event.key === 'Enter') {
-                    event.preventDefault();
-                    searchButton.trigger('click');
-                  }
-                });
-                if (exportButton) {
-                  exportButton.addEventListener('click', function (event) {
-                    event.preventDefault();
-                    window.location.href = `/inventory/category/return_to_supplier/export?vendor=${encodeURIComponent(activeVendorSearch)}`;
-                  });
-                }
-                const suggestions = $('<div class="vendor-search-suggestions"></div>').hide().appendTo(filterContainer);
-                const vendors = dataTable.column(vendorColumn).data().toArray()
-                  .map(value => $('<div>').html(value).text().trim())
-                  .filter(value => value && value !== '-')
-                  .filter((value, index, values) => values.indexOf(value) === index)
-                  .sort((a, b) => a.localeCompare(b, 'id'));
-
-                searchInput.on('input.vendorSuggestions', function () {
-                  const value = this.value.trim();
-                  suggestions.empty();
-                  if (!value) {
-                    suggestions.hide();
-                    return;
-                  }
-                  vendors.filter(vendor => vendor.toLowerCase().includes(value.toLowerCase())).slice(0, 8).forEach(vendor => {
-                    $('<button type="button"></button>').text(vendor).on('click', () => applyVendorSearch(vendor)).appendTo(suggestions);
-                  });
-                  suggestions.toggle(suggestions.children().length > 0);
-                });
-                searchInput.on('focus.vendorSearch', function () {
-                  if (this.value) searchInput.trigger('input');
-                });
-                $(document).on('click.vendorSearch', event => {
-                  if (!$(event.target).closest(filterContainer).length) suggestions.hide();
-                });
-             }
-           } catch (e) {
             console.error('DataTables init error:', e);
           }
         }

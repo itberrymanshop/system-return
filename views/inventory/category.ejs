@@ -22,9 +22,10 @@
     text-align: left;
   }
   .vendor-search-suggestions button:hover { background: #f0f4ff; }
+  .custom-inventory-search .dataTables_filter { display: none !important; }
 </style>
 
-<div class="container-fluid mt-5 pt-4">
+<div class="container-fluid mt-5 pt-4 <%= ['return_to_supplier', 'write_off'].includes(category) ? 'custom-inventory-search' : '' %>">
   <div class="row mb-3 align-items-center">
     <div class="col">
       <h2>
@@ -103,18 +104,33 @@
         <div class="card-header d-flex justify-content-between">
           <div class="d-flex align-items-center gap-2 flex-wrap">
             <h6 class="mb-0">Daftar Stok</h6>
-            <% if (category === 'return_to_supplier') { %>
-              <a href="/inventory/category/return_to_supplier/export" id="supplierExportButton" class="btn btn-sm btn-outline-success">
+            <% if (['return_to_supplier', 'write_off'].includes(category)) { %>
+              <a href="/inventory/category/<%= category %>/export" id="inventoryExportButton" class="btn btn-sm btn-outline-success">
                 <i class="bi bi-file-earmark-excel me-1"></i>Download Excel
               </a>
             <% } %>
           </div>
-          <span class="badge bg-secondary" id="inventory-item-count">
-             <%= items.length %> item
-           </span>
+          <div class="d-flex gap-2 align-items-center flex-wrap">
+            <% if (['return_to_supplier', 'write_off'].includes(category)) { %>
+              <span class="badge bg-info text-dark" id="inventory-total-qty">Total Qty: 0</span>
+            <% } %>
+            <span class="badge bg-secondary" id="inventory-item-count">
+               <%= items.length %> item
+             </span>
+          </div>
         </div>
+        <% if (['return_to_supplier', 'write_off'].includes(category)) { %>
+          <div class="card-body border-bottom py-3">
+            <div class="input-group input-group-sm" style="max-width: 420px;">
+              <input type="search" id="supplierCustomSearch" class="form-control" placeholder="Cari semua data..." autocomplete="off">
+              <button type="button" id="supplierCustomSearchButton" class="btn btn-primary">
+                <i class="bi bi-search me-1"></i>Cari
+              </button>
+            </div>
+          </div>
+        <% } %>
         <div class="table-responsive">
-          <table class="table table-hover datatable mb-0" data-search-smart="false" <%= category === 'return_to_supplier' ? 'data-vendor-search="true"' : '' %>>
+          <table class="table table-hover datatable mb-0" data-search-smart="false" <%= ['return_to_supplier', 'write_off'].includes(category) ? 'data-disable-search="true"' : '' %>>
             <thead class="table-light">
               <tr>
                 <% if (['rekondisi', 'refurbish' , 'write_off' , 'return_to_supplier' ].includes(category)) { %>
