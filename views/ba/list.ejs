@@ -625,7 +625,11 @@
         const selectedSupplierIds = $('.export-ba-checkbox:checked').filter(function () {
           return $(this).closest('.ba-card, tr').find('.badge').text().includes('SUPPLIER LOKAL');
         }).map(function () { return this.value; }).get();
-        const endpoint = selectedSupplierIds.length === selectedIds.length ? '/ba/export-supplier-lokal' : '/ba/export-all';
+        if (selectedSupplierIds.length > 0 && selectedSupplierIds.length < selectedIds.length) {
+          alert('Export Supplier Lokal dan BA lainnya harus dipisah agar format laporan Supplier Lokal tetap khusus.');
+          return;
+        }
+        const endpoint = selectedSupplierIds.length > 0 ? '/ba/export-supplier-lokal' : '/ba/export-all';
         window.location.href = endpoint + '?ba_ids=' + selectedIds.join(',');
       } else {
         const form = document.getElementById('filter-form');
