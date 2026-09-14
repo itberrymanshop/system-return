@@ -587,6 +587,15 @@ exports.exportExcel = async (req, res, next) => {
       }));
     }
 
+    const groupedItems = new Map();
+    items.forEach(item => {
+      const key = item.sku || '';
+      const existing = groupedItems.get(key) || { ...item, quantity: 0 };
+      existing.quantity += Number(item.quantity) || 0;
+      groupedItems.set(key, existing);
+    });
+    items = [...groupedItems.values()];
+
     const data = [];
 
     // Header row matching the requested structure
@@ -627,9 +636,24 @@ exports.exportExcel = async (req, res, next) => {
 // ─── Export All ───────────────────────────────────────────────────────────────
 exports.exportAll = async (req, res, next) => {
   try {
-    const docs = await baService.getBAList({ ...req.query, exclude_void: true });
-
-    const baIds = docs.map(d => d.ba_id);
+    let docs = [];
+    let baIds = [];
+    if (req.query.ba_ids) {
+      baIds = String(req.query.ba_ids).split(',').map(id => parseInt(id.trim())).filter(id => !isNaN(id));
+      if (baIds.length > 0) {
+        const [rows] = await db.query(`
+          SELECT ba.*, v.vendor_name
+          FROM berita_acara ba
+          LEFT JOIN vendors v ON ba.vendor_id = v.vendor_id
+          WHERE ba.ba_id IN (?) AND ba.status != 'void'
+        `, [baIds]);
+        docs = rows;
+      }
+    }
+    if (!baIds.length) {
+      docs = await baService.getBAList({ ...req.query, exclude_void: true });
+      baIds = docs.map(d => d.ba_id);
+    }
     let items = [];
     if (baIds.length > 0) {
       const [stockItems] = await db.query(`
@@ -676,6 +700,20 @@ exports.exportAll = async (req, res, next) => {
       }
     }
 
+    const groupedItems = new Map();
+    items.forEach(item => {
+      const key = item.disposition === 'return_to_supplier'
+        ? `${item.ba_number || ''}|${item.vendor_name || ''}|${item.sku || ''}`
+        : `${item.ba_number || ''}|${item.sku || ''}`;
+      const existing = groupedItems.get(key) || { ...item, quantity: 0 };
+      existing.quantity += Number(item.quantity) || 0;
+      groupedItems.set(key, existing);
+    });
+    items = [...groupedItems.values()].sort((a, b) =>
+      String(a.ba_number || '').localeCompare(String(b.ba_number || ''), 'id') ||
+      String(a.sku || '').localeCompare(String(b.sku || ''), 'id')
+    );
+
     const data = [];
 
     // Row 1: Merged Title A1 to I1 (9 columns)
@@ -707,12 +745,24 @@ exports.exportAll = async (req, res, next) => {
     // Row 6: Column headers (9 columns)
     data.push(['No', 'Nomor BA', 'SKU', 'Nama Produk', 'QTY', 'Kategori Retur', 'Keterangan', 'Vendor', '']);
 
-    // Rows 7+: Items list
+    const baMerges = [];
+    let currentBaNumber = null;
+    let baStartRow = 6;
+    let baItemNumber = 0;
     items.forEach((item, idx) => {
       const catMap = { rekondisi: 'Rekondisi', refurbish: 'Refurbish', write_off: 'Write off', return_to_supplier: 'Retur Supplier' };
+      const baNumber = item.ba_number || '-';
+      const rowIndex = data.length;
+      if (currentBaNumber !== null && currentBaNumber !== baNumber) {
+        if (rowIndex - 1 > baStartRow) baMerges.push({ s: { r: baStartRow, c: 1 }, e: { r: rowIndex - 1, c: 1 } });
+        baStartRow = rowIndex;
+        baItemNumber = 0;
+      }
+      currentBaNumber = baNumber;
+      baItemNumber += 1;
       data.push([
-        idx + 1,
-        item.ba_number || '-',
+        baItemNumber,
+        baNumber,
         item.sku || '-',
         item.item_name || '',
         item.quantity || 0,
@@ -721,6 +771,7 @@ exports.exportAll = async (req, res, next) => {
         item.vendor_name || '-',
         ''
       ]);
+      if (idx === items.length - 1 && rowIndex > baStartRow) baMerges.push({ s: { r: baStartRow, c: 1 }, e: { r: rowIndex, c: 1 } });
     });
 
     // Add empty rows up to minimum 10 item rows
@@ -731,11 +782,20 @@ exports.exportAll = async (req, res, next) => {
     }
 
     const ws = XLSX.utils.aoa_to_sheet(data);
+    const borderStyle = { style: 'thin', color: { rgb: '808080' } };
+    for (let row = 5; row < data.length; row++) {
+      for (let col = 0; col < 9; col++) {
+        const cellRef = XLSX.utils.encode_cell({ r: row, c: col });
+        ws[cellRef] = ws[cellRef] || { v: '' };
+        ws[cellRef].s = { ...(ws[cellRef].s || {}), border: { top: borderStyle, bottom: borderStyle, left: borderStyle, right: borderStyle } };
+      }
+    }
     ws['!merges'] = [
       { s: { r: 0, c: 0 }, e: { r: 0, c: 8 } }, // Row 1 title A-I (9 columns)
       { s: { r: 1, c: 0 }, e: { r: 4, c: 3 } }, // Row 2-5 black box A-D
       { s: { r: 1, c: 4 }, e: { r: 1, c: 5 } }, // Row 2 BERRYMAN header E-F
-      { s: { r: 1, c: 6 }, e: { r: 1, c: 8 } }  // Row 2 Approved by header G-I
+      { s: { r: 1, c: 6 }, e: { r: 1, c: 8 } }, // Row 2 Approved by header G-I
+      ...baMerges
     ];
 
     ws['!cols'] = [

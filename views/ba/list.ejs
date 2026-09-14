@@ -167,7 +167,7 @@
   .ba-select-label { display: inline-flex; align-items: center; gap: .45rem; color: #495057; font-size: .75rem; font-weight: 600; cursor: pointer; user-select: none; }
   .ba-select-label .form-check-input { width: 1.1rem; height: 1.1rem; margin: 0; cursor: pointer; }
   .ba-select-label .form-check-input:checked { background-color: #198754; border-color: #198754; }
-  .ba-card:has(.supplier-lokal-checkbox:checked) { border-color: #198754; box-shadow: 0 0 0 2px rgba(25, 135, 84, .15), 0 6px 18px rgba(15, 23, 42, .08); }
+  .ba-card:has(.export-ba-checkbox:checked) { border-color: #198754; box-shadow: 0 0 0 2px rgba(25, 135, 84, .15), 0 6px 18px rgba(15, 23, 42, .08); }
   .ba-label { display: block; color: #6b7280; font-size: .72rem; text-transform: uppercase; letter-spacing: .04em; margin-bottom: .2rem; }
   .ba-meta-grid { display: grid; grid-template-columns: 1.4fr .7fr; gap: .9rem; }
   .ba-meta-grid > div { min-width: 0; }
@@ -186,7 +186,7 @@
     </div>
     <div class="col-auto d-flex gap-2 align-items-center">
       <label class="btn btn-sm btn-outline-success mb-0">
-        <input type="checkbox" class="form-check-input me-1" id="checkAllSupplierLokal" title="Pilih semua Supplier Lokal">
+        <input type="checkbox" class="form-check-input me-1" id="checkAllSupplierLokal" title="Pilih semua BA yang dapat diexport">
         Pilih Semua
       </label>
       <a href="/ba/vendors" class="btn btn-sm btn-outline-secondary"><i class="bi bi-building"></i> Vendor</a>
@@ -250,7 +250,7 @@
               <i class="bi bi-file-earmark-excel"></i> Export All Excel
             </button>
             <button type="button" onclick="exportSupplierLokalExcel()" class="btn btn-sm btn-success ms-1" id="btnExportSupplierLokal">
-              <i class="bi bi-file-earmark-excel"></i> Export All Excel Supplier Lokal
+<i class="bi bi-file-earmark-excel"></i> Export Excel BA
             </button>
           </div>
         </div>
@@ -266,16 +266,17 @@
       <% docs.forEach((d, i) => {
         const categories = d.item_dispositions ? [...new Set(d.item_dispositions.split(', ').filter(Boolean))] : [];
         const hasSupplierLokal = categories.includes('return_to_supplier') || d.ba_type === 'retur_supplier';
+        const hasExportableCategory = categories.some(category => ['rekondisi', 'refurbish', 'write_off', 'return_to_supplier'].includes(category)) || ['rekondisi', 'refurbish', 'write_off', 'retur_supplier'].includes(d.ba_type);
         const statusMap = { rekondisi: { label: 'REKONDISI', color: 'primary' }, refurbish: { label: 'REFURBISH', color: 'dark' }, write_off: { label: 'WRITE OFF', color: 'danger' }, return_to_supplier: { label: 'SUPPLIER LOKAL', color: 'secondary' }, retur_final: { label: 'RETUR FINAL', color: 'primary' } };
         const statusEntries = (categories.length ? categories : [d.ba_type]).map(category => statusMap[category] || { label: String(category || '-').replace('_', ' ').toUpperCase(), color: 'secondary' });
       %>
       <div class="col-12 col-md-6 col-xl-4">
-        <article class="ba-card h-100 <%= hasSupplierLokal ? 'ba-card-supplier ba-card-selectable' : '' %>" data-ba-search="<%= [d.ba_number, d.skus, d.title, d.vendor_name].filter(Boolean).join(' ').toLowerCase() %>" <% if (hasSupplierLokal) { %>data-ba-selectable="true" data-ba-number="<%= d.ba_number %>" data-ba-supplier="<%= d.vendor_name || '-' %>" data-ba-qty="<%= d.total_qty || 0 %>" data-ba-skus="<%= d.skus || '-' %>" data-ba-box="<%= d.box_number || 'Belum diisi' %>" data-ba-weight="<%= d.box_weight_kg ? `${d.box_weight_kg} Kg` : 'Belum diisi' %>"<% } %>>
+        <article class="ba-card h-100 <%= hasExportableCategory ? 'ba-card-supplier ba-card-selectable' : '' %>" data-ba-search="<%= [d.ba_number, d.skus, d.title, d.vendor_name].filter(Boolean).join(' ').toLowerCase() %>" <% if (hasExportableCategory) { %>data-ba-selectable="true" data-ba-number="<%= d.ba_number %>" data-ba-supplier="<%= d.vendor_name || '-' %>" data-ba-qty="<%= d.total_qty || 0 %>" data-ba-skus="<%= d.skus || '-' %>" data-ba-box="<%= d.box_number || 'Belum diisi' %>" data-ba-weight="<%= d.box_weight_kg ? `${d.box_weight_kg} Kg` : 'Belum diisi' %>"<% } %>>
           <div class="ba-card-header">
             <div>
-              <% if (hasSupplierLokal) { %>
+              <% if (hasExportableCategory) { %>
                 <label class="ba-select-label">
-                  <input type="checkbox" class="form-check-input supplier-lokal-checkbox" value="<%= d.ba_id %>" data-ba-number="<%= d.ba_number %>" title="Pilih BA untuk export">
+                  <input type="checkbox" class="form-check-input export-ba-checkbox" value="<%= d.ba_id %>" data-ba-number="<%= d.ba_number %>" title="Pilih BA untuk export">
                   <span>Pilih untuk export</span>
                 </label>
               <% } %>
@@ -320,8 +321,9 @@
           <% docs.forEach((d, i) => {%>
           <% 
             const categories = d.item_dispositions ? [...new Set(d.item_dispositions.split(', ').filter(Boolean))] : [];
-            const hasSupplierLokal = categories.includes('return_to_supplier') || d.ba_type === 'retur_supplier';
-            const statusMap = {
+             const hasSupplierLokal = categories.includes('return_to_supplier') || d.ba_type === 'retur_supplier';
+             const hasExportableCategory = categories.some(category => ['rekondisi', 'refurbish', 'write_off', 'return_to_supplier'].includes(category)) || ['rekondisi', 'refurbish', 'write_off', 'retur_supplier'].includes(d.ba_type);
+             const statusMap = {
               rekondisi: { label: 'REKONDISI', color: 'primary' },
               refurbish: { label: 'REFURBISH', color: 'dark' },
               write_off: { label: 'WRITE OFF', color: 'danger' },
@@ -350,7 +352,7 @@
                     style="cursor: pointer;">
                     <td class="text-center" onclick="event.stopPropagation()">
                       <% if (hasSupplierLokal) { %>
-                        <input type="checkbox" class="form-check-input legacy-supplier-checkbox" value="<%= d.ba_id %>" data-ba-number="<%= d.ba_number %>" title="Pilih <%= d.ba_number %>">
+                        <input type="checkbox" class="form-check-input export-ba-checkbox" value="<%= d.ba_id %>" data-ba-number="<%= d.ba_number %>" title="Pilih <%= d.ba_number %>">
                       <% } else { %>
                         <span class="text-muted small"><%= i + 1 %></span>
                       <% } %>
@@ -496,7 +498,7 @@
       document.querySelectorAll('[data-ba-selectable="true"]').forEach(card => {
         card.addEventListener('click', function (event) {
           if (event.target.closest('a, button, input, label, form')) return;
-          const checkbox = card.querySelector('.supplier-lokal-checkbox');
+          const checkbox = card.querySelector('.export-ba-checkbox');
           if (!checkbox || !selectBaModal) return;
           pendingBaCard = card;
           const isSelected = checkbox.checked;
@@ -514,7 +516,7 @@
 
       document.getElementById('confirmSelectBa').addEventListener('click', function () {
         if (!pendingBaCard) return;
-        const checkbox = pendingBaCard.querySelector('.supplier-lokal-checkbox');
+        const checkbox = pendingBaCard.querySelector('.export-ba-checkbox');
         checkbox.checked = !checkbox.checked;
         checkbox.dispatchEvent(new Event('change', { bubbles: true }));
         selectBaModal.hide();
@@ -538,11 +540,11 @@
       if (false) {
         const table = $('.datatable').DataTable();
         const rows = table.rows({ search: 'applied' }).nodes();
-        const $cbs = $('input.supplier-lokal-checkbox', rows);
+        const $cbs = $('input.export-ba-checkbox', rows);
         total = $cbs.length;
         checked = $cbs.filter(':checked').length;
       } else {
-        const $cbs = $('.supplier-lokal-checkbox');
+        const $cbs = $('.export-ba-checkbox');
         total = $cbs.length;
         checked = $cbs.filter(':checked').length;
       }
@@ -551,7 +553,7 @@
 
       const $btn = $('#btnExportSupplierLokal');
       if (checked > 0) {
-        $btn.html(`<i class="bi bi-file-earmark-excel"></i> Export Excel Supplier Lokal (${checked})`);
+        $btn.html(`<i class="bi bi-file-earmark-excel"></i> Export Excel Terpilih (${checked})`);
       } else {
         $btn.html(`<i class="bi bi-file-earmark-excel"></i> Export All Excel Supplier Lokal`);
       }
@@ -574,15 +576,16 @@
         if (false) {
           const table = $('.datatable').DataTable();
           const rows = table.rows({ search: 'applied' }).nodes();
-          $('input.supplier-lokal-checkbox', rows).prop('checked', isChecked);
+          $('input.export-ba-checkbox', rows).prop('checked', isChecked);
         } else {
-          $('.supplier-lokal-checkbox').prop('checked', isChecked);
+          $('.export-ba-checkbox').prop('checked', isChecked);
         }
         updateSupplierLokalCheckAllState();
       });
 
       // Handle individual checkbox change
-      $(document).on('change', '.supplier-lokal-checkbox', function () {
+       $(document).on('change', '.export-ba-checkbox', function () {
+
         updateSupplierLokalCheckAllState();
       });
 
@@ -609,17 +612,21 @@
       if (false) {
         const table = $('.datatable').DataTable();
         const rows = table.rows().nodes();
-        $('input.supplier-lokal-checkbox:checked', rows).each(function () {
+        $('input.export-ba-checkbox:checked', rows).each(function () {
           selectedIds.push($(this).val());
         });
       } else {
-        $('.supplier-lokal-checkbox:checked').each(function () {
+        $('.export-ba-checkbox:checked').each(function () {
           selectedIds.push($(this).val());
         });
       }
 
       if (selectedIds.length > 0) {
-        window.location.href = '/ba/export-supplier-lokal?ba_ids=' + selectedIds.join(',');
+        const selectedSupplierIds = $('.export-ba-checkbox:checked').filter(function () {
+          return $(this).closest('.ba-card, tr').find('.badge').text().includes('SUPPLIER LOKAL');
+        }).map(function () { return this.value; }).get();
+        const endpoint = selectedSupplierIds.length === selectedIds.length ? '/ba/export-supplier-lokal' : '/ba/export-all';
+        window.location.href = endpoint + '?ba_ids=' + selectedIds.join(',');
       } else {
         const form = document.getElementById('filter-form');
         const formData = new FormData(form);
