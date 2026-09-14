@@ -247,10 +247,10 @@
             <button type="submit" class="btn btn-sm btn-primary"><i class="bi bi-search"></i> Cari</button>
             <a href="/ba" class="btn btn-sm btn-outline-secondary ms-1">Reset</a>
             <button type="button" onclick="exportFilteredData()" class="btn btn-sm btn-outline-success ms-1">
-              <i class="bi bi-file-earmark-excel"></i> Export All Excel
+              <i class="bi bi-file-earmark-excel"></i> Export BA Umum
             </button>
             <button type="button" onclick="exportSupplierLokalExcel()" class="btn btn-sm btn-success ms-1" id="btnExportSupplierLokal">
-<i class="bi bi-file-earmark-excel"></i> Export Excel BA
+<i class="bi bi-file-earmark-excel"></i> Export Supplier Lokal
             </button>
           </div>
         </div>
@@ -553,9 +553,9 @@
 
       const $btn = $('#btnExportSupplierLokal');
       if (checked > 0) {
-        $btn.html(`<i class="bi bi-file-earmark-excel"></i> Export Excel Terpilih (${checked})`);
+        $btn.html(`<i class="bi bi-file-earmark-excel"></i> Export Supplier Lokal Terpilih (${checked})`);
       } else {
-        $btn.html(`<i class="bi bi-file-earmark-excel"></i> Export All Excel Supplier Lokal`);
+        $btn.html(`<i class="bi bi-file-earmark-excel"></i> Export Supplier Lokal`);
       }
     }
 
