@@ -62,7 +62,20 @@ async function runMigrations() {
       console.log('   - Adding composite index idx_inventory_stock_ba_category on inventory_stock(ba_id, category)...');
       await pool.query("ALTER TABLE inventory_stock ADD INDEX idx_inventory_stock_ba_category (ba_id, category)");
     }
-    
+
+    const [activeBaColumn] = await pool.query("SHOW COLUMNS FROM inventory_stock LIKE 'active_ba_item_id'");
+    if (activeBaColumn.length === 0) {
+      console.log('   - Adding generated active_ba_item_id on inventory_stock...');
+      await pool.query(`ALTER TABLE inventory_stock ADD COLUMN active_ba_item_id INT GENERATED ALWAYS AS (
+        CASE WHEN ba_id IS NOT NULL AND status IN ('tersedia', 'completed') THEN item_id ELSE NULL END
+      ) STORED`);
+    }
+    const [activeBaUnique] = await pool.query("SHOW INDEX FROM inventory_stock WHERE Key_name = 'uq_inventory_stock_active_ba_item'");
+    if (activeBaUnique.length === 0) {
+      console.log('   - Adding unique uq_inventory_stock_active_ba_item on inventory_stock...');
+      await pool.query("ALTER TABLE inventory_stock ADD UNIQUE KEY uq_inventory_stock_active_ba_item (active_ba_item_id)");
+    }
+
     // 3. Modify berita_acara.ba_type to be VARCHAR(50)
     const [baTypeColumn] = await pool.query("SHOW COLUMNS FROM berita_acara LIKE 'ba_type'");
     if (baTypeColumn.length > 0 && baTypeColumn[0].Type.startsWith('enum')) {

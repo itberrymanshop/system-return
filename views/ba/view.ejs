@@ -31,9 +31,9 @@
         <i class="bi bi-file-earmark-excel"></i> Download Excel
       </a>
 
-      <% if (![' void'].includes(ba.status) && hasRole(['admin','manager'])) { %>
-                      <form method="POST" action="/ba/<%= ba.ba_id %>/void"
-                        onsubmit="return confirm('Void dokumen ini? Tindakan tidak dapat dibalik.')">
+      <% if (['draft', 'pending_sign'].includes(ba.status) && hasRole(['admin','manager'])) { %>
+                      <form method="POST" action="/ba/<%= ba.ba_id %>/void" onsubmit="return confirmVoidBA(this)">
+                        <input type="hidden" name="reason">
                         <button type="submit" class="btn btn-sm btn-outline-danger">
                           <i class="bi bi-x-circle"></i> Void
                         </button>
@@ -462,12 +462,13 @@
                 Kategori Retur</th>
               <th style="width: 20%; border: 1px solid #444; font-weight: bold; font-size: 0.85rem;">Keterangan</th>
               <th style="width: 15%; border: 1px solid #444; font-weight: bold; font-size: 0.85rem;">Vendor</th>
+               <% if (['draft', 'pending_sign'].includes(ba.status) && hasRole(['admin','manager'])) { %><th style="width: 10%; border: 1px solid #444; font-size: 0.85rem;">Aksi</th><% } %>
             </tr>
           </thead>
           <tbody>
             <% if (items.length===0) { %>
               <tr>
-                <td colspan="7" class="text-center py-4" style="color: #888; border: 1px solid #444;">Belum ada item
+                <td colspan="<%= ['draft', 'pending_sign'].includes(ba.status) && hasRole(['admin','manager']) ? 8 : 7 %>" class="text-center py-4" style="color: #888; border: 1px solid #444;">Belum ada item
                   retur dalam Berita Acara ini.</td>
               </tr>
               <% } %>
@@ -494,6 +495,14 @@
                     <td style="border: 1px solid #444;">
                       <%= item.vendor_name || '-' %>
                     </td>
+                    <% if (['draft', 'pending_sign'].includes(ba.status) && hasRole(['admin','manager']) && item.stock_id) { %>
+                      <td style="border: 1px solid #444; text-align:center;">
+                        <form method="POST" action="/ba/<%= ba.ba_id %>/items/<%= item.stock_id %>/void" onsubmit="return confirmVoidItem(this)">
+                          <input type="hidden" name="reason">
+                          <button type="submit" class="btn btn-sm btn-outline-danger">Delete SKU</button>
+                        </form>
+                      </td>
+                    <% } %>
                   </tr>
                   <% }) %>
                     <% const minRows=10; const emptyRowsCount=Math.max(0, minRows - items.length); for (let i=0; i <
@@ -688,6 +697,18 @@
 <style id="dynamicPrintStyle"></style>
 
 <script>
+  function confirmVoidBA(form) {
+    const reason = prompt('Alasan void BA wajib diisi:');
+    if (!reason || !reason.trim()) return false;
+    form.reason.value = reason.trim();
+    return confirm('Void dokumen ini? SKU aktif dikembalikan ke Recovery.');
+  }
+  function confirmVoidItem(form) {
+    const reason = prompt('Alasan hapus SKU wajib diisi:');
+    if (!reason || !reason.trim()) return false;
+    form.reason.value = reason.trim();
+    return confirm('Hapus SKU ini dari BA dan kembalikan ke Recovery?');
+  }
   // Buka modal pilihan print
   function openPrintModal() {
     const modal = new bootstrap.Modal(document.getElementById('printFormatModal'));

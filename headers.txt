@@ -1,0 +1,10 @@
+HTTP/1.1 200 OK
+X-Powered-By: Express
+Content-Disposition: attachment; filename=Stok_Supplier_Lokal_2026-09-12_012430.xlsx
+Content-Type: application/vnd.openxmlformats-officedocument.spreadsheetml.sheet
+Content-Length: 75299
+ETag: W/"12623-bhwIu2QWuyGdzI55te60Yd6ldIs"
+Date: Sat, 12 Sep 2026 01:24:30 GMT
+Connection: keep-alive
+Keep-Alive: timeout=5
+

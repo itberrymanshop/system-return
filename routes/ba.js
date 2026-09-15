@@ -26,6 +26,7 @@ router.post('/:id/submit', canCreate, ctrl.submitForSigning);
 router.get('/:id/sign', canView, ctrl.signForm);
 router.post('/:id/sign', canView, ctrl.saveSign);
 router.post('/:id/void', canAdmin, ctrl.void);
+router.post('/:id/items/:stockId/void', canCreate, ctrl.voidItem);
 router.post('/:id/packaging', canCreate, ctrl.updatePackaging);
 router.post('/:id/notes', canView, ctrl.addNote);
 router.post('/:id/notes/:noteId/edit', canView, ctrl.editNote);

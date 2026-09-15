@@ -3,15 +3,15 @@ const db = require('../config/database');
 
 /* ── Helpers ─────────────────────────────────────────────────────────────── */
 
-async function generateBANumber(type) {
+async function generateBANumber(type, conn = db) {
   const d = new Date();
   const yr  = d.getFullYear();
   const mon = String(d.getMonth() + 1).padStart(2, '0');
   const code = { rekondisi: 'RKD', refurbish: 'RFB', write_off: 'WO', retur_supplier: 'RS', retur_final: 'RF' }[type] || 'BA';
   const prefix = `BA/${code}/${yr}/${mon}/`;
 
-  const [rows] = await db.query(
-    `SELECT ba_number FROM berita_acara WHERE ba_number LIKE ? ORDER BY ba_id DESC LIMIT 1`,
+  const [rows] = await conn.query(
+    `SELECT ba_number FROM berita_acara WHERE ba_number LIKE ? ORDER BY ba_id DESC LIMIT 1 FOR UPDATE`,
     [`${prefix}%`]
   );
   const seq = rows.length ? parseInt(rows[0].ba_number.split('/').pop()) + 1 : 1;
@@ -20,9 +20,9 @@ async function generateBANumber(type) {
 
 /* ── CRUD ────────────────────────────────────────────────────────────────── */
 
-async function createBA(data, userId) {
-  const baNumber = await generateBANumber(data.ba_type);
-  const [result] = await db.query(
+async function createBA(data, userId, conn = db) {
+  const baNumber = await generateBANumber(data.ba_type, conn);
+  const [result] = await conn.query(
     `INSERT INTO berita_acara
        (ba_number, return_id, ba_type, created_by, title, content, final_price, vendor_id, export_month, box_number, box_weight_kg, status)
      VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, 'draft')`,
@@ -41,9 +41,8 @@ async function createBA(data, userId) {
     ]
   );
 
-  // Link BA back to the return if return_id is provided
   if (data.return_id) {
-    await db.query('UPDATE returns SET ba_id = ? WHERE return_id = ?', [result.insertId, parseInt(data.return_id)]);
+    await conn.query('UPDATE returns SET ba_id = ? WHERE return_id = ?', [result.insertId, parseInt(data.return_id)]);
   }
 
   return { baId: result.insertId, baNumber };
@@ -244,8 +243,91 @@ async function signBA(baId, sigField, signatureData, userId) {
 /**
  * Void / cancel a BA document.
  */
-async function voidBA(baId) {
-  await db.query(`UPDATE berita_acara SET status = 'void' WHERE ba_id = ?`, [baId]);
+async function voidBA(baId, userId, reason) {
+  const conn = await db.getConnection();
+  try {
+    await conn.beginTransaction();
+    const [[ba]] = await conn.query(
+      `SELECT ba_id, ba_type, status FROM berita_acara WHERE ba_id = ? FOR UPDATE`,
+      [baId]
+    );
+    if (!ba) throw new Error('Berita Acara tidak ditemukan.');
+    if (!['draft', 'pending_sign'].includes(ba.status)) {
+      throw new Error('BA hanya dapat di-void saat draft atau menunggu tanda tangan.');
+    }
+
+    const [stocks] = await conn.query(
+      `SELECT stock_id, item_id FROM inventory_stock WHERE ba_id = ? AND status != 'void' FOR UPDATE`,
+      [baId]
+    );
+    const itemIds = stocks.map(stock => stock.item_id);
+    const recoveryStatus = ba.ba_type === 'retur_supplier' ? 'Sorting' : 'Recovery';
+    if (stocks.length) {
+      await conn.query(
+        `UPDATE inventory_stock
+         SET status = 'void', ba_id = NULL, cancel_reason = ?, cancelled_by = ?, cancelled_at = NOW(), updated_at = NOW()
+         WHERE ba_id = ? AND status != 'void'`,
+        [reason || 'BA di-void', userId || null, baId]
+      );
+    }
+    if (itemIds.length) {
+      await conn.query(
+        `UPDATE return_items ri
+         SET current_status = ?, perbaikan_status = 'recovery', updated_at = NOW()
+         WHERE ri.item_id IN (?)
+           AND NOT EXISTS (
+             SELECT 1 FROM inventory_stock s
+             JOIN berita_acara other_ba ON other_ba.ba_id = s.ba_id
+             WHERE s.item_id = ri.item_id AND s.ba_id IS NOT NULL
+               AND s.status != 'void' AND other_ba.status != 'void'
+           )`,
+        [recoveryStatus, itemIds]
+      );
+    }
+    await conn.query(`UPDATE berita_acara SET status = 'void' WHERE ba_id = ?`, [baId]);
+    await conn.commit();
+    conn.release();
+  } catch (err) {
+    await conn.rollback();
+    conn.release();
+    throw err;
+  }
+}
+
+async function voidBAItem(baId, stockId, userId, reason) {
+  const conn = await db.getConnection();
+  try {
+    await conn.beginTransaction();
+    const [[row]] = await conn.query(
+      `SELECT s.stock_id, s.item_id, s.ba_id, s.category, ba.status AS ba_status, ba.ba_type
+       FROM inventory_stock s JOIN berita_acara ba ON ba.ba_id = s.ba_id
+       WHERE s.stock_id = ? AND s.ba_id = ? FOR UPDATE`,
+      [stockId, baId]
+    );
+    if (!row) throw new Error('SKU tidak ditemukan dalam BA.');
+    if (!['draft', 'pending_sign'].includes(row.ba_status)) throw new Error('BA hanya dapat diedit saat draft atau menunggu tanda tangan.');
+    await conn.query(
+      `UPDATE inventory_stock SET status='void', ba_id=NULL, cancel_reason=?, cancelled_by=?, cancelled_at=NOW(), updated_at=NOW() WHERE stock_id=?`,
+      [reason || 'SKU dilepas dari BA', userId || null, stockId]
+    );
+    const recoveryStatus = row.ba_type === 'retur_supplier' || row.category === 'return_to_supplier' ? 'Sorting' : 'Recovery';
+    await conn.query(
+      `UPDATE return_items ri SET current_status=?, perbaikan_status='recovery', updated_at=NOW()
+       WHERE ri.item_id=? AND NOT EXISTS (
+         SELECT 1 FROM inventory_stock s JOIN berita_acara ba ON ba.ba_id=s.ba_id
+         WHERE s.item_id=ri.item_id AND s.ba_id IS NOT NULL AND s.status != 'void' AND ba.status != 'void'
+       )`,
+      [recoveryStatus, row.item_id]
+    );
+    const [[remaining]] = await conn.query(`SELECT COUNT(*) AS total FROM inventory_stock WHERE ba_id=? AND status != 'void'`, [baId]);
+    if (remaining.total === 0) await conn.query(`UPDATE berita_acara SET status='void' WHERE ba_id=?`, [baId]);
+    await conn.commit();
+    conn.release();
+  } catch (err) {
+    await conn.rollback();
+    conn.release();
+    throw err;
+  }
 }
 
 /* ── Vendor helpers ──────────────────────────────────────────────────────── */
@@ -285,6 +367,6 @@ async function updateVendor(vendorId, data) {
 
 module.exports = {
   generateBANumber,
-  createBA, getBAById, getBAList, submitForSigning, signBA, voidBA,
+  createBA, getBAById, getBAList, submitForSigning, signBA, voidBA, voidBAItem,
   getVendors, createVendor, getVendorById, updateVendor
 };

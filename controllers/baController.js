@@ -118,21 +118,20 @@ exports.view = async (req, res, next) => {
     // Fetch items linked directly in inventory_stock
     let items = [];
     const [stockItems] = await db.query(`
-      SELECT 
-        ri.item_code AS sku, ri.item_name, sum(ri.quantity) as quantity, 
-            s.category AS disposition, s.status AS current_status,
-            v.vendor_name
+      SELECT
+        s.stock_id, s.item_id, ri.item_code AS sku, ri.item_name, ri.quantity,
+        s.category AS disposition, s.status AS current_status,
+        v.vendor_name
       FROM inventory_stock s
       JOIN return_items ri ON s.item_id = ri.item_id
       LEFT JOIN vendors v ON s.vendor_id = v.vendor_id
-      LEFT JOIN master_barang mb ON ri.item_code COLLATE utf8mb4_unicode_ci = mb.kode_barang COLLATE utf8mb4_unicode_ci
-      WHERE s.ba_id = ?
-      GROUP BY  ri.item_code, ri.item_name,  s.category, s.status,v.vendor_name, mb.harga_beli 
+      WHERE s.ba_id = ? AND s.status != 'void'
+      ORDER BY s.stock_id
     `, [ba.ba_id]);
 
     if (stockItems && stockItems.length > 0) {
       items = stockItems;
-    } else {
+    } else if (ba.status !== 'void') {
       // Fallback to legacy return_id logic if no items are explicitly linked in inventory_stock
       let itemSql = `
         SELECT 
@@ -357,42 +356,66 @@ exports.createForm = async (req, res, next) => {
 
 // ─── Create POST ──────────────────────────────────────────────────────────────
 exports.create = async (req, res, next) => {
+  const conn = await db.getConnection();
   try {
     const { stock_ids } = req.body;
-    const { baId, baNumber } = await baService.createBA(req.body, req.session.userId);
+    await conn.beginTransaction();
+    const { baId, baNumber } = await baService.createBA(req.body, req.session.userId, conn);
 
     if (stock_ids) {
       const stockIds = stock_ids.split(',').map(id => parseInt(id)).filter(id => !isNaN(id));
       if (stockIds.length > 0) {
-        // Link inventory stock items to this BA and update status to completed
-        await db.query('UPDATE inventory_stock SET ba_id = ?, status = ? WHERE stock_id IN (?) AND ba_id IS NULL', [baId, 'completed', stockIds]);
-
-        // Update return_items current_status to Completed for linked items
-        await db.query(`
-          UPDATE return_items ri
-          SET ri.current_status = ?
-          WHERE ri.item_id IN (
+        const [locked] = await conn.query(
+          `SELECT s.stock_id, s.item_id, s.ba_id, ba.status AS ba_status
+           FROM inventory_stock s LEFT JOIN berita_acara ba ON ba.ba_id = s.ba_id
+           WHERE s.stock_id IN (?) FOR UPDATE`,
+          [stockIds]
+        );
+        if (locked.length !== stockIds.length) throw new Error('Sebagian SKU tidak valid.');
+        const occupied = locked.filter(stock => stock.ba_id && stock.ba_status !== 'void');
+        if (occupied.length) {
+          throw new Error(`SKU #${occupied.map(stock => stock.item_id).join(', ')} sudah terikat BA aktif.`);
+        }
+        await conn.query(
+          'UPDATE inventory_stock SET ba_id = ?, status = ? WHERE stock_id IN (?) AND (ba_id IS NULL OR ba_id = ?)',
+          [baId, 'completed', stockIds, baId]
+        );
+        await conn.query(
+          `UPDATE return_items ri SET ri.current_status = ? WHERE ri.item_id IN (
             SELECT item_id FROM inventory_stock WHERE stock_id IN (?)
-          )
-        `, ['Completed', stockIds]);
-
-        // Link returns to this BA
-        await db.query(`
-          UPDATE returns 
-          SET ba_id = ? 
-          WHERE return_id IN (
+          )`,
+          ['Completed', stockIds]
+        );
+        await conn.query(
+          `UPDATE returns SET ba_id = ? WHERE return_id IN (
             SELECT DISTINCT return_id FROM inventory_stock WHERE stock_id IN (?)
-          )
-        `, [baId, stockIds]);
+          )`,
+          [baId, stockIds]
+        );
       }
     }
+
+    await conn.commit();
+    conn.release();
 
     await reportService.logActivity(req.session.userId, 'create_ba',
       `BA ${baNumber} dibuat`, req.ip, req.headers['user-agent']);
 
     req.flash('success', `Berita Acara ${baNumber} berhasil dibuat.`);
     res.redirect(`/ba/${baId}`);
-  } catch (err) { next(err); }
+  } catch (err) {
+    await conn.rollback();
+    conn.release();
+    if (err.code === 'ER_DUP_ENTRY') {
+      req.flash('error', 'SKU sudah terikat BA aktif atau nomor BA duplikat. Muat ulang dan coba lagi.');
+      return res.redirect('/ba/create');
+    }
+    if (err.message && err.message.includes('sudah terikat BA aktif')) {
+      req.flash('error', err.message);
+      return res.redirect('/ba/create');
+    }
+    next(err);
+  }
 };
 
 // ─── Supplier Lokal Packaging ─────────────────────────────────────────────────
@@ -480,11 +503,29 @@ exports.saveSign = async (req, res, next) => {
 // ─── Void BA ─────────────────────────────────────────────────────────────────
 exports.void = async (req, res, next) => {
   try {
-    await baService.voidBA(parseInt(req.params.id));
+    const baId = parseInt(req.params.id);
+    await baService.voidBA(baId, req.session.userId, req.body.reason);
     await reportService.logActivity(req.session.userId, 'void_ba',
-      `BA #${req.params.id} di-void`, req.ip, req.headers['user-agent']);
-    req.flash('warning', 'Berita Acara telah di-void.');
+      `BA #${baId} di-void: ${req.body.reason || 'tanpa alasan'}`, req.ip, req.headers['user-agent']);
+    req.flash('warning', 'Berita Acara di-void. SKU dikembalikan ke Recovery.');
     res.redirect('/ba');
+  } catch (err) { next(err); }
+};
+
+exports.voidItem = async (req, res, next) => {
+  try {
+    const baId = parseInt(req.params.id);
+    const stockId = parseInt(req.params.stockId);
+    const reason = String(req.body.reason || '').trim();
+    if (!reason) {
+      req.flash('error', 'Alasan hapus SKU wajib diisi.');
+      return res.redirect(`/ba/${baId}`);
+    }
+    await baService.voidBAItem(baId, stockId, req.session.userId, reason);
+    await reportService.logActivity(req.session.userId, 'void_ba_item',
+      `SKU stok #${stockId} dilepas dari BA #${baId}: ${reason}`, req.ip, req.headers['user-agent']);
+    req.flash('warning', 'SKU dilepas dari BA dan dikembalikan ke Recovery.');
+    res.redirect(`/ba/${baId}`);
   } catch (err) { next(err); }
 };
 

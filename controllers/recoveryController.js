@@ -403,6 +403,21 @@ exports.bulkWriteOff = async (req, res, next) => {
       if (!parentReturn) continue;
 
       const returnItems = itemsByReturn[returnId];
+      const targetItemIds = returnItems.map(item => item.item_id);
+      const lockedTargets = targetItemIds.length
+        ? (await db.query(
+            `SELECT item_id, s.ba_id, ba.status AS ba_status FROM inventory_stock s
+             LEFT JOIN berita_acara ba ON ba.ba_id = s.ba_id
+             WHERE s.item_id IN (?) FOR UPDATE`,
+            [targetItemIds]
+          ))[0]
+        : [];
+      const blockedItems = lockedTargets.filter(stock => stock.ba_id && stock.ba_status !== 'void');
+      if (blockedItems.length) {
+        const occupied = blockedItems.map(stock => stock.item_id).join(', ');
+        req.flash('error', `SKU #${occupied} sudah terikat BA aktif dan dilewati.`);
+        continue;
+      }
 
       // Create Berita Acara for this return_id
       const baTitle = `${title || 'BA Write-Off'} - ${parentReturn.return_number}`;
@@ -415,7 +430,7 @@ exports.bulkWriteOff = async (req, res, next) => {
         final_price: null
       };
 
-      const { baNumber } = await baService.createBA(baData, userId);
+      const { baId, baNumber } = await baService.createBA(baData, userId);
 
       await reportService.logActivity(
         userId,
@@ -450,7 +465,7 @@ exports.bulkWriteOff = async (req, res, next) => {
             `UPDATE inventory_stock 
              SET status = 'tersedia', 
                  category = ?, 
-                 updated_at = NOW() 
+                 updated_at = NOW()
              WHERE stock_id = ?`,
             [category, stockId]
           );
@@ -460,10 +475,14 @@ exports.bulkWriteOff = async (req, res, next) => {
         await db.query(
           `UPDATE return_items 
            SET current_status = 'Completed', 
-               perbaikan_status = 'recovery',
-               updated_at = NOW() 
+                perbaikan_status = 'recovery',
+                updated_at = NOW()
            WHERE item_id = ?`,
           [item.item_id]
+        );
+        await db.query(
+          `UPDATE inventory_stock SET ba_id = ?, status = 'completed' WHERE return_id = ? AND item_id = ?`,
+          [baId, returnId, item.item_id]
         );
 
         await reportService.logActivity(
@@ -712,6 +731,21 @@ exports.bulkComplete = async (req, res, next) => {
       if (!parentReturn) continue;
 
       const returnItems = itemsByReturn[returnId];
+      const targetItemIds = returnItems.map(item => item.item_id);
+      const lockedTargets = targetItemIds.length
+        ? (await db.query(
+            `SELECT item_id, s.ba_id, ba.status AS ba_status FROM inventory_stock s
+             LEFT JOIN berita_acara ba ON ba.ba_id = s.ba_id
+             WHERE s.item_id IN (?) FOR UPDATE`,
+            [targetItemIds]
+          ))[0]
+        : [];
+      const blockedItems = lockedTargets.filter(stock => stock.ba_id && stock.ba_status !== 'void');
+      if (blockedItems.length) {
+        const occupied = blockedItems.map(stock => stock.item_id).join(', ');
+        req.flash('error', `SKU #${occupied} sudah terikat BA aktif dan dilewati.`);
+        continue;
+      }
 
       // Find disposition of the first item to determine the BA type (default: refurbish)
       const firstItem = returnItems[0];
@@ -728,7 +762,7 @@ exports.bulkComplete = async (req, res, next) => {
         final_price: null
       };
 
-      const { baNumber } = await baService.createBA(baData, userId);
+      const { baId, baNumber } = await baService.createBA(baData, userId);
 
       await reportService.logActivity(
         userId,
@@ -763,7 +797,7 @@ exports.bulkComplete = async (req, res, next) => {
             `UPDATE inventory_stock 
              SET status = 'tersedia', 
                  category = ?, 
-                 updated_at = NOW() 
+                 updated_at = NOW()
              WHERE stock_id = ?`,
             [category, stockId]
           );
@@ -773,10 +807,14 @@ exports.bulkComplete = async (req, res, next) => {
         await db.query(
           `UPDATE return_items 
            SET current_status = 'Completed', 
-               perbaikan_status = 'recovery',
-               updated_at = NOW() 
+                perbaikan_status = 'recovery',
+                updated_at = NOW()
            WHERE item_id = ?`,
           [item.item_id]
+        );
+        await db.query(
+          `UPDATE inventory_stock SET ba_id = ?, status = 'completed' WHERE return_id = ? AND item_id = ?`,
+          [baId, returnId, item.item_id]
         );
 
         await reportService.logActivity(
