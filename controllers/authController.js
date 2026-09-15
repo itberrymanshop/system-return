@@ -42,8 +42,15 @@ exports.login = async (req, res, next) => {
       req.ip, req.headers['user-agent']
     );
 
-    res.redirect('/dashboard');
+    req.session.save((err) => {
+      if (err) {
+        console.error('Session save error:', err);
+        return next(err);
+      }
+      res.redirect('/dashboard');
+    });
   } catch (err) {
+    console.error('Login error details:', err);
     next(err);
   }
 };

@@ -15,6 +15,9 @@ const { errorHandler, notFoundHandler } = require('./middleware/errorHandler');
 
 const app = express();
 
+// Trust reverse proxy (Nginx) for secure cookies and IP forwarding
+app.set('trust proxy', 1);
+
 // ─── View Engine ─────────────────────────────────────────────────────────────
 app.set('view engine', 'ejs');
 app.set('views', path.join(__dirname, 'views'));
@@ -31,15 +34,29 @@ app.use(express.urlencoded({ extended: true }));
 app.use(express.json());
 app.use(methodOverride('_method'));
 
+const MySQLStore = require('express-mysql-session')(session);
+const sessionStore = new MySQLStore({
+  host: process.env.DB_HOST || 'localhost',
+  port: parseInt(process.env.DB_PORT) || 3306,
+  user: process.env.DB_USER || 'root',
+  password: process.env.DB_PASSWORD || '',
+  database: process.env.DB_NAME || 'return_management_db',
+  clearExpired: true,
+  checkExpirationInterval: 900000,
+  expiration: parseInt(process.env.SESSION_MAX_AGE) || 86400000
+});
+
 // ─── Session ──────────────────────────────────────────────────────────────────
 app.use(session({
+  key: 'retur_session',
   secret: process.env.SESSION_SECRET || 'default-secret',
+  store: sessionStore,
   resave: false,
   saveUninitialized: false,
   cookie: {
     maxAge: parseInt(process.env.SESSION_MAX_AGE) || 86400000,
     httpOnly: true,
-    secure: process.env.NODE_ENV === 'production',
+    secure: false,
     sameSite: 'lax'
   }
 }));
