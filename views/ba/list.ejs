@@ -277,7 +277,7 @@
             <div>
               <% if (hasExportableCategory) { %>
                 <label class="ba-select-label">
-                  <input type="checkbox" class="form-check-input export-ba-checkbox" value="<%= d.ba_id %>" data-ba-number="<%= d.ba_number %>" title="Pilih BA untuk export">
+                  <input type="checkbox" class="form-check-input export-ba-checkbox" value="<%= d.ba_id %>" data-ba-id="<%= d.ba_id %>" data-ba-type="<%= d.ba_type %>" data-ba-number="<%= d.ba_number %>" title="Pilih BA untuk export">
                   <span>Pilih untuk export</span>
                 </label>
               <% } %>
@@ -361,7 +361,7 @@
                     style="cursor: pointer;">
                     <td class="text-center" onclick="event.stopPropagation()">
                       <% if (hasSupplierLokal) { %>
-                        <input type="checkbox" class="form-check-input export-ba-checkbox" value="<%= d.ba_id %>" data-ba-number="<%= d.ba_number %>" title="Pilih <%= d.ba_number %>">
+                        <input type="checkbox" class="form-check-input export-ba-checkbox" value="<%= d.ba_id %>" data-ba-id="<%= d.ba_id %>" data-ba-type="<%= d.ba_type %>" data-ba-number="<%= d.ba_number %>" title="Pilih <%= d.ba_number %>">
                       <% } else { %>
                         <span class="text-muted small"><%= i + 1 %></span>
                       <% } %>
@@ -642,29 +642,23 @@
     }
 
     function exportSupplierLokalExcel() {
-      let selectedIds = [];
-      if (false) {
-        const table = $('.datatable').DataTable();
-        const rows = table.rows().nodes();
-        $('input.export-ba-checkbox:checked', rows).each(function () {
-          selectedIds.push($(this).val());
-        });
-      } else {
-        $('.export-ba-checkbox:checked').each(function () {
-          selectedIds.push($(this).val());
-        });
-      }
+      const selectedById = new Map();
+      $('.export-ba-checkbox:checked').each(function () {
+        const id = String(this.dataset.baId || this.value);
+        if (!selectedById.has(id)) selectedById.set(id, this);
+      });
+      const selectedIds = [...selectedById.keys()];
+      const isSupplierFilter = new URLSearchParams(window.location.search).get('status') === 'return_to_supplier';
 
       if (selectedIds.length > 0) {
-        const selectedSupplierIds = $('.export-ba-checkbox:checked').filter(function () {
-          return $(this).closest('.ba-card, tr').find('.badge').text().includes('SUPPLIER LOKAL');
-        }).map(function () { return this.value; }).get();
-        if (selectedSupplierIds.length > 0 && selectedSupplierIds.length < selectedIds.length) {
+        const selectedSupplierIds = [...selectedById.entries()]
+          .filter(([, checkbox]) => isSupplierFilter || checkbox.dataset.baType === 'retur_supplier')
+          .map(([id]) => id);
+        if (selectedSupplierIds.length !== selectedIds.length) {
           alert('Export Supplier Lokal dan BA lainnya harus dipisah agar format laporan Supplier Lokal tetap khusus.');
           return;
         }
-        const endpoint = selectedSupplierIds.length > 0 ? '/ba/export-supplier-lokal' : '/ba/export-all';
-        window.location.href = endpoint + '?ba_ids=' + selectedIds.join(',');
+        window.location.href = '/ba/export-supplier-lokal?ba_ids=' + selectedIds.join(',');
       } else {
         const form = document.getElementById('filter-form');
         const formData = new FormData(form);
