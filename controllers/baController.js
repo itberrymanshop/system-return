@@ -38,8 +38,8 @@ exports.list = async (req, res, next) => {
       if (selectedBa) {
         // Fetch items linked directly in inventory_stock
         const [stockItems] = await db.query(`
-          SELECT 
-            ri.item_code AS sku, ri.item_name, ri.quantity, 
+          SELECT
+            COALESCE(NULLIF(ri.sku, ''), ri.item_code) AS sku, ri.item_name, ri.quantity, 
             s.category AS disposition, s.status AS current_status,
             v.vendor_name,
             mb.harga_beli AS harga_vendor,
@@ -57,8 +57,8 @@ exports.list = async (req, res, next) => {
         } else {
           // Fallback to legacy return_id logic if no items are explicitly linked in inventory_stock
           let itemSql = `
-            SELECT 
-              ri.item_code AS sku, ri.item_name, ri.quantity, ri.disposition, 
+            SELECT
+              COALESCE(NULLIF(ri.sku, ''), ri.item_code) AS sku, ri.item_name, ri.quantity, ri.disposition, 
               ri.disposition AS category,
               r.current_status,
               v.vendor_name,
@@ -68,8 +68,8 @@ exports.list = async (req, res, next) => {
             JOIN returns r ON ri.return_id = r.return_id
             LEFT JOIN vendors v ON ri.vendor_id = v.vendor_id
             LEFT JOIN master_barang mb ON ri.item_code COLLATE utf8mb4_unicode_ci = mb.kode_barang COLLATE utf8mb4_unicode_ci
-            WHERE ri.return_id = ?
-          `;
+           WHERE 1 = 0 AND ri.return_id = ?
+       `;
           const params = [selectedBa.return_id];
           if (selectedBa.ba_type === 'write_off') {
             itemSql += " AND ri.disposition = 'write_off'";
@@ -119,7 +119,7 @@ exports.view = async (req, res, next) => {
     let items = [];
     const [stockItems] = await db.query(`
       SELECT
-        s.stock_id, s.item_id, ri.item_code AS sku, ri.item_name, ri.quantity,
+        s.stock_id, s.item_id, COALESCE(NULLIF(ri.sku, ''), ri.item_code) AS sku, ri.item_name, ri.quantity,
         s.category AS disposition, s.status AS current_status,
         v.vendor_name
       FROM inventory_stock s
@@ -134,8 +134,8 @@ exports.view = async (req, res, next) => {
     } else if (ba.status !== 'void') {
       // Fallback to legacy return_id logic if no items are explicitly linked in inventory_stock
       let itemSql = `
-        SELECT 
-          ri.item_code AS sku, ri.item_name, ri.quantity, ri.disposition, 
+        SELECT
+          COALESCE(NULLIF(ri.sku, ''), ri.item_code) AS sku, ri.item_name, ri.quantity, ri.disposition, 
           ri.disposition AS category,
           r.current_status,
           v.vendor_name,
@@ -145,7 +145,7 @@ exports.view = async (req, res, next) => {
         JOIN returns r ON ri.return_id = r.return_id
         LEFT JOIN vendors v ON ri.vendor_id = v.vendor_id
         LEFT JOIN master_barang mb ON ri.item_code COLLATE utf8mb4_unicode_ci = mb.kode_barang COLLATE utf8mb4_unicode_ci
-        WHERE ri.return_id = ?
+        WHERE 1 = 0 AND ri.return_id = ?
       `;
       const params = [ba.return_id];
       if (ba.ba_type === 'write_off') {
@@ -356,14 +356,19 @@ exports.createForm = async (req, res, next) => {
 
 // ─── Create POST ──────────────────────────────────────────────────────────────
 exports.create = async (req, res, next) => {
-  const conn = await db.getConnection();
+  let conn;
   try {
     const { stock_ids } = req.body;
+    const stockIds = String(stock_ids || '').split(',').map(id => parseInt(id)).filter(id => !isNaN(id));
+    if (!stockIds.length) {
+      req.flash('error', 'Pilih minimal satu SKU untuk membuat BA.');
+      return res.redirect('/ba/create');
+    }
+    conn = await db.getConnection();
     await conn.beginTransaction();
     const { baId, baNumber } = await baService.createBA(req.body, req.session.userId, conn);
 
-    if (stock_ids) {
-      const stockIds = stock_ids.split(',').map(id => parseInt(id)).filter(id => !isNaN(id));
+    if (stockIds.length) {
       if (stockIds.length > 0) {
         const [locked] = await conn.query(
           `SELECT s.stock_id, s.item_id, s.ba_id, ba.status AS ba_status
@@ -404,8 +409,10 @@ exports.create = async (req, res, next) => {
     req.flash('success', `Berita Acara ${baNumber} berhasil dibuat.`);
     res.redirect(`/ba/${baId}`);
   } catch (err) {
-    await conn.rollback();
-    conn.release();
+    if (conn) {
+      await conn.rollback();
+      conn.release();
+    }
     if (err.code === 'ER_DUP_ENTRY') {
       req.flash('error', 'SKU sudah terikat BA aktif atau nomor BA duplikat. Muat ulang dan coba lagi.');
       return res.redirect('/ba/create');
@@ -512,6 +519,18 @@ exports.void = async (req, res, next) => {
   } catch (err) { next(err); }
 };
 
+exports.delete = async (req, res, next) => {
+  try {
+    const baId = parseInt(req.params.id);
+    const [[ba]] = await db.query('SELECT ba_number FROM berita_acara WHERE ba_id = ?', [baId]);
+    await baService.deleteBA(baId);
+    await reportService.logActivity(req.session.userId, 'delete_ba',
+      `BA ${ba ? ba.ba_number : `#${baId}`} dihapus permanen`, req.ip, req.headers['user-agent']);
+    req.flash('success', 'Berita Acara dihapus permanen.');
+    res.redirect('/ba');
+  } catch (err) { next(err); }
+};
+
 exports.voidItem = async (req, res, next) => {
   try {
     const baId = parseInt(req.params.id);
@@ -565,8 +584,8 @@ exports.exportExcel = async (req, res, next) => {
     // Fetch items linked directly in inventory_stock
     let items = [];
     const [stockItems] = await db.query(`
-      SELECT 
-        ri.item_code AS sku, 
+      SELECT
+        COALESCE(NULLIF(ri.sku, ''), ri.item_code) AS sku, 
         ri.item_name, 
         ri.quantity, 
         s.category AS disposition, 
@@ -585,8 +604,8 @@ exports.exportExcel = async (req, res, next) => {
     } else {
       // Fallback logic
       let itemSql = `
-        SELECT 
-          ri.item_code AS sku, 
+        SELECT
+          COALESCE(NULLIF(ri.sku, ''), ri.item_code) AS sku, 
           ri.item_name, 
           ri.quantity, 
           ri.disposition, 
@@ -600,7 +619,7 @@ exports.exportExcel = async (req, res, next) => {
         JOIN returns r ON ri.return_id = r.return_id
         LEFT JOIN vendors v ON ri.vendor_id = v.vendor_id
         LEFT JOIN master_barang mb ON ri.item_code COLLATE utf8mb4_unicode_ci = mb.kode_barang COLLATE utf8mb4_unicode_ci
-        WHERE ri.return_id = ?
+        WHERE 1 = 0 AND ri.return_id = ?
       `;
       const params = [ba.return_id];
       if (ba.ba_type === 'write_off') {
@@ -698,8 +717,8 @@ exports.exportAll = async (req, res, next) => {
     let items = [];
     if (baIds.length > 0) {
       const [stockItems] = await db.query(`
-        SELECT 
-          ri.item_code AS sku, ri.item_name, ri.quantity, 
+        SELECT
+          COALESCE(NULLIF(ri.sku, ''), ri.item_code) AS sku, ri.item_name, ri.quantity, 
           s.category AS disposition,
           v.vendor_name,
           mb.harga_beli AS harga_vendor,
@@ -717,11 +736,11 @@ exports.exportAll = async (req, res, next) => {
       // Fetch BAs that didn't have stockItems (fallback)
       const foundBaNumbers = new Set(items.map(it => it.ba_number));
       const missingBAs = docs.filter(d => !foundBaNumbers.has(d.ba_number));
-      if (missingBAs.length > 0) {
+      if (false && missingBAs.length > 0) {
         const missingBaIds = missingBAs.map(d => d.ba_id);
         const [oldItems] = await db.query(`
-          SELECT 
-            ri.item_code AS sku, ri.item_name, ri.quantity, ri.disposition AS disposition, 
+          SELECT
+            COALESCE(NULLIF(ri.sku, ''), ri.item_code) AS sku, ri.item_name, ri.quantity, ri.disposition AS disposition, 
             v.vendor_name,
             mb.harga_beli AS harga_vendor,
             ri.total_price AS harga_final,
@@ -907,8 +926,8 @@ exports.exportSupplierLokal = async (req, res, next) => {
      if (baIds.length > 0) {
        // 1. Fetch from inventory_stock
       const [stockItems] = await db.query(`
-        SELECT 
-          ri.item_code AS sku, 
+        SELECT
+          COALESCE(NULLIF(ri.sku, ''), ri.item_code) AS sku, 
           ri.item_name, 
           ri.quantity, 
           s.category AS disposition, 
@@ -931,10 +950,10 @@ exports.exportSupplierLokal = async (req, res, next) => {
       // 2. Fetch fallback for legacy BAs if any baIds were not present in inventory_stock
       const foundBaIds = new Set(items.map(it => it.ba_id));
       const missingBaIds = baIds.filter(id => !foundBaIds.has(id));
-      if (missingBaIds.length > 0) {
+      if (false && missingBaIds.length > 0) {
         const [oldItems] = await db.query(`
-          SELECT 
-            ri.item_code AS sku, 
+          SELECT
+            COALESCE(NULLIF(ri.sku, ''), ri.item_code) AS sku, 
             ri.item_name, 
             ri.quantity, 
             ri.disposition, 

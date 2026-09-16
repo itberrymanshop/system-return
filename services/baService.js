@@ -41,10 +41,6 @@ async function createBA(data, userId, conn = db) {
     ]
   );
 
-  if (data.return_id) {
-    await conn.query('UPDATE returns SET ba_id = ? WHERE return_id = ?', [result.insertId, parseInt(data.return_id)]);
-  }
-
   return { baId: result.insertId, baNumber };
 }
 
@@ -56,7 +52,10 @@ async function getBAById(baId) {
            u2.full_name AS sig_staff_recover_name,
            u3.full_name AS sig_fat_name,
            u4.full_name AS sig_admin_name,
-           v.vendor_name
+           v.vendor_name,
+           (SELECT al.action_description FROM activity_logs al
+            WHERE al.action_type = 'void_ba' AND al.action_description LIKE CONCAT('%BA #', ba.ba_id, '%')
+            ORDER BY al.created_at DESC LIMIT 1) AS void_reason
     FROM berita_acara ba
     LEFT JOIN  returns r   ON ba.return_id  = r.return_id
     LEFT JOIN users u1 ON ba.created_by           = u1.user_id
@@ -94,8 +93,8 @@ async function getBAList(filters = {}) {
     return_to_supplier: 'skus_return_to_supplier'
   };
   const skuExpression = filters.status && statusSkuColumnMap[filters.status]
-    ? `COALESCE(stock_agg.${statusSkuColumnMap[filters.status]}, legacy_agg.${statusSkuColumnMap[filters.status]})`
-    : 'COALESCE(stock_agg.skus, legacy_agg.skus)';
+    ? `stock_agg.${statusSkuColumnMap[filters.status]}`
+    : 'stock_agg.skus';
   let sql = `
     SELECT 
       ba.ba_id, 
@@ -106,7 +105,8 @@ async function getBAList(filters = {}) {
        ba.final_price,
        ba.title,
        ba.vendor_id,
-       ba.export_month,
+       (SELECT al.action_description FROM activity_logs al WHERE al.action_type = 'void_ba' AND al.action_description LIKE CONCAT('%BA #', ba.ba_id, '%') ORDER BY al.created_at DESC LIMIT 1) AS void_reason,
+        ba.export_month,
        ba.box_number,
        ba.box_weight_kg,
       r.return_number,
@@ -115,8 +115,8 @@ async function getBAList(filters = {}) {
       u.full_name AS created_by_name,
       v.vendor_name,
       ${skuExpression} AS skus,
-      COALESCE(stock_agg.total_qty, legacy_agg.total_qty) AS total_qty,
-      COALESCE(stock_agg.item_dispositions, legacy_agg.item_dispositions) AS item_dispositions
+       stock_agg.total_qty AS total_qty,
+       stock_agg.item_dispositions AS item_dispositions
     FROM berita_acara ba
     LEFT JOIN returns r ON ba.return_id = r.return_id
     LEFT JOIN vendors v ON ba.vendor_id = v.vendor_id
@@ -294,6 +294,28 @@ async function voidBA(baId, userId, reason) {
   }
 }
 
+async function deleteBA(baId) {
+  const conn = await db.getConnection();
+  try {
+    await conn.beginTransaction();
+    const [[ba]] = await conn.query(
+      `SELECT ba_id, status FROM berita_acara WHERE ba_id = ? FOR UPDATE`,
+      [baId]
+    );
+    if (!ba) throw new Error('Berita Acara tidak ditemukan.');
+    if (ba.status !== 'void') throw new Error('BA harus di-void terlebih dahulu sebelum dihapus permanen.');
+    await conn.query('DELETE FROM inventory_stock WHERE ba_id = ?', [baId]);
+    await conn.query('UPDATE returns SET ba_id = NULL WHERE ba_id = ?', [baId]);
+    await conn.query('DELETE FROM berita_acara WHERE ba_id = ?', [baId]);
+    await conn.commit();
+    conn.release();
+  } catch (err) {
+    await conn.rollback();
+    conn.release();
+    throw err;
+  }
+}
+
 async function voidBAItem(baId, stockId, userId, reason) {
   const conn = await db.getConnection();
   try {
@@ -367,6 +389,6 @@ async function updateVendor(vendorId, data) {
 
 module.exports = {
   generateBANumber,
-  createBA, getBAById, getBAList, submitForSigning, signBA, voidBA, voidBAItem,
+  createBA, getBAById, getBAList, submitForSigning, signBA, voidBA, deleteBA, voidBAItem,
   getVendors, createVendor, getVendorById, updateVendor
 };

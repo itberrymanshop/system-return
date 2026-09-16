@@ -44,7 +44,7 @@
         </div>
       <% } %>
 
-      <form method="POST" action="/ba/create">
+      <form method="POST" action="/ba/create" id="createBaForm">
         <% if (typeof stockIdsParam !== 'undefined' && stockIdsParam) { %>
           <input type="hidden" name="stock_ids" value="<%= stockIdsParam %>">
         <% } %>
@@ -84,7 +84,8 @@
             <div class="input-group">
               <span class="input-group-text">Rp</span>
               <input type="number" step="0.01" class="form-control" name="final_price" min="0" value="<%= typeof defaultFinalPrice !== 'undefined' && defaultFinalPrice !== null ? defaultFinalPrice : '' %>" placeholder="0">
-            </div>
+</div>
+
           </div>
 
           <div class="col-md-6">
@@ -113,3 +114,13 @@
     </div>
   </div>
 </div>
+
+<script>
+  document.getElementById('createBaForm').addEventListener('submit', function () {
+    const button = this.querySelector('button[type="submit"]');
+    if (button) {
+      button.disabled = true;
+      button.innerHTML = '<i class="bi bi-hourglass-split"></i> Menyimpan...';
+    }
+  });
+</script>

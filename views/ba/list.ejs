@@ -264,14 +264,15 @@
         <div class="col-12"><div class="alert alert-light text-center">Belum ada Berita Acara.</div></div>
       <% } %>
       <% docs.forEach((d, i) => {
+        const isVoid = d.status === 'void';
         const categories = d.item_dispositions ? [...new Set(d.item_dispositions.split(', ').filter(Boolean))] : [];
         const hasSupplierLokal = categories.includes('return_to_supplier') || d.ba_type === 'retur_supplier';
-        const hasExportableCategory = categories.some(category => ['rekondisi', 'refurbish', 'write_off', 'return_to_supplier'].includes(category)) || ['rekondisi', 'refurbish', 'write_off', 'retur_supplier'].includes(d.ba_type);
+        const hasExportableCategory = !isVoid && (categories.some(category => ['rekondisi', 'refurbish', 'write_off', 'return_to_supplier'].includes(category)) || ['rekondisi', 'refurbish', 'write_off', 'retur_supplier'].includes(d.ba_type));
         const statusMap = { rekondisi: { label: 'REKONDISI', color: 'primary' }, refurbish: { label: 'REFURBISH', color: 'dark' }, write_off: { label: 'WRITE OFF', color: 'danger' }, return_to_supplier: { label: 'SUPPLIER LOKAL', color: 'secondary' }, retur_final: { label: 'RETUR FINAL', color: 'primary' } };
-        const statusEntries = (categories.length ? categories : [d.ba_type]).map(category => statusMap[category] || { label: String(category || '-').replace('_', ' ').toUpperCase(), color: 'secondary' });
+        const statusEntries = isVoid ? [{ label: 'VOID', color: 'danger' }] : (categories.length ? categories : [d.ba_type]).map(category => statusMap[category] || { label: String(category || '-').replace('_', ' ').toUpperCase(), color: 'secondary' });
       %>
       <div class="col-12 col-md-6 col-xl-4">
-        <article class="ba-card h-100 <%= hasExportableCategory ? 'ba-card-supplier ba-card-selectable' : '' %>" data-ba-search="<%= [d.ba_number, d.skus, d.title, d.vendor_name].filter(Boolean).join(' ').toLowerCase() %>" <% if (hasExportableCategory) { %>data-ba-selectable="true" data-ba-number="<%= d.ba_number %>" data-ba-supplier="<%= d.vendor_name || '-' %>" data-ba-qty="<%= d.total_qty || 0 %>" data-ba-skus="<%= d.skus || '-' %>" data-ba-box="<%= d.box_number || 'Belum diisi' %>" data-ba-weight="<%= d.box_weight_kg ? `${d.box_weight_kg} Kg` : 'Belum diisi' %>"<% } %>>
+        <article class="ba-card h-100 <%= hasExportableCategory ? 'ba-card-supplier ba-card-selectable' : '' %> <%= isVoid ? 'border-danger' : '' %>" data-ba-search="<%= [d.ba_number, d.skus, d.title, d.vendor_name].filter(Boolean).join(' ').toLowerCase() %>" <% if (hasExportableCategory) { %>data-ba-selectable="true" data-ba-number="<%= d.ba_number %>" data-ba-supplier="<%= d.vendor_name || '-' %>" data-ba-qty="<%= d.total_qty || 0 %>" data-ba-skus="<%= d.skus || '-' %>" data-ba-box="<%= d.box_number || 'Belum diisi' %>" data-ba-weight="<%= d.box_weight_kg ? `${d.box_weight_kg} Kg` : 'Belum diisi' %>"<% } %>>
           <div class="ba-card-header">
             <div>
               <% if (hasExportableCategory) { %>
@@ -280,7 +281,7 @@
                   <span>Pilih untuk export</span>
                 </label>
               <% } %>
-              <div class="text-muted small mt-2">Nomor BA</div>
+              <div class="text-muted small <%= hasExportableCategory ? 'mt-2' : '' %>">Nomor BA</div>
               <code class="ba-number"><%= d.ba_number %></code>
             </div>
             <div class="text-end"><% statusEntries.forEach(entry => { %><span class="badge bg-<%= entry.color %> ms-1"><%= entry.label %></span><% }) %><div class="text-muted small mt-2"><%= formatDate(d.created_at) %></div></div>
@@ -293,16 +294,24 @@
               <div><span class="ba-label">Harga Final</span><span><%= d.final_price ? formatCurrency(d.final_price) : '-' %></span></div>
             </div>
             <div class="mt-3"><span class="ba-label">SKU</span><div class="ba-sku-list"><% if (d.skus) { d.skus.split(', ').forEach(s => { %><span class="badge bg-light text-dark border font-monospace"><%= s %></span><% }) } else { %><span class="text-muted">-</span><% } %></div></div>
-            <% if (hasSupplierLokal) { %>
+            <% if (hasSupplierLokal && !isVoid) { %>
               <div class="ba-packaging mt-3"><div><span class="ba-label">Kardus</span><% if (d.box_number) { %><strong><%= d.box_number %></strong><% } else { %><span class="text-warning">Belum diisi</span><% } %></div><div><span class="ba-label">Berat</span><strong><%= d.box_weight_kg || '-' %> Kg</strong></div></div>
             <% } %>
-            <div class="text-muted small mt-3 text-truncate" title="<%= d.title || '' %>"><i class="bi bi-file-text me-1"></i><%= d.title || '-' %></div>
+            <% if (isVoid) { %>
+              <div class="alert alert-danger py-2 mt-3 mb-0 small"><strong>Alasan void:</strong> <%= d.void_reason || 'Tidak ada alasan tercatat.' %></div>
+            <% } else { %>
+              <div class="text-muted small mt-3 text-truncate" title="<%= d.title || '' %>"><i class="bi bi-file-text me-1"></i><%= d.title || '-' %></div>
+            <% } %>
           </div>
           <div class="ba-card-footer">
             <span class="me-auto"></span>
-            <% if (hasSupplierLokal) { %><button type="button" class="btn btn-sm btn-outline-warning packaging-btn" data-bs-toggle="modal" data-bs-target="#packagingModal" data-ba-id="<%= d.ba_id %>" data-ba-number="<%= d.ba_number %>" data-box="<%= d.box_number || '' %>" data-weight="<%= d.box_weight_kg || '' %>"><i class="bi bi-box-seam"></i> Kardus</button><% } %>
-            <a href="/ba/<%= d.ba_id %>" class="btn btn-sm btn-outline-primary"><i class="bi bi-eye"></i></a><a href="/ba/<%= d.ba_id %>/export-excel" class="btn btn-sm btn-outline-success"><i class="bi bi-file-earmark-excel"></i></a>
-            <% if (['draft','pending_sign'].includes(d.status)) { %><a href="/ba/<%= d.ba_id %>/sign" class="btn btn-sm btn-outline-warning"><i class="bi bi-pen"></i></a><% } %>
+            <a href="/ba/<%= d.ba_id %>" class="btn btn-sm btn-outline-primary"><i class="bi bi-eye"></i></a>
+            <% if (isVoid && hasRole(['admin','manager'])) { %><button type="button" class="btn btn-sm btn-outline-danger delete-ba-btn" data-bs-toggle="modal" data-bs-target="#deleteBaModal" data-ba-id="<%= d.ba_id %>" data-ba-number="<%= d.ba_number %>"><i class="bi bi-trash"></i></button><% } %>
+            <% if (!isVoid) { %>
+              <% if (hasSupplierLokal) { %><button type="button" class="btn btn-sm btn-outline-warning packaging-btn" data-bs-toggle="modal" data-bs-target="#packagingModal" data-ba-id="<%= d.ba_id %>" data-ba-number="<%= d.ba_number %>" data-box="<%= d.box_number || '' %>" data-weight="<%= d.box_weight_kg || '' %>"><i class="bi bi-box-seam"></i> Kardus</button><% } %>
+              <a href="/ba/<%= d.ba_id %>/export-excel" class="btn btn-sm btn-outline-success"><i class="bi bi-file-earmark-excel"></i></a>
+              <% if (['draft','pending_sign'].includes(d.status)) { %><a href="/ba/<%= d.ba_id %>/sign" class="btn btn-sm btn-outline-warning"><i class="bi bi-pen"></i></a><% } %>
+            <% } %>
           </div>
         </article>
       </div>
@@ -423,6 +432,23 @@
       </div>
     </div>
 
+  <div class="modal fade" id="deleteBaModal" tabindex="-1" aria-hidden="true">
+    <div class="modal-dialog modal-dialog-centered">
+      <div class="modal-content border-danger">
+        <form method="POST" id="deleteBaForm" onsubmit="return document.getElementById('deleteBaConfirmText').value.trim().toUpperCase() === 'HAPUS' && confirm('Hapus BA permanen dari database?')">
+          <div class="modal-header bg-danger text-white"><h5 class="modal-title">Hapus BA Permanen</h5><button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal"></button></div>
+          <div class="modal-body">
+            <p>BA <code id="deleteBaNumber"></code> akan dihapus permanen.</p>
+            <p class="text-danger fw-semibold">Aksi tidak bisa dibatalkan.</p>
+            <label class="form-label">Ketik <code>HAPUS</code> untuk konfirmasi</label>
+            <input class="form-control" id="deleteBaConfirmText" autocomplete="off" required>
+          </div>
+          <div class="modal-footer"><button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Batal</button><button type="submit" class="btn btn-danger">Hapus Permanen</button></div>
+        </form>
+      </div>
+    </div>
+  </div>
+
   <div class="modal fade" id="packagingModal" tabindex="-1" aria-hidden="true">
     <div class="modal-dialog modal-dialog-centered">
       <div class="modal-content">
@@ -521,6 +547,14 @@
         checkbox.dispatchEvent(new Event('change', { bubbles: true }));
         selectBaModal.hide();
         pendingBaCard = null;
+      });
+
+      document.querySelectorAll('.delete-ba-btn').forEach(button => {
+        button.addEventListener('click', function () {
+          document.getElementById('deleteBaNumber').textContent = this.dataset.baNumber;
+          document.getElementById('deleteBaForm').action = `/ba/${this.dataset.baId}/delete`;
+          document.getElementById('deleteBaConfirmText').value = '';
+        });
       });
 
       document.querySelectorAll('.packaging-btn').forEach(button => {
