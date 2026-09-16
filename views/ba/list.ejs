@@ -216,7 +216,7 @@
           <!-- Status -->
           <div class="col-md-4">
             <label class="form-label form-label-sm fw-bold mb-1"><i class="bi bi-info-circle text-muted"></i> Status</label>
-            <select class="form-select form-select-sm" name="status">
+            <select class="form-select form-select-sm" name="status" id="baStatusFilter">
               <option value="">Semua</option>
               <% [
                 { value: 'rekondisi', label: 'Rekondisi' },
@@ -249,9 +249,9 @@
             <button type="button" onclick="exportFilteredData()" class="btn btn-sm btn-outline-success ms-1">
               <i class="bi bi-file-earmark-excel"></i> Export BA Umum
             </button>
-            <button type="button" onclick="exportSupplierLokalExcel()" class="btn btn-sm btn-success ms-1" id="btnExportSupplierLokal">
-<i class="bi bi-file-earmark-excel"></i> Export Supplier Lokal
-            </button>
+             <button type="button" onclick="exportFilteredStatusExcel()" class="btn btn-sm btn-success ms-1" id="btnExportSupplierLokal">
+               <i class="bi bi-file-earmark-excel"></i> <span id="exportStatusLabel">Export Supplier Lokal</span>
+             </button>
           </div>
         </div>
       </form>
@@ -585,12 +585,10 @@
 
       $('#checkAllSupplierLokal').prop('checked', total > 0 && total === checked);
 
-      const $btn = $('#btnExportSupplierLokal');
-      if (checked > 0) {
-        $btn.html(`<i class="bi bi-file-earmark-excel"></i> Export Supplier Lokal Terpilih (${checked})`);
-      } else {
-        $btn.html(`<i class="bi bi-file-earmark-excel"></i> Export Supplier Lokal`);
-      }
+       const $btn = $('#btnExportSupplierLokal');
+       const labels = { '': 'BA', rekondisi: 'Rekondisi', refurbish: 'Refurbish', write_off: 'Write-Off', return_to_supplier: 'Supplier Lokal' };
+       const label = labels[$('#baStatusFilter').val()] || 'BA';
+       $btn.find('#exportStatusLabel').text(`Export ${label}${checked > 0 ? ` Terpilih (${checked})` : ''}`);
     }
 
     $(document).ready(function() {
@@ -624,9 +622,11 @@
       });
 
       // When DataTables redraws
-      $(document).on('draw.dt', '.datatable', function () {
-        updateSupplierLokalCheckAllState();
-      });
+       $(document).on('draw.dt', '.datatable', function () {
+         updateSupplierLokalCheckAllState();
+       });
+       $('#baStatusFilter').on('change', updateSupplierLokalCheckAllState);
+       updateSupplierLokalCheckAllState();
     });
 
     function exportFilteredData() {
@@ -641,7 +641,11 @@
       window.location.href = '/ba/export-all?' + params.toString();
     }
 
-    function exportSupplierLokalExcel() {
+    function exportFilteredStatusExcel() {
+      const status = document.getElementById('baStatusFilter').value;
+      if (status !== 'return_to_supplier') {
+        return exportFilteredData();
+      }
       const selectedById = new Map();
       $('.export-ba-checkbox:checked').each(function () {
         const id = String(this.dataset.baId || this.value);
