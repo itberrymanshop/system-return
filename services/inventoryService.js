@@ -474,6 +474,52 @@ async function bulkChangeStockCategory(stockIds, targetCategory, userId, ip, use
   }
 }
 
+/**
+ * Hard delete stock from inventory_stock and its parent return_items
+ */
+async function hardDeleteStock(stockId, userId, ip, userAgent) {
+  const conn = await db.getConnection();
+  await conn.beginTransaction();
+  try {
+    const [[stock]] = await conn.query('SELECT stock_id, item_id, category FROM inventory_stock WHERE stock_id = ?', [stockId]);
+    if (!stock) {
+      await conn.rollback();
+      conn.release();
+      return false;
+    }
+
+    // Delete inventory_stock
+    await conn.query('DELETE FROM inventory_stock WHERE stock_id = ?', [stockId]);
+
+    // Delete return_items
+    await conn.query('DELETE FROM return_items WHERE item_id = ?', [stock.item_id]);
+
+    await conn.commit();
+    conn.release();
+
+    try {
+      const reportService = require('./reportService');
+      if (reportService && reportService.logActivity) {
+        await reportService.logActivity(
+          userId || 1,
+          'hard_delete_stock',
+          `Hapus permanen stok #${stockId} (Item #${stock.item_id}) kategori ${stock.category}`,
+          ip,
+          userAgent
+        );
+      }
+    } catch (logErr) {
+      console.error('Error logging hard_delete_stock activity:', logErr);
+    }
+
+    return true;
+  } catch (err) {
+    await conn.rollback();
+    conn.release();
+    throw err;
+  }
+}
+
 module.exports = {
   getInventorySummary,
   getSupplierLokalExport,
@@ -486,5 +532,6 @@ module.exports = {
   cancelSupplierStock,
   cancelSupplierStockBulk,
   changeStockCategory,
-  bulkChangeStockCategory
+  bulkChangeStockCategory,
+  hardDeleteStock
 };

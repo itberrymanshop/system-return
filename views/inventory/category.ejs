@@ -169,12 +169,13 @@
                                 <th>Tgl Jual</th>
                                 <th>Vendor</th>
                                 <% } %>
+                                <th class="text-center">Aksi</th>
               </tr>
             </thead>
             <tbody>
               <% if (items.length===0) { %>
                 <% const emptyColspan=['rekondisi', 'refurbish' , 'write_off' , 'return_to_supplier'
-                  ].includes(category) ? 9 : 8; %>
+                  ].includes(category) ? 10 : 9; %>
                   <tr>
                     <td colspan="<%= emptyColspan %>" class="text-center text-muted py-4">Stok kosong.</td>
                   </tr>
@@ -377,12 +378,44 @@
                                           <%= item.vendor_name || '-' %>
                                         </small></td>
                                       <% } %>
+                                      <td class="text-center">
+                                        <button type="button" class="btn btn-sm btn-outline-danger" onclick="openHardDeleteModal('<%= item.stock_id %>', '<%= item.sku || item.item_name %>')" title="Hapus Permanen">
+                                          <i class="bi bi-trash"></i>
+                                        </button>
+                                      </td>
                       </tr>
                       <% }) %>
             </tbody>
           </table>
-        </div>
+    </div>
+  </div>
+</div>
+
+<div class="modal fade" id="hardDeleteModal" tabindex="-1" aria-hidden="true">
+  <div class="modal-dialog modal-dialog-centered">
+    <div class="modal-content border-0 shadow">
+      <div class="modal-header bg-danger text-white">
+        <h5 class="modal-title"><i class="bi bi-trash-fill me-2"></i>Konfirmasi Hapus Permanen</h5>
+        <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal" aria-label="Tutup"></button>
       </div>
+      <form method="POST" id="hardDeleteForm">
+        <div class="modal-body">
+          <div class="alert alert-danger d-flex gap-2 align-items-start">
+            <i class="bi bi-exclamation-triangle-fill fs-5"></i>
+            <div>
+              <strong>PERINGATAN!</strong><br>
+              Aksi ini akan menghapus data stok dari inventori <strong>DAN</strong> menghapus data item terkait dari resi pengembalian (return_items). Riwayat item ini akan hilang secara permanen.
+            </div>
+          </div>
+          <p>Anda yakin ingin menghapus item <strong id="hardDeleteSkuText"></strong>?</p>
+        </div>
+        <div class="modal-footer">
+          <button type="button" class="btn btn-light" data-bs-dismiss="modal">Batal</button>
+          <button type="submit" class="btn btn-danger"><i class="bi bi-trash me-1"></i>Ya, Hapus Permanen</button>
+        </div>
+      </form>
+    </div>
+  </div>
 </div>
 
 <div class="modal fade" id="voidDetailModal" tabindex="-1" aria-hidden="true">
@@ -644,3 +677,12 @@
     }
   </script>
   <% } %>
+
+<script>
+  function openHardDeleteModal(stockId, skuName) {
+    document.getElementById('hardDeleteSkuText').textContent = skuName;
+    document.getElementById('hardDeleteForm').action = '/inventory/delete/' + stockId;
+    const modal = new bootstrap.Modal(document.getElementById('hardDeleteModal'));
+    modal.show();
+  }
+</script>

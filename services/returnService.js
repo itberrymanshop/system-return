@@ -663,6 +663,88 @@ async function deleteInboundItem(itemId) {
 }
 
 /**
+ * Delete a single sorting item row from pending sorting queue.
+ * If it is the last item, the parent return is also deleted.
+ */
+async function deleteSortingItem(itemId, userId, ip, userAgent) {
+  const conn = await db.getConnection();
+  await conn.beginTransaction();
+
+  try {
+    const [rows] = await conn.query(`
+      SELECT ri.item_id, ri.return_id, ri.current_status, ri.disposition, ri.sku,
+             r.current_status AS return_status
+      FROM return_items ri
+      JOIN returns r ON r.return_id = ri.return_id
+      WHERE ri.item_id = ?
+      LIMIT 1
+    `, [itemId]);
+
+    if (!rows.length) {
+      throw new Error('Item not found.');
+    }
+
+    const target = rows[0];
+
+    await conn.query('DELETE FROM inventory_stock WHERE item_id = ?', [itemId]);
+    await conn.query('DELETE FROM return_items WHERE item_id = ? AND return_id = ?', [itemId, target.return_id]);
+
+    const [remaining] = await conn.query(
+      'SELECT item_id, return_category, quantity, unit_price FROM return_items WHERE return_id = ? ORDER BY item_id',
+      [target.return_id]
+    );
+
+    let returnDeleted = false;
+    if (!remaining.length) {
+      await conn.query('DELETE FROM returns WHERE return_id = ?', [target.return_id]);
+      returnDeleted = true;
+    } else {
+      let totalValue = 0;
+      remaining.forEach(ri => {
+        totalValue += (parseFloat(ri.quantity) || 1) * (parseFloat(ri.unit_price) || 0);
+      });
+
+      const returnCategory = remaining[0] ? remaining[0].return_category : null;
+      await conn.query(`
+        UPDATE returns
+        SET total_items = ?,
+            total_value = ?,
+            return_category = ?,
+            updated_at = NOW()
+        WHERE return_id = ?
+      `, [remaining.length, totalValue, returnCategory, target.return_id]);
+    }
+
+    await conn.commit();
+    conn.release();
+
+    try {
+      const reportService = require('./reportService');
+      if (reportService && reportService.logActivity) {
+        await reportService.logActivity(
+          userId || 1,
+          'hard_delete_sorting_item',
+          `Hapus permanen item #${itemId} (SKU: ${target.sku}) dari antrean Sorting. ${returnDeleted ? '(Resi kosong ikut dihapus)' : ''}`,
+          ip,
+          userAgent
+        );
+      }
+    } catch (logErr) {
+      console.error('Error logging hard_delete_sorting_item activity:', logErr);
+    }
+
+    return {
+      returnId: target.return_id,
+      returnDeleted
+    };
+  } catch (err) {
+    await conn.rollback();
+    conn.release();
+    throw err;
+  }
+}
+
+/**
  * Update return status and log it.
  */
 async function updateStatus(returnId, fromStatus, newStatus, reason, comments, userId) {
@@ -2291,6 +2373,7 @@ module.exports = {
   updateReturnItem,
   addReturnItems,
   deleteInboundItem,
+  deleteSortingItem,
   getItemImagePaths,
   updateStatus,
   addComment,

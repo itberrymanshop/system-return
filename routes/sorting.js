@@ -10,6 +10,7 @@ router.post('/bulk',             canSort, ctrl.bulkProcess);
 router.get('/:id',               canSort, ctrl.process);
 router.post('/:id/confirm-inbound', canSort, ctrl.confirmInbound);
 router.post('/:id/items/:itemId/qc', canSort, ctrl.saveItemQC);
+router.post('/delete-item/:itemId',   canSort, ctrl.deleteItem);
 router.post('/:id/categorize',   canSort, ctrl.categorize);
 
 module.exports = router;

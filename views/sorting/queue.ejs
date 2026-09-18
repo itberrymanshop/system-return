@@ -279,10 +279,14 @@
                               <% } else { %><span class="text-muted">-</span>
                                 <% } %>
                           </td>
-                          <td>
+                          <td class="d-flex gap-1">
                             <button type="button" class="btn btn-sm btn-outline-primary text-nowrap single-process-btn"
-                              data-item-id="<%= item.item_id %>">
+                              data-item-id="<%= item.item_id %>" title="Proses QC">
                               <i class="bi bi-arrow-right-circle"></i> Proses
+                            </button>
+                            <button type="button" class="btn btn-sm btn-outline-danger" 
+                              onclick="openHardDeleteSortingModal('<%= item.item_id %>', '<%= item.sku %>')" title="Hapus Permanen">
+                              <i class="bi bi-trash"></i>
                             </button>
                           </td>
                         </tr>
@@ -595,4 +599,41 @@
       }
     });
   });
+</script>
+
+<div class="modal fade" id="hardDeleteSortingModal" tabindex="-1" aria-hidden="true">
+  <div class="modal-dialog modal-dialog-centered">
+    <div class="modal-content border-0 shadow">
+      <div class="modal-header bg-danger text-white">
+        <h5 class="modal-title"><i class="bi bi-trash-fill me-2"></i>Konfirmasi Hapus Permanen</h5>
+        <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal" aria-label="Tutup"></button>
+      </div>
+      <form method="POST" id="hardDeleteSortingForm">
+        <div class="modal-body">
+          <div class="alert alert-danger d-flex gap-2 align-items-start">
+            <i class="bi bi-exclamation-triangle-fill fs-5"></i>
+            <div>
+              <strong>PERINGATAN!</strong><br>
+              Menghapus item dari antrean ini akan menghapus data item <strong>permanen</strong> dari database (termasuk riwayat kedatangannya).<br><br>
+              <small>Jika ini adalah item terakhir pada sebuah resi, data resi juga akan dihapus agar tidak menjadi resi kosong.</small>
+            </div>
+          </div>
+          <p>Anda yakin ingin menghapus item <strong id="hardDeleteSortingSkuText"></strong>?</p>
+        </div>
+        <div class="modal-footer">
+          <button type="button" class="btn btn-light" data-bs-dismiss="modal">Batal</button>
+          <button type="submit" class="btn btn-danger"><i class="bi bi-trash me-1"></i>Ya, Hapus Permanen</button>
+        </div>
+      </form>
+    </div>
+  </div>
+</div>
+
+<script>
+  function openHardDeleteSortingModal(itemId, skuName) {
+    document.getElementById('hardDeleteSortingSkuText').textContent = skuName;
+    document.getElementById('hardDeleteSortingForm').action = '/sorting/delete-item/' + itemId;
+    const modal = new bootstrap.Modal(document.getElementById('hardDeleteSortingModal'));
+    modal.show();
+  }
 </script>

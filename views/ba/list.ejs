@@ -638,6 +638,15 @@
           params.append(key, value);
         }
       }
+      
+      const selectedIds = [];
+      $('.export-ba-checkbox:checked').each(function () {
+        selectedIds.push($(this).val());
+      });
+      if (selectedIds.length > 0) {
+        params.set('ba_ids', selectedIds.join(','));
+      }
+      
       window.location.href = '/ba/export-all?' + params.toString();
     }
 

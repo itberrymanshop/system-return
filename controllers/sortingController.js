@@ -259,4 +259,26 @@ exports.bulkProcess = async (req, res, next) => {
   }
 };
 
+// ─── Delete Item from Sorting Queue ─────────────────────────────────────────
+exports.deleteItem = async (req, res, next) => {
+  try {
+    const { itemId } = req.params;
+    const userId = req.session.userId;
+    const redirectUrl = req.get('Referrer') || '/sorting';
+
+    const result = await returnService.deleteSortingItem(itemId, userId, req.ip, req.headers['user-agent']);
+    if (result.returnDeleted) {
+      req.flash('success', 'Item dan resi kosong berhasil dihapus permanen.');
+    } else {
+      req.flash('success', 'Item berhasil dihapus permanen dari antrean.');
+    }
+    return res.redirect(redirectUrl);
+  } catch (err) {
+    console.error('Error deleting sorting item:', err);
+    req.flash('error', err.message || 'Gagal menghapus item dari antrean.');
+    return res.redirect(req.get('Referrer') || '/sorting');
+  }
+};
+
+
 

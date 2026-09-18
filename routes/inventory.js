@@ -16,6 +16,7 @@ router.post('/cancel-supplier/:stockId', canManage, ctrl.cancelSupplierStock);
 router.post('/cancel-supplier-bulk', canManage, ctrl.cancelSupplierStockBulk);
 router.post('/change-category/:stockId', canManage, ctrl.changeCategory);
 router.post('/bulk-change-category',     canManage, ctrl.bulkChangeCategory);
+router.post('/delete/:stockId',          canManage, ctrl.deleteStock);
 
 module.exports = router;
 

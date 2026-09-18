@@ -255,4 +255,28 @@ exports.bulkChangeCategory = async (req, res, next) => {
   }
 };
 
+// ─── Hard Delete Stock ──────────────────────────────────────────────────────
+exports.deleteStock = async (req, res, next) => {
+  try {
+    const { stockId } = req.params;
+    const userId = req.session.userId;
+    const redirectUrl = req.get('Referrer') || '/inventory';
+
+    const deleted = await inventoryService.hardDeleteStock(stockId, userId, req.ip, req.headers['user-agent']);
+    if (deleted) {
+      req.flash('success', 'Stok dan data resi terkait berhasil dihapus secara permanen.');
+    } else {
+      req.flash('error', 'Stok tidak ditemukan atau gagal dihapus.');
+    }
+    return res.redirect(redirectUrl);
+  } catch (err) {
+    console.error('Error in deleteStock:', err);
+    if (err.code === 'ER_ROW_IS_REFERENCED_2' || err.code === 'ER_ROW_IS_REFERENCED') {
+      req.flash('error', 'Tidak dapat menghapus stok karena data masih terhubung dengan proses lain (misal: BA/Banding).');
+      return res.redirect(req.get('Referrer') || '/inventory');
+    }
+    next(err);
+  }
+};
+
 
